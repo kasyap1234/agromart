@@ -1,12 +1,77 @@
-# https://taskfile.dev
-
-version: '3'
+version: "3"
 
 vars:
-  GREETING: Hello, World!
+  OUTPUT_DIR: bin
+  BACKEND_PATH: ./server/cmd/api
+  MIGRATIONS_DIR: sql/migrations
 
 tasks:
   default:
     cmds:
-      - echo "{{.GREETING}}"
+      - echo "Hello Agromart"
     silent: true
+
+  # 🔨 BUILD TASKS
+
+  build:
+    internal: true
+    vars:
+      GOOS: '{{.GOOS | default "linux"}}'
+      GOARCH: '{{.GOARCH | default "amd64"}}'
+      OUTPUT: '{{.OUTPUT | default "api"}}'
+    cmds:
+      - mkdir -p {{.OUTPUT_DIR}}
+      - GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o {{.OUTPUT_DIR}}/{{.OUTPUT}} {{.BACKEND_PATH}}
+
+  build:mac:
+    desc: "Build for macOS (Apple Silicon)"
+    cmds:
+      - task: build
+        vars:
+          GOOS: darwin
+          GOARCH: arm64
+          OUTPUT: api-mac-arm64
+
+  build:linux:
+    desc: "Build for Linux (x86_64)"
+    cmds:
+      - task: build
+        vars:
+          GOOS: linux
+          GOARCH: amd64
+          OUTPUT: api-linux-amd64
+
+  build:graviton:
+    desc: "Build for AWS Graviton (Linux ARM64)"
+    cmds:
+      - task: build
+        vars:
+          GOOS: linux
+          GOARCH: arm64
+          OUTPUT: api-linux-arm64
+
+  # 🧱 DATABASE MIGRATIONS (golang-migrate)
+
+  migrate:up:
+    desc: Run all up migrations
+    cmds:
+      - migrate -path {{.MIGRATIONS_DIR}} -database "$DATABASE_URL" up
+
+  migrate:down:
+    desc: Roll back latest migration
+    cmds:
+      - migrate -path {{.MIGRATIONS_DIR}} -database "$DATABASE_URL" down 1
+
+  # 🐳 DEV DB
+
+  run:db-dev:
+    desc: Start Postgres container
+    cmds:
+      - docker compose up -d db
+
+  # 📦 SQLC
+
+  generate-sqlc:
+    desc: Generate SQL code using sqlc
+    cmds:
+      - sqlc generate

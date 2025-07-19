@@ -1,0 +1,54 @@
+version: "3"
+
+vars:
+  OUTPUT_DIR: bin
+  BACKEND_PATH: ./server/cmd/api
+
+tasks:
+  default:
+    cmds:
+      - echo "Available tasks: build:mac, build:linux, build:graviton"
+    silent: true
+
+  build:
+    internal: true  # Hide from `task --list`
+    vars:
+      GOOS: '{{.GOOS | default "linux"}}'
+      GOARCH: '{{.GOARCH | default "amd64"}}'
+      OUTPUT: '{{.OUTPUT | default "api"}}'
+    cmds:
+      - mkdir -p {{.OUTPUT_DIR}}
+      - GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o {{.OUTPUT_DIR}}/{{.OUTPUT}} {{.BACKEND_PATH}}
+
+  build:mac:
+    desc: "Build for macOS (Apple Silicon)"
+    cmds:
+      - task: build
+        vars:
+          GOOS: darwin
+          GOARCH: arm64
+          OUTPUT: api-mac-arm64
+
+  build:linux:
+    desc: "Build for Linux (x86_64)"
+    cmds:
+      - task: build
+        vars:
+          GOOS: linux
+          GOARCH: amd64
+          OUTPUT: api-linux-amd64
+
+  build:graviton:
+    desc: "Build for AWS Graviton (Linux ARM64)"
+    cmds:
+      - task: build
+        vars:
+          GOOS: linux
+          GOARCH: arm64
+          OUTPUT: api-linux-arm64
+  build:all:
+    desc: "Build for all major targets"
+    cmds:
+      - task: build:mac
+      - task: build:linux
+      - task: build:graviton
