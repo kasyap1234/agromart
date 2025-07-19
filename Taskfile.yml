@@ -10,9 +10,6 @@ tasks:
     cmds:
       - echo "Hello Agromart"
     silent: true
-
-  # 🔨 BUILD TASKS
-
   build:
     internal: true
     vars:
