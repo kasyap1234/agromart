@@ -3,6 +3,7 @@ module agromart
 go 1.24.5
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.2.3
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/viper v1.20.1
 )
