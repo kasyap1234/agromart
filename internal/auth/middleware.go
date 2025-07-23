@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"context"
+
 	"agromart/db"
 	"agromart/pkg/errors"
 	"agromart/pkg/httpx"
@@ -24,17 +26,16 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		if err != nil {
 			return httpx.Unauthorized(c, errors.ErrUnauthorized.Error())
 		}
-		queries :=db.Queries{}
-		user,err := queries.GetUserByID(c,uid)
-		if err !=nil{
-			return httpx.Unauthorized(c errors.ErrUnauthorized.Error())
+		queries := db.Queries{}
+		user, err := queries.GetUserByID(context.Background(), uid)
+		if err != nil {
+			return httpx.Unauthorized(c, errors.ErrUnauthorized.Error())
 
 		}
 
-
 		c.Set("user_id", claims.UserID)
 		c.Set("tenant_id", claims.TenantID)
-		c.Set("user_role",user.Role)
+		c.Set("user_role", user.Role)
 		return next(c)
 	}
 }
