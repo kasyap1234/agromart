@@ -71,7 +71,7 @@ tasks:
       - migrate -path {{.MIGRATIONS_DIR}} -database "$DATABASE_URL" down 1
 
   migrate:create:
-    desc: Create a new migration (e.g. task migrate:create --NAME=create_inventory_tables)
+    desc: Create a new migration (e.g. task migrate:create NAME=create_inventory_tables)
     requires:
       vars: ["NAME"]
     cmds:
