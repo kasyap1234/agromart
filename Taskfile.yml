@@ -1,15 +1,23 @@
 version: "3"
 
+# Load env variables from .env file
+dotenv: [".env"]
+
 vars:
   OUTPUT_DIR: bin
   BACKEND_PATH: ./server/cmd/api
-  MIGRATIONS_DIR: sql/migrations
+  MIGRATIONS_DIR: apps/server/sql/schema
+
+  # These come from .env and will be available as vars
+  DATABASE_URL: "postgres://{{.APP_DB_USER}}:{{.APP_DB_PASSWORD}}@{{.APP_DB_HOST}}:{{.APP_DB_PORT}}/{{.APP_DB_NAME}}?sslmode=disable"
 
 tasks:
   default:
     cmds:
       - echo "Hello Agromart"
     silent: true
+
+  # 🛠️ Build Tasks
   build:
     internal: true
     vars:
@@ -47,28 +55,46 @@ tasks:
           GOARCH: arm64
           OUTPUT: api-linux-arm64
 
-  # 🧱 DATABASE MIGRATIONS (golang-migrate)
-
+  # 🧱 Database Migrations
   migrate:up:
     desc: Run all up migrations
+    env:
+      DATABASE_URL: "{{.DATABASE_URL}}"
     cmds:
       - migrate -path {{.MIGRATIONS_DIR}} -database "$DATABASE_URL" up
 
   migrate:down:
     desc: Roll back latest migration
+    env:
+      DATABASE_URL: "{{.DATABASE_URL}}"
     cmds:
       - migrate -path {{.MIGRATIONS_DIR}} -database "$DATABASE_URL" down 1
 
-  # 🐳 DEV DB
+  migrate:create:
+    desc: Create a new migration (e.g. task migrate:create --NAME=create_inventory_tables)
+    requires:
+      vars: ["NAME"]
+    cmds:
+      - mkdir -p {{.MIGRATIONS_DIR}}
+      - migrate create -ext sql -seq -dir {{.MIGRATIONS_DIR}} {{.NAME}}
 
+  # 🐳 Dev Database
   run:db-dev:
     desc: Start Postgres container
     cmds:
-      - docker compose up -d db
+      - docker compose -f docker-compose.db.yml up -d
 
   # 📦 SQLC
-
-  generate-sqlc:
+  sqlc-generate:
     desc: Generate SQL code using sqlc
     cmds:
       - sqlc generate
+  stop:db-dev:
+    desc: Stop the Postgres container
+    cmds:
+      - docker compose -f docker-compose.db.yml stop db
+
+  rm:db-dev:
+    desc: Stop and remove Postgres container and volume
+    cmds:
+      - docker compose -f docker-compose.db.yml down -v

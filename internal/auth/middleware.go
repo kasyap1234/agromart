@@ -13,7 +13,7 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		if authHeader == "" {
 			return httpx.Unauthorized(c, errors.ErrUnauthorized.Error())
 		}
-		tokenStr := authHeader[len("Bearer"):]
+		tokenStr := authHeader[len("Bearer "):]
 		claims, err := ParseToken(tokenStr)
 		if err != nil {
 			return httpx.Unauthorized(c, errors.ErrUnauthorized.Error())
