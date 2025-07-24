@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS batches(
 );
 
 -- Performance indexes
-CREATE INDEX idx_batches_tenant_id ON batches(tenant_id);
-CREATE INDEX idx_batches_product_id ON batches(product_id);
-CREATE INDEX idx_batches_batch_number ON batches(batch_number);
-CREATE INDEX idx_batches_expiry_date ON batches(expiry_date) WHERE expiry_date IS NOT NULL;
-CREATE INDEX idx_batches_tenant_product ON batches(tenant_id, product_id);
+CREATE INDEX IF NOT EXISTS idx_batches_tenant_id ON batches(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_batches_product_id ON batches(product_id);
+CREATE INDEX IF NOT EXISTS idx_batches_batch_number ON batches(batch_number);
+CREATE INDEX IF NOT EXISTS idx_batches_expiry_date ON batches(expiry_date) WHERE expiry_date IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_batches_tenant_product ON batches(tenant_id, product_id);

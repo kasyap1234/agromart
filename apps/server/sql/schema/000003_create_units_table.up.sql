@@ -7,6 +7,6 @@ CREATE TABLE IF NOT EXISTS units(
                                     UNIQUE(tenant_id, name)
 );
 
-CREATE INDEX idx_units_tenant_id ON units(tenant_id);
-CREATE INDEX idx_units_name ON units(name);
-CREATE INDEX idx_units_abbreviation ON units(abbreviation);
+CREATE INDEX IF NOT EXISTS idx_units_tenant_id ON units(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_units_name ON units(name);
+CREATE INDEX IF NOT EXISTS idx_units_abbreviation ON units(abbreviation);

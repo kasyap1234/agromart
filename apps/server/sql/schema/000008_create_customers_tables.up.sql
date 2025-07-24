@@ -14,9 +14,9 @@ CREATE TABLE IF NOT EXISTS customers (
 
 );
 
-CREATE INDEX idx_customers_tenant_id  on customers(tenant_id);
-CREATE INDEX idx_customers_name  on customers(name);
-CREATE INDEX idx_customers_email  on customers(email);
-CREATE INDEX idx_customers_phone on customers(phone);
-CREATE INDEX idx_customers_tenant_active on customers(tenant_id,is_active);
-CREATE INDEX idx_customers_active on customers(is_active);
+CREATE INDEX IF NOT EXISTS idx_customers_tenant_id  on customers(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_customers_name  on customers(name);
+CREATE INDEX IF NOT EXISTS idx_customers_email  on customers(email);
+CREATE INDEX IF NOT EXISTS idx_customers_phone on customers(phone);
+CREATE INDEX IF NOT EXISTS idx_customers_tenant_active on customers(tenant_id,is_active);
+CREATE INDEX IF NOT EXISTS idx_customers_active on customers(is_active);

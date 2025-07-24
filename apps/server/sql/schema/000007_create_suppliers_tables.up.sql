@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS suppliers(
     unique(tenant_id,name)
 );
 
-CREATE INDEX idx_suppliers_tenant_id ON suppliers(tenant_id);
-CREATE INDEX idx_suppliers_name ON suppliers(name);
-CREATE INDEX idx_suppliers_email ON suppliers(email) WHERE email IS NOT NULL;
-CREATE INDEX idx_suppliers_is_active ON suppliers(is_active);
-CREATE INDEX idx_suppliers_tenant_active ON suppliers(tenant_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_suppliers_tenant_id ON suppliers(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name);
+CREATE INDEX IF NOT EXISTS idx_suppliers_email ON suppliers(email) WHERE email IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_suppliers_is_active ON suppliers(is_active);
+CREATE INDEX IF NOT EXISTS idx_suppliers_tenant_active ON suppliers(tenant_id, is_active);
