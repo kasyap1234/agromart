@@ -7,4 +7,4 @@ CREATE TABLE IF NOT EXISTS tenants(
     registration_number TEXT,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     CreatedAT TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                                 )
+                                 );
