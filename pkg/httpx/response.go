@@ -1,11 +1,13 @@
 package httpx
 
 import (
-	"github.com/labstack/echo/v4"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 )
 
 func OK(c echo.Context, data any) error {
+
 	return c.JSON(http.StatusOK, data)
 }
 
@@ -23,4 +25,16 @@ func Unauthorized(c echo.Context, msg string) error {
 
 func Forbidden(c echo.Context, msg string) error {
 	return c.JSON(http.StatusForbidden, msg)
+}
+
+func NotFound(c echo.Context, msg string) error {
+	return c.JSON(http.StatusNotFound, msg)
+}
+
+func InternalServerError(c echo.Context, msg string) error {
+	return c.JSON(http.StatusInternalServerError, msg)
+}
+
+func NoContent(c echo.Context, msg string) error {
+	return c.JSON(http.StatusNoContent, msg)
 }
