@@ -40,17 +40,17 @@ CREATE TABLE IF NOT EXISTS purchase_order_items(
 );
 
 -- Performance indexes for purchase_orders
-CREATE INDEX idx_purchase_orders_tenant_id ON purchase_orders(tenant_id);
-CREATE INDEX idx_purchase_orders_po_number ON purchase_orders(po_number);
-CREATE INDEX idx_purchase_orders_supplier_id ON purchase_orders(supplier_id);
-CREATE INDEX idx_purchase_orders_location_id ON purchase_orders(location_id) WHERE location_id IS NOT NULL;
-CREATE INDEX idx_purchase_orders_status ON purchase_orders(status);
-CREATE INDEX idx_purchase_orders_order_date ON purchase_orders(order_date);
-CREATE INDEX idx_purchase_orders_tenant_status ON purchase_orders(tenant_id, status);
-CREATE INDEX idx_purchase_orders_tenant_date ON purchase_orders(tenant_id, order_date);
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_tenant_id ON purchase_orders (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_po_number ON purchase_orders (po_number);
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier_id ON purchase_orders (supplier_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_location_id ON purchase_orders (location_id) WHERE location_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_status ON purchase_orders (status);
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_order_date ON purchase_orders (order_date);
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_tenant_status ON purchase_orders (tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_tenant_date ON purchase_orders (tenant_id, order_date);
 
 -- Performance indexes for purchase_order_items
-CREATE INDEX idx_po_items_tenant_id ON purchase_order_items(tenant_id);
-CREATE INDEX idx_po_items_purchase_order_id ON purchase_order_items(purchase_order_id);
-CREATE INDEX idx_po_items_product_id ON purchase_order_items(product_id);
-CREATE INDEX idx_po_items_batch_id ON purchase_order_items(batch_id) WHERE batch_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_po_items_tenant_id ON purchase_order_items (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_po_items_purchase_order_id ON purchase_order_items (purchase_order_id);
+CREATE INDEX IF NOT EXISTS idx_po_items_product_id ON purchase_order_items (product_id);
+CREATE INDEX IF NOT EXISTS idx_po_items_batch_id ON purchase_order_items (batch_id) WHERE batch_id IS NOT NULL;
