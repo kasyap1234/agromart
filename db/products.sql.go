@@ -11,6 +11,33 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const checkProductExists = `-- name: CheckProductExists :one
+SELECT EXISTS(SELECT 1 FROM products WHERE id = $1 AND tenant_id = $2)
+`
+
+type CheckProductExistsParams struct {
+	ID       pgtype.UUID
+	TenantID pgtype.UUID
+}
+
+func (q *Queries) CheckProductExists(ctx context.Context, arg CheckProductExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, checkProductExists, arg.ID, arg.TenantID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const countProducts = `-- name: CountProducts :one
+SELECT COUNT(*) FROM products WHERE tenant_id = $1
+`
+
+func (q *Queries) CountProducts(ctx context.Context, tenantID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countProducts, tenantID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createProduct = `-- name: CreateProduct :one
 INSERT INTO products (tenant_id, sku, name, price, description, image_url, brand, unit_id, price_per_unit, gst_percent)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -86,6 +113,36 @@ func (q *Queries) CreateUnit(ctx context.Context, arg CreateUnitParams) (Unit, e
 	return i, err
 }
 
+const getProductByID = `-- name: GetProductByID :one
+SELECT id, tenant_id, sku, name, price, description, image_url, brand, unit_id, price_per_unit, gst_percent, created_at FROM products
+WHERE id = $1 AND tenant_id = $2
+`
+
+type GetProductByIDParams struct {
+	ID       pgtype.UUID
+	TenantID pgtype.UUID
+}
+
+func (q *Queries) GetProductByID(ctx context.Context, arg GetProductByIDParams) (Product, error) {
+	row := q.db.QueryRow(ctx, getProductByID, arg.ID, arg.TenantID)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Sku,
+		&i.Name,
+		&i.Price,
+		&i.Description,
+		&i.ImageUrl,
+		&i.Brand,
+		&i.UnitID,
+		&i.PricePerUnit,
+		&i.GstPercent,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getProductBySKU = `-- name: GetProductBySKU :one
 SELECT id, tenant_id, sku, name, price, description, image_url, brand, unit_id, price_per_unit, gst_percent, created_at FROM products
 WHERE sku = $1 AND tenant_id = $2
@@ -111,6 +168,29 @@ func (q *Queries) GetProductBySKU(ctx context.Context, arg GetProductBySKUParams
 		&i.UnitID,
 		&i.PricePerUnit,
 		&i.GstPercent,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUnitByID = `-- name: GetUnitByID :one
+SELECT id, tenant_id, name, abbreviation, created_at FROM units
+WHERE id = $1 AND tenant_id = $2
+`
+
+type GetUnitByIDParams struct {
+	ID       pgtype.UUID
+	TenantID pgtype.UUID
+}
+
+func (q *Queries) GetUnitByID(ctx context.Context, arg GetUnitByIDParams) (Unit, error) {
+	row := q.db.QueryRow(ctx, getUnitByID, arg.ID, arg.TenantID)
+	var i Unit
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Name,
+		&i.Abbreviation,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -160,4 +240,178 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]P
 		return nil, err
 	}
 	return items, nil
+}
+
+const listUnits = `-- name: ListUnits :many
+SELECT id, tenant_id, name, abbreviation, created_at FROM units
+WHERE tenant_id = $1
+ORDER BY name
+LIMIT $2 OFFSET $3
+`
+
+type ListUnitsParams struct {
+	TenantID pgtype.UUID
+	Limit    int32
+	Offset   int32
+}
+
+func (q *Queries) ListUnits(ctx context.Context, arg ListUnitsParams) ([]Unit, error) {
+	rows, err := q.db.Query(ctx, listUnits, arg.TenantID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Unit
+	for rows.Next() {
+		var i Unit
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.Abbreviation,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchProducts = `-- name: SearchProducts :many
+SELECT id, tenant_id, sku, name, price, description, image_url, brand, unit_id, price_per_unit, gst_percent, created_at FROM products
+WHERE tenant_id = $1 AND (name ILIKE $2 OR sku ILIKE $2)
+ORDER BY name
+LIMIT $3 OFFSET $4
+`
+
+type SearchProductsParams struct {
+	TenantID pgtype.UUID
+	Name     string
+	Limit    int32
+	Offset   int32
+}
+
+func (q *Queries) SearchProducts(ctx context.Context, arg SearchProductsParams) ([]Product, error) {
+	rows, err := q.db.Query(ctx, searchProducts,
+		arg.TenantID,
+		arg.Name,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Product
+	for rows.Next() {
+		var i Product
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Sku,
+			&i.Name,
+			&i.Price,
+			&i.Description,
+			&i.ImageUrl,
+			&i.Brand,
+			&i.UnitID,
+			&i.PricePerUnit,
+			&i.GstPercent,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateProductDetails = `-- name: UpdateProductDetails :one
+UPDATE products
+SET name = $2, price = $3, description = $4, image_url = $5, brand = $6, unit_id = $7, price_per_unit = $8, gst_percent = $9
+WHERE id = $1 AND tenant_id = $10
+RETURNING id, tenant_id, sku, name, price, description, image_url, brand, unit_id, price_per_unit, gst_percent, created_at
+`
+
+type UpdateProductDetailsParams struct {
+	ID           pgtype.UUID
+	Name         string
+	Price        pgtype.Numeric
+	Description  pgtype.Text
+	ImageUrl     pgtype.Text
+	Brand        pgtype.Text
+	UnitID       pgtype.UUID
+	PricePerUnit pgtype.Numeric
+	GstPercent   pgtype.Numeric
+	TenantID     pgtype.UUID
+}
+
+func (q *Queries) UpdateProductDetails(ctx context.Context, arg UpdateProductDetailsParams) (Product, error) {
+	row := q.db.QueryRow(ctx, updateProductDetails,
+		arg.ID,
+		arg.Name,
+		arg.Price,
+		arg.Description,
+		arg.ImageUrl,
+		arg.Brand,
+		arg.UnitID,
+		arg.PricePerUnit,
+		arg.GstPercent,
+		arg.TenantID,
+	)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Sku,
+		&i.Name,
+		&i.Price,
+		&i.Description,
+		&i.ImageUrl,
+		&i.Brand,
+		&i.UnitID,
+		&i.PricePerUnit,
+		&i.GstPercent,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateUnit = `-- name: UpdateUnit :one
+UPDATE units
+SET name = $2, abbreviation = $3
+WHERE id = $1 AND tenant_id = $4
+RETURNING id, tenant_id, name, abbreviation, created_at
+`
+
+type UpdateUnitParams struct {
+	ID           pgtype.UUID
+	Name         string
+	Abbreviation string
+	TenantID     pgtype.UUID
+}
+
+func (q *Queries) UpdateUnit(ctx context.Context, arg UpdateUnitParams) (Unit, error) {
+	row := q.db.QueryRow(ctx, updateUnit,
+		arg.ID,
+		arg.Name,
+		arg.Abbreviation,
+		arg.TenantID,
+	)
+	var i Unit
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Name,
+		&i.Abbreviation,
+		&i.CreatedAt,
+	)
+	return i, err
 }

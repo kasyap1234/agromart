@@ -5,7 +5,7 @@ dotenv: [".env"]
 
 vars:
   OUTPUT_DIR: bin
-  BACKEND_PATH: ./server/cmd/api
+  BACKEND_PATH: ./cmd/api
   MIGRATIONS_DIR: apps/server/sql/schema
 
   # These come from .env and will be available as vars
@@ -26,7 +26,7 @@ tasks:
       OUTPUT: '{{.OUTPUT | default "api"}}'
     cmds:
       - mkdir -p {{.OUTPUT_DIR}}
-      - GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o {{.OUTPUT_DIR}}/{{.OUTPUT}} {{.BACKEND_PATH}}
+      - cd apps/server && GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o ../../{{.OUTPUT_DIR}}/{{.OUTPUT}} {{.BACKEND_PATH}}
 
   build:mac:
     desc: "Build for macOS (Apple Silicon)"

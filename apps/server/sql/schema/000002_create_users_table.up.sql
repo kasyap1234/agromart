@@ -17,5 +17,6 @@ CREATE TABLE IF NOT EXISTS users (
                                     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
                                      role user_role NOT NULL DEFAULT 'user',
     email_verified BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
                                      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

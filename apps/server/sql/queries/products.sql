@@ -17,3 +17,41 @@ LIMIT $2 OFFSET $3;
 INSERT INTO units (tenant_id, name, abbreviation)
 VALUES ($1, $2, $3)
 RETURNING *;
+
+-- name: GetProductByID :one
+SELECT * FROM products
+WHERE id = $1 AND tenant_id = $2;
+
+-- name: UpdateProductDetails :one
+UPDATE products
+SET name = $2, price = $3, description = $4, image_url = $5, brand = $6, unit_id = $7, price_per_unit = $8, gst_percent = $9
+WHERE id = $1 AND tenant_id = $10
+RETURNING *;
+
+-- name: SearchProducts :many
+SELECT * FROM products
+WHERE tenant_id = $1 AND (name ILIKE $2 OR sku ILIKE $2)
+ORDER BY name
+LIMIT $3 OFFSET $4;
+
+-- name: CheckProductExists :one
+SELECT EXISTS(SELECT 1 FROM products WHERE id = $1 AND tenant_id = $2);
+
+-- name: CountProducts :one
+SELECT COUNT(*) FROM products WHERE tenant_id = $1;
+
+-- name: GetUnitByID :one
+SELECT * FROM units
+WHERE id = $1 AND tenant_id = $2;
+
+-- name: UpdateUnit :one
+UPDATE units
+SET name = $2, abbreviation = $3
+WHERE id = $1 AND tenant_id = $4
+RETURNING *;
+
+-- name: ListUnits :many
+SELECT * FROM units
+WHERE tenant_id = $1
+ORDER BY name
+LIMIT $2 OFFSET $3;

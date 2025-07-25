@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS suppliers(
     address TEXT,
     tax_id TEXT,
     payment_mode TEXT ,
-    is_active BOOLEAN,
+    is_active BOOLEAN DEFAULT TRUE,
     unique(tenant_id,name)
 );
 

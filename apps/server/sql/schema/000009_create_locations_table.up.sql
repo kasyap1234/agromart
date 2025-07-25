@@ -18,9 +18,9 @@ CREATE TABLE IF NOT EXISTS locations(
 );
 
 -- Performance indexes for locations
-CREATE INDEX idx_locations_tenant_id ON locations(tenant_id);
-CREATE INDEX idx_locations_name ON locations(name);
-CREATE INDEX idx_locations_location_type ON locations(location_type);
-CREATE INDEX idx_locations_tenant_name ON locations(tenant_id, name);
-CREATE INDEX idx_locations_city ON locations(city) WHERE city IS NOT NULL;
-CREATE INDEX idx_locations_is_active ON locations(is_active);
+CREATE INDEX IF NOT EXISTS idx_locations_tenant_id ON locations(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_locations_name ON locations(name);
+CREATE INDEX IF NOT EXISTS idx_locations_location_type ON locations(location_type);
+CREATE INDEX IF NOT EXISTS idx_locations_tenant_name ON locations(tenant_id, name);
+CREATE INDEX IF NOT EXISTS idx_locations_city ON locations(city) WHERE city IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_locations_is_active ON locations(is_active);

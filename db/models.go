@@ -184,7 +184,7 @@ type Tenant struct {
 	Address            pgtype.Text
 	RegistrationNumber pgtype.Text
 	IsActive           bool
-	Createdat          pgtype.Timestamptz
+	CreatedAt          pgtype.Timestamptz
 }
 
 type Unit struct {
@@ -204,5 +204,6 @@ type User struct {
 	TenantID      pgtype.UUID
 	Role          interface{}
 	EmailVerified pgtype.Bool
+	IsActive      pgtype.Bool
 	CreatedAt     pgtype.Timestamptz
 }
