@@ -102,6 +102,44 @@ func (q *Queries) CreateSalesOrderItem(ctx context.Context, arg CreateSalesOrder
 	return i, err
 }
 
+const getCustomerSalesSummary = `-- name: GetCustomerSalesSummary :many
+SELECT
+    c.name AS customer_name,
+    SUM(so.final_amount) AS total_sales_amount,
+    COUNT(so.id) AS total_orders
+FROM customers c
+JOIN sales_orders so ON c.id = so.customer_id AND c.tenant_id = so.tenant_id
+WHERE c.tenant_id = $1
+GROUP BY c.id, c.name
+ORDER BY total_sales_amount DESC
+`
+
+type GetCustomerSalesSummaryRow struct {
+	CustomerName     string
+	TotalSalesAmount int64
+	TotalOrders      int64
+}
+
+func (q *Queries) GetCustomerSalesSummary(ctx context.Context, tenantID pgtype.UUID) ([]GetCustomerSalesSummaryRow, error) {
+	rows, err := q.db.Query(ctx, getCustomerSalesSummary, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCustomerSalesSummaryRow
+	for rows.Next() {
+		var i GetCustomerSalesSummaryRow
+		if err := rows.Scan(&i.CustomerName, &i.TotalSalesAmount, &i.TotalOrders); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSalesOrder = `-- name: GetSalesOrder :one
 SELECT id, tenant_id, so_number, customer_id, location_id, order_date, expected_delivery_date, actual_delivery_date, total_amount, tax_amount, discount_amount, final_amount, status, notes, created_by, approved_by, approved_at, created_at, updated_at FROM sales_orders
 WHERE id = $1 AND tenant_id = $2
@@ -133,6 +171,38 @@ func (q *Queries) GetSalesOrder(ctx context.Context, arg GetSalesOrderParams) (S
 		&i.CreatedBy,
 		&i.ApprovedBy,
 		&i.ApprovedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getSalesOrderItemByID = `-- name: GetSalesOrderItemByID :one
+SELECT id, tenant_id, sales_order_id, product_id, batch_id, quantity_ordered, quantity_shipped, unit_price, total_price, tax_percent, discount_percent, notes, created_at, updated_at FROM sales_order_items
+WHERE id = $1 AND tenant_id = $2
+`
+
+type GetSalesOrderItemByIDParams struct {
+	ID       pgtype.UUID
+	TenantID pgtype.UUID
+}
+
+func (q *Queries) GetSalesOrderItemByID(ctx context.Context, arg GetSalesOrderItemByIDParams) (SalesOrderItem, error) {
+	row := q.db.QueryRow(ctx, getSalesOrderItemByID, arg.ID, arg.TenantID)
+	var i SalesOrderItem
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.SalesOrderID,
+		&i.ProductID,
+		&i.BatchID,
+		&i.QuantityOrdered,
+		&i.QuantityShipped,
+		&i.UnitPrice,
+		&i.TotalPrice,
+		&i.TaxPercent,
+		&i.DiscountPercent,
+		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -182,6 +252,147 @@ func (q *Queries) GetSalesOrderItems(ctx context.Context, arg GetSalesOrderItems
 		return nil, err
 	}
 	return items, nil
+}
+
+const getSalesReportByDate = `-- name: GetSalesReportByDate :many
+SELECT
+    p.name as product_name,
+    SUM(soi.quantity_shipped) as total_units_sold,
+    SUM(soi.total_price) as total_revenue
+FROM sales_order_items soi
+JOIN products p ON soi.product_id = p.id
+JOIN sales_orders so ON soi.sales_order_id = so.id
+WHERE soi.tenant_id = $1
+  AND so.order_date BETWEEN $2 AND $3
+  AND so.status = 'DELIVERED' -- or 'SHIPPED'
+GROUP BY p.name
+ORDER BY total_revenue DESC
+`
+
+type GetSalesReportByDateParams struct {
+	TenantID    pgtype.UUID
+	OrderDate   pgtype.Date
+	OrderDate_2 pgtype.Date
+}
+
+type GetSalesReportByDateRow struct {
+	ProductName    string
+	TotalUnitsSold int64
+	TotalRevenue   int64
+}
+
+func (q *Queries) GetSalesReportByDate(ctx context.Context, arg GetSalesReportByDateParams) ([]GetSalesReportByDateRow, error) {
+	rows, err := q.db.Query(ctx, getSalesReportByDate, arg.TenantID, arg.OrderDate, arg.OrderDate_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSalesReportByDateRow
+	for rows.Next() {
+		var i GetSalesReportByDateRow
+		if err := rows.Scan(&i.ProductName, &i.TotalUnitsSold, &i.TotalRevenue); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSalesOrdersByCustomer = `-- name: ListSalesOrdersByCustomer :many
+SELECT id, tenant_id, so_number, customer_id, location_id, order_date, expected_delivery_date, actual_delivery_date, total_amount, tax_amount, discount_amount, final_amount, status, notes, created_by, approved_by, approved_at, created_at, updated_at FROM sales_orders
+WHERE tenant_id = $1 AND customer_id = $2
+ORDER BY order_date DESC
+LIMIT $3 OFFSET $4
+`
+
+type ListSalesOrdersByCustomerParams struct {
+	TenantID   pgtype.UUID
+	CustomerID pgtype.UUID
+	Limit      int32
+	Offset     int32
+}
+
+func (q *Queries) ListSalesOrdersByCustomer(ctx context.Context, arg ListSalesOrdersByCustomerParams) ([]SalesOrder, error) {
+	rows, err := q.db.Query(ctx, listSalesOrdersByCustomer,
+		arg.TenantID,
+		arg.CustomerID,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SalesOrder
+	for rows.Next() {
+		var i SalesOrder
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.SoNumber,
+			&i.CustomerID,
+			&i.LocationID,
+			&i.OrderDate,
+			&i.ExpectedDeliveryDate,
+			&i.ActualDeliveryDate,
+			&i.TotalAmount,
+			&i.TaxAmount,
+			&i.DiscountAmount,
+			&i.FinalAmount,
+			&i.Status,
+			&i.Notes,
+			&i.CreatedBy,
+			&i.ApprovedBy,
+			&i.ApprovedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateSalesOrderItemQuantityShipped = `-- name: UpdateSalesOrderItemQuantityShipped :one
+UPDATE sales_order_items
+SET quantity_shipped = $2, updated_at = NOW()
+WHERE id = $1 AND tenant_id = $3
+RETURNING id, tenant_id, sales_order_id, product_id, batch_id, quantity_ordered, quantity_shipped, unit_price, total_price, tax_percent, discount_percent, notes, created_at, updated_at
+`
+
+type UpdateSalesOrderItemQuantityShippedParams struct {
+	ID              pgtype.UUID
+	QuantityShipped pgtype.Numeric
+	TenantID        pgtype.UUID
+}
+
+func (q *Queries) UpdateSalesOrderItemQuantityShipped(ctx context.Context, arg UpdateSalesOrderItemQuantityShippedParams) (SalesOrderItem, error) {
+	row := q.db.QueryRow(ctx, updateSalesOrderItemQuantityShipped, arg.ID, arg.QuantityShipped, arg.TenantID)
+	var i SalesOrderItem
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.SalesOrderID,
+		&i.ProductID,
+		&i.BatchID,
+		&i.QuantityOrdered,
+		&i.QuantityShipped,
+		&i.UnitPrice,
+		&i.TotalPrice,
+		&i.TaxPercent,
+		&i.DiscountPercent,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateSalesOrderStatus = `-- name: UpdateSalesOrderStatus :exec

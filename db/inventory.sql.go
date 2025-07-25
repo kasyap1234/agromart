@@ -98,6 +98,199 @@ func (q *Queries) CreateInventoryLog(ctx context.Context, arg CreateInventoryLog
 	return err
 }
 
+const getBatchByID = `-- name: GetBatchByID :one
+SELECT id, tenant_id, product_id, batch_number, expiry_date, cost, created_at FROM batches
+WHERE id = $1 AND tenant_id = $2
+`
+
+type GetBatchByIDParams struct {
+	ID       pgtype.UUID
+	TenantID pgtype.UUID
+}
+
+func (q *Queries) GetBatchByID(ctx context.Context, arg GetBatchByIDParams) (Batch, error) {
+	row := q.db.QueryRow(ctx, getBatchByID, arg.ID, arg.TenantID)
+	var i Batch
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.ProductID,
+		&i.BatchNumber,
+		&i.ExpiryDate,
+		&i.Cost,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getInventoryByProductBatch = `-- name: GetInventoryByProductBatch :one
+SELECT id, tenant_id, product_id, batch_id, quantity FROM inventory
+WHERE tenant_id = $1 AND product_id = $2 AND batch_id = $3
+`
+
+type GetInventoryByProductBatchParams struct {
+	TenantID  pgtype.UUID
+	ProductID pgtype.UUID
+	BatchID   pgtype.UUID
+}
+
+func (q *Queries) GetInventoryByProductBatch(ctx context.Context, arg GetInventoryByProductBatchParams) (Inventory, error) {
+	row := q.db.QueryRow(ctx, getInventoryByProductBatch, arg.TenantID, arg.ProductID, arg.BatchID)
+	var i Inventory
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.ProductID,
+		&i.BatchID,
+		&i.Quantity,
+	)
+	return i, err
+}
+
+const getInventoryLogByBatch = `-- name: GetInventoryLogByBatch :many
+SELECT id, tenant_id, product_id, batch_id, transaction_type, quantity_change, transaction_date, notes, reference_id FROM inventory_log
+WHERE tenant_id = $1 AND batch_id = $2
+ORDER BY transaction_date DESC
+LIMIT $3 OFFSET $4
+`
+
+type GetInventoryLogByBatchParams struct {
+	TenantID pgtype.UUID
+	BatchID  pgtype.UUID
+	Limit    int32
+	Offset   int32
+}
+
+func (q *Queries) GetInventoryLogByBatch(ctx context.Context, arg GetInventoryLogByBatchParams) ([]InventoryLog, error) {
+	rows, err := q.db.Query(ctx, getInventoryLogByBatch,
+		arg.TenantID,
+		arg.BatchID,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InventoryLog
+	for rows.Next() {
+		var i InventoryLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.ProductID,
+			&i.BatchID,
+			&i.TransactionType,
+			&i.QuantityChange,
+			&i.TransactionDate,
+			&i.Notes,
+			&i.ReferenceID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getInventoryLogByProduct = `-- name: GetInventoryLogByProduct :many
+SELECT id, tenant_id, product_id, batch_id, transaction_type, quantity_change, transaction_date, notes, reference_id FROM inventory_log
+WHERE tenant_id = $1 AND product_id = $2
+ORDER BY transaction_date DESC
+LIMIT $3 OFFSET $4
+`
+
+type GetInventoryLogByProductParams struct {
+	TenantID  pgtype.UUID
+	ProductID pgtype.UUID
+	Limit     int32
+	Offset    int32
+}
+
+func (q *Queries) GetInventoryLogByProduct(ctx context.Context, arg GetInventoryLogByProductParams) ([]InventoryLog, error) {
+	rows, err := q.db.Query(ctx, getInventoryLogByProduct,
+		arg.TenantID,
+		arg.ProductID,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InventoryLog
+	for rows.Next() {
+		var i InventoryLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.ProductID,
+			&i.BatchID,
+			&i.TransactionType,
+			&i.QuantityChange,
+			&i.TransactionDate,
+			&i.Notes,
+			&i.ReferenceID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLowStockReport = `-- name: GetLowStockReport :many
+SELECT p.id, p.name, p.sku, SUM(i.quantity) as total_quantity
+FROM products p
+JOIN inventory i ON p.id = i.product_id
+WHERE p.tenant_id = $1
+GROUP BY p.id
+HAVING SUM(i.quantity) <= $2
+`
+
+type GetLowStockReportParams struct {
+	TenantID pgtype.UUID
+	Quantity pgtype.Numeric
+}
+
+type GetLowStockReportRow struct {
+	ID            pgtype.UUID
+	Name          string
+	Sku           string
+	TotalQuantity int64
+}
+
+func (q *Queries) GetLowStockReport(ctx context.Context, arg GetLowStockReportParams) ([]GetLowStockReportRow, error) {
+	rows, err := q.db.Query(ctx, getLowStockReport, arg.TenantID, arg.Quantity)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLowStockReportRow
+	for rows.Next() {
+		var i GetLowStockReportRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Sku,
+			&i.TotalQuantity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getProductInventoryDetails = `-- name: GetProductInventoryDetails :many
 SELECT b.batch_number, b.expiry_date, i.quantity
 FROM inventory i
@@ -155,6 +348,68 @@ func (q *Queries) GetProductQuantity(ctx context.Context, arg GetProductQuantity
 	return total_quantity, err
 }
 
+const listAllInventory = `-- name: ListAllInventory :many
+SELECT
+    i.id,
+    p.name AS product_name,
+    p.sku,
+    b.batch_number,
+    b.expiry_date,
+    i.quantity,
+    u.abbreviation AS unit_abbreviation
+FROM inventory i
+JOIN products p ON i.product_id = p.id
+JOIN batches b ON i.batch_id = b.id
+JOIN units u ON p.unit_id = u.id
+WHERE i.tenant_id = $1
+ORDER BY p.name, b.expiry_date
+LIMIT $2 OFFSET $3
+`
+
+type ListAllInventoryParams struct {
+	TenantID pgtype.UUID
+	Limit    int32
+	Offset   int32
+}
+
+type ListAllInventoryRow struct {
+	ID               pgtype.UUID
+	ProductName      string
+	Sku              string
+	BatchNumber      string
+	ExpiryDate       pgtype.Date
+	Quantity         pgtype.Numeric
+	UnitAbbreviation string
+}
+
+func (q *Queries) ListAllInventory(ctx context.Context, arg ListAllInventoryParams) ([]ListAllInventoryRow, error) {
+	rows, err := q.db.Query(ctx, listAllInventory, arg.TenantID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllInventoryRow
+	for rows.Next() {
+		var i ListAllInventoryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductName,
+			&i.Sku,
+			&i.BatchNumber,
+			&i.ExpiryDate,
+			&i.Quantity,
+			&i.UnitAbbreviation,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const reduceInventoryQuantity = `-- name: ReduceInventoryQuantity :exec
 UPDATE inventory
 SET quantity = quantity - $1
@@ -176,4 +431,63 @@ func (q *Queries) ReduceInventoryQuantity(ctx context.Context, arg ReduceInvento
 		arg.BatchID,
 	)
 	return err
+}
+
+const setInventoryQuantity = `-- name: SetInventoryQuantity :exec
+UPDATE inventory
+SET quantity = $1
+WHERE tenant_id = $2 AND product_id = $3 AND batch_id = $4
+`
+
+type SetInventoryQuantityParams struct {
+	Quantity  pgtype.Numeric
+	TenantID  pgtype.UUID
+	ProductID pgtype.UUID
+	BatchID   pgtype.UUID
+}
+
+func (q *Queries) SetInventoryQuantity(ctx context.Context, arg SetInventoryQuantityParams) error {
+	_, err := q.db.Exec(ctx, setInventoryQuantity,
+		arg.Quantity,
+		arg.TenantID,
+		arg.ProductID,
+		arg.BatchID,
+	)
+	return err
+}
+
+const updateBatch = `-- name: UpdateBatch :one
+UPDATE batches
+SET batch_number = $2, expiry_date = $3, cost = $4
+WHERE id = $1 AND tenant_id = $5
+RETURNING id, tenant_id, product_id, batch_number, expiry_date, cost, created_at
+`
+
+type UpdateBatchParams struct {
+	ID          pgtype.UUID
+	BatchNumber string
+	ExpiryDate  pgtype.Date
+	Cost        pgtype.Numeric
+	TenantID    pgtype.UUID
+}
+
+func (q *Queries) UpdateBatch(ctx context.Context, arg UpdateBatchParams) (Batch, error) {
+	row := q.db.QueryRow(ctx, updateBatch,
+		arg.ID,
+		arg.BatchNumber,
+		arg.ExpiryDate,
+		arg.Cost,
+		arg.TenantID,
+	)
+	var i Batch
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.ProductID,
+		&i.BatchNumber,
+		&i.ExpiryDate,
+		&i.Cost,
+		&i.CreatedAt,
+	)
+	return i, err
 }

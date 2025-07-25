@@ -14,7 +14,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (name, email, password, phone, tenant_id, role)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, email, password, phone, tenant_id, role, email_verified, created_at
+RETURNING id, name, email, password, phone, tenant_id, role, email_verified, is_active, created_at
 `
 
 type CreateUserParams struct {
@@ -45,13 +45,14 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.TenantID,
 		&i.Role,
 		&i.EmailVerified,
+		&i.IsActive,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, password, phone, tenant_id, role, email_verified, created_at FROM users
+SELECT id, name, email, password, phone, tenant_id, role, email_verified, is_active, created_at FROM users
 WHERE email = $1 AND tenant_id = $2
 `
 
@@ -72,13 +73,14 @@ func (q *Queries) GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) 
 		&i.TenantID,
 		&i.Role,
 		&i.EmailVerified,
+		&i.IsActive,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, name, email, password, phone, tenant_id, role, email_verified, created_at FROM users
+SELECT id, name, email, password, phone, tenant_id, role, email_verified, is_active, created_at FROM users
 WHERE id = $1
 `
 
@@ -94,7 +96,118 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.TenantID,
 		&i.Role,
 		&i.EmailVerified,
+		&i.IsActive,
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listUsersByRole = `-- name: ListUsersByRole :many
+SELECT id, name, email, password, phone, tenant_id, role, email_verified, is_active, created_at FROM users
+WHERE tenant_id = $1 AND role = $2
+ORDER BY name
+LIMIT $3 OFFSET $4
+`
+
+type ListUsersByRoleParams struct {
+	TenantID pgtype.UUID
+	Role     interface{}
+	Limit    int32
+	Offset   int32
+}
+
+func (q *Queries) ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, listUsersByRole,
+		arg.TenantID,
+		arg.Role,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.Password,
+			&i.Phone,
+			&i.TenantID,
+			&i.Role,
+			&i.EmailVerified,
+			&i.IsActive,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateUser = `-- name: UpdateUser :one
+UPDATE users
+SET name = $2, email = $3, phone = $4, role = $5, email_verified = $6
+WHERE id = $1 AND tenant_id = $7
+RETURNING id, name, email, password, phone, tenant_id, role, email_verified, is_active, created_at
+`
+
+type UpdateUserParams struct {
+	ID            pgtype.UUID
+	Name          string
+	Email         string
+	Phone         string
+	Role          interface{}
+	EmailVerified pgtype.Bool
+	TenantID      pgtype.UUID
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUser,
+		arg.ID,
+		arg.Name,
+		arg.Email,
+		arg.Phone,
+		arg.Role,
+		arg.EmailVerified,
+		arg.TenantID,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Password,
+		&i.Phone,
+		&i.TenantID,
+		&i.Role,
+		&i.EmailVerified,
+		&i.IsActive,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateUserPassword = `-- name: UpdateUserPassword :exec
+UPDATE users
+SET password = $1
+WHERE id = $2 AND tenant_id = $3
+`
+
+type UpdateUserPasswordParams struct {
+	Password string
+	ID       pgtype.UUID
+	TenantID pgtype.UUID
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
+	_, err := q.db.Exec(ctx, updateUserPassword, arg.Password, arg.ID, arg.TenantID)
+	return err
 }
