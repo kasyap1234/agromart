@@ -8,6 +8,174 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Batch struct {
+	ID          pgtype.UUID
+	TenantID    pgtype.UUID
+	ProductID   pgtype.UUID
+	BatchNumber string
+	ExpiryDate  pgtype.Date
+	Cost        pgtype.Numeric
+	CreatedAt   pgtype.Timestamptz
+}
+
+type Customer struct {
+	ID            pgtype.UUID
+	TenantID      pgtype.UUID
+	Name          string
+	ContactPerson pgtype.Text
+	Email         pgtype.Text
+	Phone         pgtype.Text
+	Address       pgtype.Text
+	PaymentMode   pgtype.Text
+	IsActive      pgtype.Bool
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
+type Inventory struct {
+	ID        pgtype.UUID
+	TenantID  pgtype.UUID
+	ProductID pgtype.UUID
+	BatchID   pgtype.UUID
+	Quantity  pgtype.Numeric
+}
+
+type InventoryLog struct {
+	ID              pgtype.UUID
+	TenantID        pgtype.UUID
+	ProductID       pgtype.UUID
+	BatchID         pgtype.UUID
+	TransactionType string
+	QuantityChange  pgtype.Numeric
+	TransactionDate pgtype.Timestamptz
+	Notes           pgtype.Text
+	ReferenceID     pgtype.UUID
+}
+
+type Location struct {
+	ID           pgtype.UUID
+	TenantID     pgtype.UUID
+	Name         string
+	Address      pgtype.Text
+	City         pgtype.Text
+	State        pgtype.Text
+	PostalCode   pgtype.Text
+	Country      pgtype.Text
+	Phone        pgtype.Text
+	Email        pgtype.Text
+	LocationType string
+	IsActive     bool
+	Notes        pgtype.Text
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+type Product struct {
+	ID           pgtype.UUID
+	TenantID     pgtype.UUID
+	Sku          string
+	Name         string
+	Price        pgtype.Numeric
+	Description  pgtype.Text
+	ImageUrl     pgtype.Text
+	Brand        pgtype.Text
+	UnitID       pgtype.UUID
+	PricePerUnit pgtype.Numeric
+	GstPercent   pgtype.Numeric
+	CreatedAt    pgtype.Timestamptz
+}
+
+type PurchaseOrder struct {
+	ID                   pgtype.UUID
+	TenantID             pgtype.UUID
+	PoNumber             string
+	SupplierID           pgtype.UUID
+	LocationID           pgtype.UUID
+	OrderDate            pgtype.Date
+	ExpectedDeliveryDate pgtype.Date
+	ActualDeliveryDate   pgtype.Date
+	TotalAmount          pgtype.Numeric
+	TaxAmount            pgtype.Numeric
+	DiscountAmount       pgtype.Numeric
+	FinalAmount          pgtype.Numeric
+	Status               string
+	Notes                pgtype.Text
+	CreatedBy            pgtype.UUID
+	ApprovedBy           pgtype.UUID
+	ApprovedAt           pgtype.Timestamptz
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+}
+
+type PurchaseOrderItem struct {
+	ID               pgtype.UUID
+	TenantID         pgtype.UUID
+	PurchaseOrderID  pgtype.UUID
+	ProductID        pgtype.UUID
+	BatchID          pgtype.UUID
+	QuantityOrdered  pgtype.Numeric
+	QuantityReceived pgtype.Numeric
+	UnitCost         pgtype.Numeric
+	TotalCost        pgtype.Numeric
+	TaxPercent       pgtype.Numeric
+	DiscountPercent  pgtype.Numeric
+	Notes            pgtype.Text
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type SalesOrder struct {
+	ID                   pgtype.UUID
+	TenantID             pgtype.UUID
+	SoNumber             string
+	CustomerID           pgtype.UUID
+	LocationID           pgtype.UUID
+	OrderDate            pgtype.Date
+	ExpectedDeliveryDate pgtype.Date
+	ActualDeliveryDate   pgtype.Date
+	TotalAmount          pgtype.Numeric
+	TaxAmount            pgtype.Numeric
+	DiscountAmount       pgtype.Numeric
+	FinalAmount          pgtype.Numeric
+	Status               string
+	Notes                pgtype.Text
+	CreatedBy            pgtype.UUID
+	ApprovedBy           pgtype.UUID
+	ApprovedAt           pgtype.Timestamptz
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
+}
+
+type SalesOrderItem struct {
+	ID              pgtype.UUID
+	TenantID        pgtype.UUID
+	SalesOrderID    pgtype.UUID
+	ProductID       pgtype.UUID
+	BatchID         pgtype.UUID
+	QuantityOrdered pgtype.Numeric
+	QuantityShipped pgtype.Numeric
+	UnitPrice       pgtype.Numeric
+	TotalPrice      pgtype.Numeric
+	TaxPercent      pgtype.Numeric
+	DiscountPercent pgtype.Numeric
+	Notes           pgtype.Text
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
+type Supplier struct {
+	ID            pgtype.UUID
+	TenantID      pgtype.UUID
+	Name          string
+	ContactPerson pgtype.Text
+	Email         pgtype.Text
+	Phone         pgtype.Text
+	Address       pgtype.Text
+	TaxID         pgtype.Text
+	PaymentMode   pgtype.Text
+	IsActive      pgtype.Bool
+}
+
 type Tenant struct {
 	ID                 pgtype.UUID
 	Name               string
@@ -19,12 +187,22 @@ type Tenant struct {
 	Createdat          pgtype.Timestamptz
 }
 
+type Unit struct {
+	ID           pgtype.UUID
+	TenantID     pgtype.UUID
+	Name         string
+	Abbreviation string
+	CreatedAt    pgtype.Timestamptz
+}
+
 type User struct {
-	ID        pgtype.UUID
-	Name      string
-	Email     string
-	Password  string
-	Phone     string
-	Role      interface{}
-	CreatedAt pgtype.Timestamptz
+	ID            pgtype.UUID
+	Name          string
+	Email         string
+	Password      string
+	Phone         string
+	TenantID      pgtype.UUID
+	Role          interface{}
+	EmailVerified pgtype.Bool
+	CreatedAt     pgtype.Timestamptz
 }
