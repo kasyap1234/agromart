@@ -11,8 +11,75 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createUser = `-- name: CreateUser :one
+INSERT INTO users (name, email, password, phone, tenant_id, role)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, name, email, password, phone, tenant_id, role, email_verified, created_at
+`
+
+type CreateUserParams struct {
+	Name     string
+	Email    string
+	Password string
+	Phone    string
+	TenantID pgtype.UUID
+	Role     interface{}
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, createUser,
+		arg.Name,
+		arg.Email,
+		arg.Password,
+		arg.Phone,
+		arg.TenantID,
+		arg.Role,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Password,
+		&i.Phone,
+		&i.TenantID,
+		&i.Role,
+		&i.EmailVerified,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, name, email, password, phone, tenant_id, role, email_verified, created_at FROM users
+WHERE email = $1 AND tenant_id = $2
+`
+
+type GetUserByEmailParams struct {
+	Email    string
+	TenantID pgtype.UUID
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, arg.Email, arg.TenantID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Password,
+		&i.Phone,
+		&i.TenantID,
+		&i.Role,
+		&i.EmailVerified,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, name, email, password, phone, role, created_at FROM users WHERE id=$1
+SELECT id, name, email, password, phone, tenant_id, role, email_verified, created_at FROM users
+WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -24,7 +91,9 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.Email,
 		&i.Password,
 		&i.Phone,
+		&i.TenantID,
 		&i.Role,
+		&i.EmailVerified,
 		&i.CreatedAt,
 	)
 	return i, err
