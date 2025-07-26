@@ -8,9 +8,8 @@ import (
 	"syscall"
 	"time"
 
-	"agromart/apps/server/config"
-	"agromart/apps/server/pkg/logger"
-
+	"github.com/kasyap1234/agromart/apps/server/config"
+	"github.com/kasyap1234/agromart/apps/server/pkg/logger"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 )

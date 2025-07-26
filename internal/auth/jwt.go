@@ -1,9 +1,10 @@
 package auth
 
 import (
-	"agromart/pkg/errors"
-	"github.com/golang-jwt/jwt/v5"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/kasyap1234/agromart/apps/server/pkg/errors"
 )
 
 var jwtKey = []byte("shared-secret-key")
