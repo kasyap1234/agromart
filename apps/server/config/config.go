@@ -25,7 +25,7 @@ type Config struct {
 
 func LoadConfig() (*Config, error) {
 	// Read from .env file
-	viper.SetConfigFile("/home/tgt/GolandProjects/alertify/.env")
+	viper.SetConfigFile("/Users/kasyapdharanikota/GolandProjects/agromart/.env")
 	viper.SetConfigType("env")
 
 	// Read from config file first

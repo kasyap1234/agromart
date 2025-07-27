@@ -106,11 +106,11 @@ func PgTextToString(t pgtype.Text) string {
 // These maintain the old function names but use the new pgx/v5 types
 
 // PgToUUID is deprecated, use PgUUIDToUUID instead
-func PgToUUID(pgUUID pgtype.UUID) uuid.UUID {
-	return PgUUIDToUUID(pgUUID)
-}
+// func PgToUUID(pgUUID pgtype.UUID) uuid.UUID {
+// 	return PgUUIDToUUID(pgUUID)
+// }
 
-// PgToNumeric is deprecated, use IntToPgNumeric instead
-func PgToNumeric(num int) pgtype.Numeric {
-	return IntToPgNumeric(num)
-}
+// // PgToNumeric is deprecated, use IntToPgNumeric instead
+// func PgToNumeric(num int) pgtype.Numeric {
+// 	return IntToPgNumeric(num)
+// }

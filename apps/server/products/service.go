@@ -1,0 +1,156 @@
+package products
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kasyap1234/agromart/db"
+	"github.com/kasyap1234/agromart/internal/utils"
+	"github.com/rs/zerolog/log"
+)
+
+type ProductService struct {
+	db *pgxpool.Pool
+	q  *db.Queries
+}
+
+func NewProductService(db *pgxpool.Pool, query *db.Queries) *ProductService {
+	return &ProductService{
+		db: db,
+		q:  query,
+	}
+}
+
+func (s *ProductService) CheckProductExists(ctx context.Context, productID uuid.UUID, tenantID uuid.UUID) (bool, error) {
+	args := db.CheckProductExistsParams{
+		ID:       utils.UUIDToPgUUID(productID),
+		TenantID: utils.UUIDToPgUUID(tenantID),
+	}
+	exists, err := s.q.CheckProductExists(ctx, args)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to check if product exists")
+		return false, err
+	}
+	return exists, nil
+}
+
+func (s *ProductService) CountProducts(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	pgTenantID := utils.UUIDToPgUUID(tenantID)
+	count, err := s.q.CountProducts(ctx, pgTenantID)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to count products")
+		return 0, err
+	}
+	return count, nil
+}
+
+func (s *ProductService) CreateProduct(ctx context.Context, tenantID uuid.UUID, sku string, name string, price int, description string, imageUrl string, brand string, unitID uuid.UUID, pricePerUnit int, GstPercent int) (db.Product, error) {
+	args := db.CreateProductParams{
+		TenantID:     utils.UUIDToPgUUID(tenantID),
+		Sku:          sku,
+		Name:         name,
+		Price:        utils.IntToPgNumeric(price),
+		Description:  utils.StringToPgText(description),
+		ImageUrl:     utils.StringToPgText(imageUrl),
+		Brand:        utils.StringToPgText(brand),
+		UnitID:       utils.UUIDToPgUUID(unitID),
+		PricePerUnit: utils.IntToPgNumeric(pricePerUnit),
+	}
+
+	product, err := s.q.CreateProduct(ctx, args)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to create product")
+		return db.Product{}, err
+	}
+	return product, nil
+}
+
+func (s *ProductService) CreateUnit(ctx context.Context, ID uuid.UUID, tenantID uuid.UUID, name string, abbreviation string) (db.Unit, error) {
+	args := db.CreateUnitParams{
+		TenantID:     utils.UUIDToPgUUID(tenantID),
+		Name:         name,
+		Abbreviation: abbreviation,
+	}
+	unit, err := s.q.CreateUnit(ctx, args)
+	if err != nil {
+		log.Error().Err(err).Msg("unit creation failed")
+		return db.Unit{}, err
+	}
+	return unit, nil
+}
+
+func (s *ProductService) GetProductByID(ctx context.Context, ID uuid.UUID, tenantID uuid.UUID) (db.Product, error) {
+	args := db.GetProductByIDParams{
+		ID:       utils.UUIDToPgUUID(ID),
+		TenantID: utils.UUIDToPgUUID(tenantID),
+	}
+	product, err := s.q.GetProductByID(ctx, args)
+
+	if err != nil {
+		log.Error().Err(err).Msg("failed to get product by ID")
+
+		return db.Product{}, err
+	}
+	return product, nil
+}
+
+func (s *ProductService) GetProductBySKU(ctx context.Context, sku string, tenantID uuid.UUID) (db.Product, error) {
+	args := db.GetProductBySKUParams{
+		Sku:      sku,
+		TenantID: utils.UUIDToPgUUID(tenantID),
+	}
+	product, err := s.q.GetProductBySKU(ctx, args)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to get product by sku")
+		return db.Product{}, err
+	}
+	return product, nil
+}
+
+func (s *ProductService) GetUnitByID(ctx context.Context, ID uuid.UUID, tenantID uuid.UUID) (db.Unit, error) {
+	args := db.GetUnitByIDParams{
+		ID:       utils.UUIDToPgUUID(ID),
+		TenantID: utils.UUIDToPgUUID(tenantID),
+	}
+	unit, err := s.q.GetUnitByID(ctx, args)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to get unit by ID")
+		return db.Unit{}, err
+	}
+	return unit, nil
+}
+
+func (s *ProductService) ListProducts(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]db.Product, error) {
+	args := db.ListProductsParams{
+		TenantID: utils.UUIDToPgUUID(tenantID),
+		Limit:    int32(limit),
+		Offset:   int32(offset),
+	}
+	products, err := s.q.ListProducts(ctx, args)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to list products")
+		return []db.Product{}, err
+	}
+	return products, nil
+}
+
+func (s *ProductService) ListUnits(ctx context.Context, tenantID uuid.UUID, limit int, offset int) ([]db.Unit, error) {
+	args := db.ListUnitsParams{
+		TenantID: utils.UUIDToPgUUID(tenantID),
+		Limit:    int32(limit),
+		Offset:   int32(offset),
+	}
+	units, err := s.q.ListUnits(ctx, args)
+	if err != nil {
+		return []db.Unit{}, err
+	}
+	return units, nil
+}
+
+func (s *ProductService) SearchProducts(ctx context.Context, tenantID uuid.UUID, name string, limit int, offset int) ([]db.Product, error) {
+	args := db.SearchProductsParams{
+		TenantID: utils.UUIDToPgUUID(tenantID),
+		Name:     name,
+	}
+}
