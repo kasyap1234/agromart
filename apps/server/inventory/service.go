@@ -5,157 +5,119 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kasyap1234/agromart/db"
-	"github.com/kasyap1234/agromart/internal/utils"
+	"github.com/kasyap1234/agromart/models"
+	"github.com/kasyap1234/agromart/repositories"
+	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 type InventoryService struct {
-	db      *pgxpool.Pool
-	queries *db.Queries
+	db   *gorm.DB
+	repo *repositories.InventoryRepository
 }
 
-func NewService(db *pgxpool.Pool, q *db.Queries) *InventoryService {
+func NewService(db *gorm.DB, repo *repositories.InventoryRepository) *InventoryService {
 	return &InventoryService{
-		db:      db,
-		queries: q,
+		db:   db,
+		repo: repo,
 	}
 }
 
 func (s *InventoryService) AddInventoryQuantity(ctx context.Context, tenantID, productID, batchID uuid.UUID, quantity int) error {
-	args := db.AddInventoryQuantityParams{
-		TenantID:  utils.UUIDToPgUUID(tenantID),
-		ProductID: utils.UUIDToPgUUID(productID),
-		BatchID:   utils.UUIDToPgUUID(batchID),
-		Quantity:  utils.IntToPgNumeric(quantity),
-	}
-	err := s.queries.AddInventoryQuantity(ctx, args)
-
-	return err
+	quantityDecimal := decimal.NewFromInt(int64(quantity))
+	notes := "Stock added"
+	return s.repo.AddStock(ctx, tenantID, productID, batchID, quantityDecimal, notes, nil)
 }
 
-func (s *InventoryService) CreateBatch(ctx context.Context, tenantID, productID uuid.UUID, batchNumber string, expiryDate time.Time, cost int) (db.Batch, error) {
-	args := db.CreateBatchParams{
-		TenantID:    utils.UUIDToPgUUID(tenantID),
-		ProductID:   utils.UUIDToPgUUID(productID),
+func (s *InventoryService) CreateBatch(ctx context.Context, tenantID, productID uuid.UUID, batchNumber string, expiryDate time.Time, cost int) (*models.Batch, error) {
+	batch := &models.Batch{
+		TenantID:    tenantID,
+		ProductID:   productID,
 		BatchNumber: batchNumber,
-		ExpiryDate:  utils.TimeToPgDate(expiryDate),
-		Cost:        utils.IntToPgNumeric(cost),
+		ExpiryDate:  &expiryDate,
+		Cost:        decimal.NewFromInt(int64(cost)),
 	}
-	batch, err := s.queries.CreateBatch(ctx, args)
-	return batch, err
+	
+	err := s.repo.CreateBatch(ctx, batch)
+	if err != nil {
+		return nil, err
+	}
+	return batch, nil
 }
 
-func (s *InventoryService) GetBatchByID(ctx context.Context, id, tenantID uuid.UUID) (db.Batch, error) {
-	args := db.GetBatchByIDParams{
-		ID:       utils.UUIDToPgUUID(id),
-		TenantID: utils.UUIDToPgUUID(tenantID),
-	}
-	return s.queries.GetBatchByID(ctx, args)
+func (s *InventoryService) GetBatchByID(ctx context.Context, id, tenantID uuid.UUID) (*models.Batch, error) {
+	return s.repo.GetBatchByID(ctx, id, tenantID)
 }
 
-func (s *InventoryService) GetInventoryByProductBatch(ctx context.Context, tenantID, productID, batchID uuid.UUID) (db.Inventory, error) {
-	args := db.GetInventoryByProductBatchParams{
-		TenantID:  utils.UUIDToPgUUID(tenantID),
-		ProductID: utils.UUIDToPgUUID(productID),
-		BatchID:   utils.UUIDToPgUUID(batchID),
-	}
-	return s.queries.GetInventoryByProductBatch(ctx, args)
+func (s *InventoryService) GetInventoryByProductBatch(ctx context.Context, tenantID, productID, batchID uuid.UUID) (*models.Inventory, error) {
+	return s.repo.GetInventoryByProductAndBatch(ctx, productID, batchID, tenantID)
 }
 
-func (s *InventoryService) GetProductQuantity(ctx context.Context, tenantID, productID uuid.UUID) (interface{}, error) {
-	args := db.GetProductQuantityParams{
-		TenantID:  utils.UUIDToPgUUID(tenantID),
-		ProductID: utils.UUIDToPgUUID(productID),
-	}
-	return s.queries.GetProductQuantity(ctx, args)
-}
-
-func (s *InventoryService) ListAllInventory(ctx context.Context, tenantID uuid.UUID, limit, offset int32) ([]db.ListAllInventoryRow, error) {
-	args := db.ListAllInventoryParams{
-		TenantID: utils.UUIDToPgUUID(tenantID),
-		Limit:    limit,
-		Offset:   offset,
-	}
-	return s.queries.ListAllInventory(ctx, args)
+func (s *InventoryService) ListAllInventory(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.Inventory, error) {
+	return s.repo.GetInventoryByTenant(ctx, tenantID, limit, offset)
 }
 
 func (s *InventoryService) ReduceInventoryQuantity(ctx context.Context, tenantID, productID, batchID uuid.UUID, quantity int) error {
-	args := db.ReduceInventoryQuantityParams{
-		Quantity:  utils.IntToPgNumeric(quantity),
-		TenantID:  utils.UUIDToPgUUID(tenantID),
-		ProductID: utils.UUIDToPgUUID(productID),
-		BatchID:   utils.UUIDToPgUUID(batchID),
-	}
-	return s.queries.ReduceInventoryQuantity(ctx, args)
+	quantityDecimal := decimal.NewFromInt(int64(quantity))
+	notes := "Stock reduced"
+	return s.repo.RemoveStock(ctx, tenantID, productID, batchID, quantityDecimal, notes, nil)
 }
 
 func (s *InventoryService) SetInventoryQuantity(ctx context.Context, tenantID, productID, batchID uuid.UUID, quantity int) error {
-	args := db.SetInventoryQuantityParams{
-		Quantity:  utils.IntToPgNumeric(quantity),
-		TenantID:  utils.UUIDToPgUUID(tenantID),
-		ProductID: utils.UUIDToPgUUID(productID),
-		BatchID:   utils.UUIDToPgUUID(batchID),
+	inventory, err := s.repo.GetInventoryByProductAndBatch(ctx, productID, batchID, tenantID)
+	if err != nil {
+		return err
 	}
-	return s.queries.SetInventoryQuantity(ctx, args)
+	
+	newQuantity := decimal.NewFromInt(int64(quantity))
+	return s.repo.UpdateInventoryQuantity(ctx, inventory.ID, newQuantity)
 }
 
-func (s *InventoryService) UpdateBatch(ctx context.Context, id, tenantID uuid.UUID, batchNumber string, expiryDate time.Time, cost int) (db.Batch, error) {
-	args := db.UpdateBatchParams{
-		ID:          utils.UUIDToPgUUID(id),
-		BatchNumber: batchNumber,
-		ExpiryDate:  utils.TimeToPgDate(expiryDate),
-		Cost:        utils.IntToPgNumeric(cost),
-		TenantID:    utils.UUIDToPgUUID(tenantID),
+func (s *InventoryService) UpdateBatch(ctx context.Context, id, tenantID uuid.UUID, batchNumber string, expiryDate time.Time, cost int) (*models.Batch, error) {
+	batch, err := s.repo.GetBatchByID(ctx, id, tenantID)
+	if err != nil {
+		return nil, err
 	}
-	return s.queries.UpdateBatch(ctx, args)
+	
+	batch.BatchNumber = batchNumber
+	batch.ExpiryDate = &expiryDate
+	batch.Cost = decimal.NewFromInt(int64(cost))
+	
+	err = s.db.WithContext(ctx).Save(batch).Error
+	if err != nil {
+		return nil, err
+	}
+	
+	return batch, nil
 }
 
-func (s *InventoryService) GetProductInventoryDetails(ctx context.Context, tenantID, productID uuid.UUID) ([]db.GetProductInventoryDetailsRow, error) {
-	args := db.GetProductInventoryDetailsParams{
-		TenantID:  utils.UUIDToPgUUID(tenantID),
-		ProductID: utils.UUIDToPgUUID(productID),
-	}
-	return s.queries.GetProductInventoryDetails(ctx, args)
+func (s *InventoryService) GetLowStockReport(ctx context.Context, tenantID uuid.UUID, threshold int) ([]models.Inventory, error) {
+	thresholdDecimal := decimal.NewFromInt(int64(threshold))
+	return s.repo.GetLowStockItems(ctx, tenantID, thresholdDecimal)
 }
 
-func (s *InventoryService) GetLowStockReport(ctx context.Context, tenantID uuid.UUID, threshold int) ([]db.GetLowStockReportRow, error) {
-	args := db.GetLowStockReportParams{
-		TenantID: utils.UUIDToPgUUID(tenantID),
-		Quantity: utils.IntToPgNumeric(threshold),
-	}
-	return s.queries.GetLowStockReport(ctx, args)
+func (s *InventoryService) GetInventoryLogs(ctx context.Context, tenantID uuid.UUID, productID *uuid.UUID, limit, offset int) ([]models.InventoryLog, error) {
+	return s.repo.GetInventoryLogs(ctx, tenantID, productID, limit, offset)
 }
 
-func (s *InventoryService) GetInventoryLogByProduct(ctx context.Context, tenantID, productID uuid.UUID, limit, offset int32) ([]db.InventoryLog, error) {
-	args := db.GetInventoryLogByProductParams{
-		TenantID:  utils.UUIDToPgUUID(tenantID),
-		ProductID: utils.UUIDToPgUUID(productID),
-		Limit:     limit,
-		Offset:    offset,
-	}
-	return s.queries.GetInventoryLogByProduct(ctx, args)
-}
-
-func (s *InventoryService) GetInventoryLogByBatch(ctx context.Context, tenantID, batchID uuid.UUID, limit, offset int32) ([]db.InventoryLog, error) {
-	args := db.GetInventoryLogByBatchParams{
-		TenantID: utils.UUIDToPgUUID(tenantID),
-		BatchID:  utils.UUIDToPgUUID(batchID),
-		Limit:    limit,
-		Offset:   offset,
-	}
-	return s.queries.GetInventoryLogByBatch(ctx, args)
-}
-
-func (s *InventoryService) CreateInventoryLog(ctx context.Context, tenantID, productID, batchID, referenceID uuid.UUID, transactionType string, quantityChange int, notes string) error {
-	args := db.CreateInventoryLogParams{
-		TenantID:        utils.UUIDToPgUUID(tenantID),
-		ProductID:       utils.UUIDToPgUUID(productID),
-		BatchID:         utils.UUIDToPgUUID(batchID),
+func (s *InventoryService) CreateInventoryLog(ctx context.Context, tenantID, productID, batchID uuid.UUID, referenceID *uuid.UUID, transactionType string, quantityChange int, notes string) error {
+	log := &models.InventoryLog{
+		TenantID:        tenantID,
+		ProductID:       productID,
+		BatchID:         batchID,
 		TransactionType: transactionType,
-		QuantityChange:  utils.IntToPgNumeric(quantityChange),
-		ReferenceID:     utils.UUIDToPgUUID(referenceID),
-		Notes:           utils.StringToPgText(notes),
+		QuantityChange:  decimal.NewFromInt(int64(quantityChange)),
+		Notes:           &notes,
+		ReferenceID:     referenceID,
 	}
-	return s.queries.CreateInventoryLog(ctx, args)
+	
+	return s.repo.CreateInventoryLog(ctx, log)
+}
+
+func (s *InventoryService) GetInventoryValue(ctx context.Context, tenantID uuid.UUID) (decimal.Decimal, error) {
+	return s.repo.GetInventoryValueByTenant(ctx, tenantID)
+}
+
+func (s *InventoryService) GetTopMovingProducts(ctx context.Context, tenantID uuid.UUID, days int, limit int) ([]map[string]interface{}, error) {
+	return s.repo.GetTopMovingProducts(ctx, tenantID, days, limit)
 }

@@ -5,11 +5,11 @@ import (
 
 	"github.com/kasyap1234/agromart/apps/server/pkg/errors"
 	"github.com/kasyap1234/agromart/apps/server/pkg/httpx"
-	"github.com/kasyap1234/agromart/db"
-	"github.com/kasyap1234/agromart/internal/utils"
+	"github.com/kasyap1234/agromart/repositories"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"gorm.io/gorm"
 )
 
 func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {

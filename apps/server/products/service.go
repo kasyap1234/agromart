@@ -4,21 +4,22 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kasyap1234/agromart/db"
-	"github.com/kasyap1234/agromart/internal/utils"
+	"github.com/kasyap1234/agromart/models"
+	"github.com/kasyap1234/agromart/repositories"
 	"github.com/rs/zerolog/log"
+	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 type ProductService struct {
-	db *pgxpool.Pool
-	q  *db.Queries
+	db   *gorm.DB
+	repo *repositories.ProductRepository
 }
 
-func NewProductService(db *pgxpool.Pool, query *db.Queries) *ProductService {
+func NewProductService(db *gorm.DB, repo *repositories.ProductRepository) *ProductService {
 	return &ProductService{
-		db: db,
-		q:  query,
+		db:   db,
+		repo: repo,
 	}
 }
 
@@ -34,11 +35,7 @@ type ProductInputRequest struct {
 }
 
 func (s *ProductService) CheckProductExists(ctx context.Context, productID uuid.UUID, tenantID uuid.UUID) (bool, error) {
-	args := db.CheckProductExistsParams{
-		ID:       utils.UUIDToPgUUID(productID),
-		TenantID: utils.UUIDToPgUUID(tenantID),
-	}
-	exists, err := s.q.CheckProductExists(ctx, args)
+	exists, err := s.repo.CheckProductExists(ctx, productID, tenantID)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to check if product exists")
 		return false, err
@@ -47,8 +44,7 @@ func (s *ProductService) CheckProductExists(ctx context.Context, productID uuid.
 }
 
 func (s *ProductService) CountProducts(ctx context.Context, tenantID uuid.UUID) (int64, error) {
-	pgTenantID := utils.UUIDToPgUUID(tenantID)
-	count, err := s.q.CountProducts(ctx, pgTenantID)
+	count, err := s.repo.CountProducts(ctx, tenantID)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to count products")
 		return 0, err
@@ -56,143 +52,127 @@ func (s *ProductService) CountProducts(ctx context.Context, tenantID uuid.UUID) 
 	return count, nil
 }
 
-func (s *ProductService) CreateProduct(ctx context.Context, tenantID uuid.UUID, sku string, name string, price int, description string, imageUrl string, brand string, unitID uuid.UUID, pricePerUnit int, GstPercent int) (db.Product, error) {
-	args := db.CreateProductParams{
-		TenantID:     utils.UUIDToPgUUID(tenantID),
-		Sku:          sku,
+func (s *ProductService) CreateProduct(ctx context.Context, tenantID uuid.UUID, sku string, name string, price int, description string, imageUrl string, brand string, unitID uuid.UUID, pricePerUnit int, gstPercent int) (*models.Product, error) {
+	params := repositories.CreateProductParams{
+		TenantID:     tenantID,
+		SKU:          sku,
 		Name:         name,
-		Price:        utils.IntToPgNumeric(price),
-		Description:  utils.StringToPgText(description),
-		ImageUrl:     utils.StringToPgText(imageUrl),
-		Brand:        utils.StringToPgText(brand),
-		UnitID:       utils.UUIDToPgUUID(unitID),
-		PricePerUnit: utils.IntToPgNumeric(pricePerUnit),
+		Price:        decimal.NewFromInt(int64(price)),
+		Description:  &description,
+		ImageURL:     &imageUrl,
+		Brand:        &brand,
+		UnitID:       unitID,
+		PricePerUnit: func() *decimal.Decimal { d := decimal.NewFromInt(int64(pricePerUnit)); return &d }(),
+		GSTPercent:   func() *decimal.Decimal { d := decimal.NewFromInt(int64(gstPercent)); return &d }(),
 	}
 
-	product, err := s.q.CreateProduct(ctx, args)
+	product, err := s.repo.CreateProductFromParams(ctx, params)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create product")
-		return db.Product{}, err
+		return nil, err
 	}
 	return product, nil
 }
 
-func (s *ProductService) CreateUnit(ctx context.Context, ID uuid.UUID, tenantID uuid.UUID, name string, abbreviation string) (db.Unit, error) {
-	args := db.CreateUnitParams{
-		TenantID:     utils.UUIDToPgUUID(tenantID),
+func (s *ProductService) CreateUnit(ctx context.Context, ID uuid.UUID, tenantID uuid.UUID, name string, abbreviation string) (*models.Unit, error) {
+	params := repositories.CreateUnitParams{
+		TenantID:     tenantID,
 		Name:         name,
 		Abbreviation: abbreviation,
 	}
-	unit, err := s.q.CreateUnit(ctx, args)
+	unit, err := s.repo.CreateUnitFromParams(ctx, params)
 	if err != nil {
 		log.Error().Err(err).Msg("unit creation failed")
-		return db.Unit{}, err
+		return nil, err
 	}
 	return unit, nil
 }
 
-func (s *ProductService) GetProductByID(ctx context.Context, ID uuid.UUID, tenantID uuid.UUID) (db.Product, error) {
-	args := db.GetProductByIDParams{
-		ID:       utils.UUIDToPgUUID(ID),
-		TenantID: utils.UUIDToPgUUID(tenantID),
-	}
-	product, err := s.q.GetProductByID(ctx, args)
-
+func (s *ProductService) GetProductByID(ctx context.Context, ID uuid.UUID, tenantID uuid.UUID) (*models.Product, error) {
+	product, err := s.repo.GetProductByID(ctx, ID, tenantID)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to get product by ID")
-
-		return db.Product{}, err
+		return nil, err
 	}
 	return product, nil
 }
 
-func (s *ProductService) GetProductBySKU(ctx context.Context, sku string, tenantID uuid.UUID) (db.Product, error) {
-	args := db.GetProductBySKUParams{
-		Sku:      sku,
-		TenantID: utils.UUIDToPgUUID(tenantID),
-	}
-	product, err := s.q.GetProductBySKU(ctx, args)
+func (s *ProductService) GetProductBySKU(ctx context.Context, sku string, tenantID uuid.UUID) (*models.Product, error) {
+	product, err := s.repo.GetProductBySKU(ctx, sku, tenantID)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to get product by sku")
-		return db.Product{}, err
+		return nil, err
 	}
 	return product, nil
 }
 
-func (s *ProductService) GetUnitByID(ctx context.Context, ID uuid.UUID, tenantID uuid.UUID) (db.Unit, error) {
-	args := db.GetUnitByIDParams{
-		ID:       utils.UUIDToPgUUID(ID),
-		TenantID: utils.UUIDToPgUUID(tenantID),
-	}
-	unit, err := s.q.GetUnitByID(ctx, args)
+func (s *ProductService) GetUnitByID(ctx context.Context, ID uuid.UUID, tenantID uuid.UUID) (*models.Unit, error) {
+	unit, err := s.repo.GetUnitByID(ctx, ID, tenantID)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to get unit by ID")
-		return db.Unit{}, err
+		return nil, err
 	}
 	return unit, nil
 }
 
-func (s *ProductService) ListProducts(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]db.Product, error) {
-	args := db.ListProductsParams{
-		TenantID: utils.UUIDToPgUUID(tenantID),
-		Limit:    int32(limit),
-		Offset:   int32(offset),
-	}
-	products, err := s.q.ListProducts(ctx, args)
+func (s *ProductService) ListProducts(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]models.Product, error) {
+	products, err := s.repo.ListProducts(ctx, tenantID, limit, offset)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to list products")
-		return []db.Product{}, err
+		return nil, err
 	}
 	return products, nil
 }
 
-func (s *ProductService) ListUnits(ctx context.Context, tenantID uuid.UUID, limit int, offset int) ([]db.Unit, error) {
-	args := db.ListUnitsParams{
-		TenantID: utils.UUIDToPgUUID(tenantID),
-		Limit:    int32(limit),
-		Offset:   int32(offset),
-	}
-	units, err := s.q.ListUnits(ctx, args)
+func (s *ProductService) ListUnits(ctx context.Context, tenantID uuid.UUID, limit int, offset int) ([]models.Unit, error) {
+	units, err := s.repo.ListUnits(ctx, tenantID, limit, offset)
 	if err != nil {
-		return []db.Unit{}, err
+		return nil, err
 	}
 	return units, nil
 }
 
-func (s *ProductService) SearchProducts(ctx context.Context, tenantID uuid.UUID, name string, limit int, offset int) ([]db.Product, error) {
-	args := db.SearchProductsParams{
-		TenantID: utils.UUIDToPgUUID(tenantID),
-		Name:     name,
-	}
-	products, err := s.q.SearchProducts(ctx, args)
+func (s *ProductService) SearchProducts(ctx context.Context, tenantID uuid.UUID, name string, limit int, offset int) ([]models.Product, error) {
+	products, err := s.repo.SearchProducts(ctx, tenantID, name, limit, offset)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to search products")
-		return []db.Product{}, err
+		return nil, err
 	}
 	return products, nil
 }
 
-func ToUpdateProductPatchParms(p ProductInputRequest, productID, tenantID uuid.UUID) db.UpdateProductPatchParams {
-	return db.UpdateProductPatchParams{
-		ID:           utils.UUIDToPgUUID(productID),
-		TenantID:     utils.UUIDToPgUUID(tenantID),
-		Name:         utils.StringToPgText(*p.Name),
-		Price:        utils.IntToPgNumeric(*p.Price),
-		Description:  utils.StringToPgText(*p.Description),
-		ImageUrl:     utils.StringToPgText(*p.ImageUrl),
-		Brand:        utils.StringToPgText(*p.Brand),
-		PricePerUnit: utils.IntToPgNumeric(*p.PricePerUnit),
-		GstPercent:   utils.IntToPgNumeric(*p.GstPercent),
-		UnitID:       utils.UUIDToPgUUID(*p.UnitID),
-	}
-}
 func (s *ProductService) PatchProduct(ctx context.Context, tenantID, productID uuid.UUID, patch ProductInputRequest) error {
-	params := ToUpdateProductPatchParms(patch, productID, tenantID)
-	err := s.q.UpdateProductPatch(ctx, params)
+	updates := make(map[string]interface{})
+	
+	if patch.Name != nil {
+		updates["name"] = *patch.Name
+	}
+	if patch.Price != nil {
+		updates["price"] = decimal.NewFromInt(int64(*patch.Price))
+	}
+	if patch.Description != nil {
+		updates["description"] = *patch.Description
+	}
+	if patch.ImageUrl != nil {
+		updates["image_url"] = *patch.ImageUrl
+	}
+	if patch.Brand != nil {
+		updates["brand"] = *patch.Brand
+	}
+	if patch.UnitID != nil {
+		updates["unit_id"] = *patch.UnitID
+	}
+	if patch.PricePerUnit != nil {
+		updates["price_per_unit"] = decimal.NewFromInt(int64(*patch.PricePerUnit))
+	}
+	if patch.GstPercent != nil {
+		updates["gst_percent"] = decimal.NewFromInt(int64(*patch.GstPercent))
+	}
+
+	err := s.repo.UpdateProduct(ctx, productID, tenantID, updates)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to patch product")
 		return err
 	}
 	return nil
-
 }
