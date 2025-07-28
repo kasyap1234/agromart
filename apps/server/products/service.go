@@ -22,6 +22,17 @@ func NewProductService(db *pgxpool.Pool, query *db.Queries) *ProductService {
 	}
 }
 
+type ProductInputRequest struct {
+	Name         *string    `json:"name,omitempty"`
+	Price        *int       `json:"price,omitempty"`
+	Description  *string    `json:"description,omitempty"`
+	ImageUrl     *string    `json:"image_url,omitempty"`
+	Brand        *string    `json:"brand,omitempty"`
+	UnitID       *uuid.UUID `json:"unit_id,omitempty"`
+	PricePerUnit *int       `json:"price_per_unit,omitempty"`
+	GstPercent   *int       `json:"gst_percent,omitempty"`
+}
+
 func (s *ProductService) CheckProductExists(ctx context.Context, productID uuid.UUID, tenantID uuid.UUID) (bool, error) {
 	args := db.CheckProductExistsParams{
 		ID:       utils.UUIDToPgUUID(productID),
@@ -153,4 +164,35 @@ func (s *ProductService) SearchProducts(ctx context.Context, tenantID uuid.UUID,
 		TenantID: utils.UUIDToPgUUID(tenantID),
 		Name:     name,
 	}
+	products, err := s.q.SearchProducts(ctx, args)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to search products")
+		return []db.Product{}, err
+	}
+	return products, nil
+}
+
+func ToUpdateProductPatchParms(p ProductInputRequest, productID, tenantID uuid.UUID) db.UpdateProductPatchParams {
+	return db.UpdateProductPatchParams{
+		ID:           utils.UUIDToPgUUID(productID),
+		TenantID:     utils.UUIDToPgUUID(tenantID),
+		Name:         utils.StringToPgText(*p.Name),
+		Price:        utils.IntToPgNumeric(*p.Price),
+		Description:  utils.StringToPgText(*p.Description),
+		ImageUrl:     utils.StringToPgText(*p.ImageUrl),
+		Brand:        utils.StringToPgText(*p.Brand),
+		PricePerUnit: utils.IntToPgNumeric(*p.PricePerUnit),
+		GstPercent:   utils.IntToPgNumeric(*p.GstPercent),
+		UnitID:       utils.UUIDToPgUUID(*p.UnitID),
+	}
+}
+func (s *ProductService) PatchProduct(ctx context.Context, tenantID, productID uuid.UUID, patch ProductInputRequest) error {
+	params := ToUpdateProductPatchParms(patch, productID, tenantID)
+	err := s.q.UpdateProductPatch(ctx, params)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to patch product")
+		return err
+	}
+	return nil
+
 }

@@ -384,6 +384,49 @@ func (q *Queries) UpdateProductDetails(ctx context.Context, arg UpdateProductDet
 	return i, err
 }
 
+const updateProductPatch = `-- name: UpdateProductPatch :exec
+UPDATE products
+SET
+  name = COALESCE($1, name),
+  price = COALESCE($2, price),
+  description = COALESCE($3, description),
+  brand=COALESCE($4,brand),
+  image_url = COALESCE($5, image_url),
+  price_per_unit = COALESCE($6, price_per_unit),
+  gst_percent = COALESCE($7, gst_percent),
+  unit_id = COALESCE($8, unit_id)
+WHERE id = $9 AND tenant_id = $10
+`
+
+type UpdateProductPatchParams struct {
+	Name         pgtype.Text
+	Price        pgtype.Numeric
+	Description  pgtype.Text
+	Brand        pgtype.Text
+	ImageUrl     pgtype.Text
+	PricePerUnit pgtype.Numeric
+	GstPercent   pgtype.Numeric
+	UnitID       pgtype.UUID
+	ID           pgtype.UUID
+	TenantID     pgtype.UUID
+}
+
+func (q *Queries) UpdateProductPatch(ctx context.Context, arg UpdateProductPatchParams) error {
+	_, err := q.db.Exec(ctx, updateProductPatch,
+		arg.Name,
+		arg.Price,
+		arg.Description,
+		arg.Brand,
+		arg.ImageUrl,
+		arg.PricePerUnit,
+		arg.GstPercent,
+		arg.UnitID,
+		arg.ID,
+		arg.TenantID,
+	)
+	return err
+}
+
 const updateUnit = `-- name: UpdateUnit :one
 UPDATE units
 SET name = $2, abbreviation = $3

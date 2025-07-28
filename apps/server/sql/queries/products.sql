@@ -55,3 +55,16 @@ SELECT * FROM units
 WHERE tenant_id = $1
 ORDER BY name
 LIMIT $2 OFFSET $3;
+
+-- name: UpdateProductPatch :exec 
+UPDATE products
+SET
+  name = COALESCE(sqlc.narg('name'), name),
+  price = COALESCE(sqlc.narg('price'), price),
+  description = COALESCE(sqlc.narg('description'), description),
+  brand=COALESCE(sqlc.narg('brand'),brand),
+  image_url = COALESCE(sqlc.narg('image_url'), image_url),
+  price_per_unit = COALESCE(sqlc.narg('price_per_unit'), price_per_unit),
+  gst_percent = COALESCE(sqlc.narg('gst_percent'), gst_percent),
+  unit_id = COALESCE(sqlc.narg('unit_id'), unit_id)
+WHERE id = sqlc.arg('id') AND tenant_id = sqlc.arg('tenant_id');
