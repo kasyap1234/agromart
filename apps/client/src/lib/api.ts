@@ -1,6 +1,8 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import Cookies from 'js-cookie';
 import { toast } from 'react-hot-toast';
+import { AuthResponse } from '@/types';
+import { MeResponse } from '@/types/auth';
 
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
@@ -93,7 +95,7 @@ export const apiClient = {
 
   // Authentication
   auth: {
-    login: (email: string, password: string) =>
+    login: (email: string, password: string): Promise<AuthResponse> =>
       apiClient.post('/auth/login', { email, password }),
     
     register: (data: {
@@ -102,11 +104,11 @@ export const apiClient = {
       first_name: string;
       last_name: string;
       company_name: string;
-    }) => apiClient.post('/auth/register', data),
+    }): Promise<AuthResponse> => apiClient.post('/auth/register', data),
     
     logout: () => apiClient.post('/auth/logout'),
     
-    me: () => apiClient.get('/auth/me'),
+    me: (): Promise<MeResponse> => apiClient.get('/auth/me'),
     
     refreshToken: (refreshToken: string) =>
       apiClient.post('/auth/refresh', { refresh_token: refreshToken }),

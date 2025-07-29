@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { apiClient, setAuthToken, setRefreshToken, clearTokens, getAuthToken } from '@/lib/api';
 import { User, AuthResponse, RegisterRequest, AuthContextType } from '@/types';
+import { MeResponse } from '@/types/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

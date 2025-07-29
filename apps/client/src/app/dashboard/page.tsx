@@ -126,6 +126,28 @@ function LoadingSkeleton() {
   );
 }
 
+interface DashboardStats {
+  total_products: number;
+  low_stock_count: number;
+  total_value: number;
+  expiring_batches: number;
+  // Add other properties as needed
+}
+
+interface LowStockItem {
+  product_name: string;
+  product_sku: string;
+  current_quantity: number;
+  min_stock_level: number;
+}
+
+interface ExpiringBatch {
+  product_name: string;
+  batch_number: string;
+  days_until_expiry: number;
+  quantity: number;
+}
+
 export default function DashboardPage() {
   const { data: dashboardStats, error: statsError, isLoading: statsLoading } = useSWR(
     '/reports/dashboard-stats',
@@ -164,9 +186,9 @@ export default function DashboardPage() {
     );
   }
 
-  const stats = dashboardStats?.data || {};
-  const lowStock = lowStockItems?.data || [];
-  const expiring = expiringBatches?.data || [];
+  const stats = (dashboardStats as DashboardStats) || {};
+  const lowStock = (lowStockItems as LowStockItem[]) || [];
+  const expiring = (expiringBatches as ExpiringBatch[]) || [];
 
   return (
     <DashboardLayout title="Dashboard">
