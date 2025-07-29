@@ -5,205 +5,208 @@
 package db
 
 import (
+	"time"
+
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Batch struct {
-	ID          pgtype.UUID
-	TenantID    pgtype.UUID
-	ProductID   pgtype.UUID
-	BatchNumber string
-	ExpiryDate  pgtype.Date
-	Cost        pgtype.Numeric
-	CreatedAt   pgtype.Timestamptz
+	ID          uuid.UUID      `json:"id"`
+	TenantID    uuid.UUID      `json:"tenant_id"`
+	ProductID   uuid.UUID      `json:"product_id"`
+	BatchNumber string         `json:"batch_number"`
+	ExpiryDate  time.Time      `json:"expiry_date"`
+	Cost        pgtype.Numeric `json:"cost"`
+	CreatedAt   time.Time      `json:"created_at"`
 }
 
 type Customer struct {
-	ID            pgtype.UUID
-	TenantID      pgtype.UUID
-	Name          string
-	ContactPerson pgtype.Text
-	Email         pgtype.Text
-	Phone         pgtype.Text
-	Address       pgtype.Text
-	PaymentMode   pgtype.Text
-	IsActive      pgtype.Bool
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	ID            uuid.UUID   `json:"id"`
+	TenantID      uuid.UUID   `json:"tenant_id"`
+	Name          string      `json:"name"`
+	ContactPerson pgtype.Text `json:"contact_person"`
+	Email         pgtype.Text `json:"email"`
+	Phone         pgtype.Text `json:"phone"`
+	Address       pgtype.Text `json:"address"`
+	PaymentMode   pgtype.Text `json:"payment_mode"`
+	IsActive      pgtype.Bool `json:"is_active"`
+	CreatedAt     time.Time   `json:"created_at"`
+	UpdatedAt     time.Time   `json:"updated_at"`
 }
 
 type Inventory struct {
-	ID        pgtype.UUID
-	TenantID  pgtype.UUID
-	ProductID pgtype.UUID
-	BatchID   pgtype.UUID
-	Quantity  pgtype.Numeric
+	ID        uuid.UUID      `json:"id"`
+	TenantID  uuid.UUID      `json:"tenant_id"`
+	ProductID uuid.UUID      `json:"product_id"`
+	BatchID   uuid.UUID      `json:"batch_id"`
+	Quantity  pgtype.Numeric `json:"quantity"`
 }
 
 type InventoryLog struct {
-	ID              pgtype.UUID
-	TenantID        pgtype.UUID
-	ProductID       pgtype.UUID
-	BatchID         pgtype.UUID
-	TransactionType string
-	QuantityChange  pgtype.Numeric
-	TransactionDate pgtype.Timestamptz
-	Notes           pgtype.Text
-	ReferenceID     pgtype.UUID
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	ProductID       uuid.UUID      `json:"product_id"`
+	BatchID         uuid.UUID      `json:"batch_id"`
+	TransactionType string         `json:"transaction_type"`
+	QuantityChange  pgtype.Numeric `json:"quantity_change"`
+	TransactionDate time.Time      `json:"transaction_date"`
+	Notes           pgtype.Text    `json:"notes"`
+	ReferenceID     pgtype.UUID    `json:"reference_id"`
 }
 
 type Location struct {
-	ID           pgtype.UUID
-	TenantID     pgtype.UUID
-	Name         string
-	Address      pgtype.Text
-	City         pgtype.Text
-	State        pgtype.Text
-	PostalCode   pgtype.Text
-	Country      pgtype.Text
-	Phone        pgtype.Text
-	Email        pgtype.Text
-	LocationType string
-	IsActive     bool
-	Notes        pgtype.Text
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	ID           uuid.UUID   `json:"id"`
+	TenantID     uuid.UUID   `json:"tenant_id"`
+	Name         string      `json:"name"`
+	Address      pgtype.Text `json:"address"`
+	City         pgtype.Text `json:"city"`
+	State        pgtype.Text `json:"state"`
+	PostalCode   pgtype.Text `json:"postal_code"`
+	Country      pgtype.Text `json:"country"`
+	Phone        pgtype.Text `json:"phone"`
+	Email        pgtype.Text `json:"email"`
+	LocationType string      `json:"location_type"`
+	IsActive     bool        `json:"is_active"`
+	Notes        pgtype.Text `json:"notes"`
+	CreatedAt    time.Time   `json:"created_at"`
+	UpdatedAt    time.Time   `json:"updated_at"`
 }
 
 type Product struct {
-	ID           pgtype.UUID
-	TenantID     pgtype.UUID
-	Sku          string
-	Name         string
-	Price        pgtype.Numeric
-	Description  pgtype.Text
-	ImageUrl     pgtype.Text
-	Brand        pgtype.Text
-	UnitID       pgtype.UUID
-	PricePerUnit pgtype.Numeric
-	GstPercent   pgtype.Numeric
-	CreatedAt    pgtype.Timestamptz
+	ID           uuid.UUID      `json:"id"`
+	TenantID     uuid.UUID      `json:"tenant_id"`
+	Sku          string         `json:"sku"`
+	Name         string         `json:"name"`
+	Price        pgtype.Numeric `json:"price"`
+	Description  pgtype.Text    `json:"description"`
+	ImageUrl     pgtype.Text    `json:"image_url"`
+	Brand        pgtype.Text    `json:"brand"`
+	UnitID       uuid.UUID      `json:"unit_id"`
+	PricePerUnit pgtype.Numeric `json:"price_per_unit"`
+	GstPercent   pgtype.Numeric `json:"gst_percent"`
+	CreatedAt    time.Time      `json:"created_at"`
 }
 
 type PurchaseOrder struct {
-	ID                   pgtype.UUID
-	TenantID             pgtype.UUID
-	PoNumber             string
-	SupplierID           pgtype.UUID
-	LocationID           pgtype.UUID
-	OrderDate            pgtype.Date
-	ExpectedDeliveryDate pgtype.Date
-	ActualDeliveryDate   pgtype.Date
-	TotalAmount          pgtype.Numeric
-	TaxAmount            pgtype.Numeric
-	DiscountAmount       pgtype.Numeric
-	FinalAmount          pgtype.Numeric
-	Status               string
-	Notes                pgtype.Text
-	CreatedBy            pgtype.UUID
-	ApprovedBy           pgtype.UUID
-	ApprovedAt           pgtype.Timestamptz
-	CreatedAt            pgtype.Timestamptz
-	UpdatedAt            pgtype.Timestamptz
+	ID                   uuid.UUID          `json:"id"`
+	TenantID             uuid.UUID          `json:"tenant_id"`
+	PoNumber             string             `json:"po_number"`
+	SupplierID           uuid.UUID          `json:"supplier_id"`
+	LocationID           pgtype.UUID        `json:"location_id"`
+	OrderDate            time.Time          `json:"order_date"`
+	ExpectedDeliveryDate pgtype.Date        `json:"expected_delivery_date"`
+	ActualDeliveryDate   pgtype.Date        `json:"actual_delivery_date"`
+	TotalAmount          pgtype.Numeric     `json:"total_amount"`
+	TaxAmount            pgtype.Numeric     `json:"tax_amount"`
+	DiscountAmount       pgtype.Numeric     `json:"discount_amount"`
+	FinalAmount          pgtype.Numeric     `json:"final_amount"`
+	Status               string             `json:"status"`
+	Notes                pgtype.Text        `json:"notes"`
+	CreatedBy            pgtype.UUID        `json:"created_by"`
+	ApprovedBy           pgtype.UUID        `json:"approved_by"`
+	ApprovedAt           pgtype.Timestamptz `json:"approved_at"`
+	CreatedAt            time.Time          `json:"created_at"`
+	UpdatedAt            time.Time          `json:"updated_at"`
 }
 
 type PurchaseOrderItem struct {
-	ID               pgtype.UUID
-	TenantID         pgtype.UUID
-	PurchaseOrderID  pgtype.UUID
-	ProductID        pgtype.UUID
-	BatchID          pgtype.UUID
-	QuantityOrdered  pgtype.Numeric
-	QuantityReceived pgtype.Numeric
-	UnitCost         pgtype.Numeric
-	TotalCost        pgtype.Numeric
-	TaxPercent       pgtype.Numeric
-	DiscountPercent  pgtype.Numeric
-	Notes            pgtype.Text
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	ID               uuid.UUID      `json:"id"`
+	TenantID         uuid.UUID      `json:"tenant_id"`
+	PurchaseOrderID  uuid.UUID      `json:"purchase_order_id"`
+	ProductID        uuid.UUID      `json:"product_id"`
+	BatchID          pgtype.UUID    `json:"batch_id"`
+	QuantityOrdered  pgtype.Numeric `json:"quantity_ordered"`
+	QuantityReceived pgtype.Numeric `json:"quantity_received"`
+	UnitCost         pgtype.Numeric `json:"unit_cost"`
+	TotalCost        pgtype.Numeric `json:"total_cost"`
+	TaxPercent       pgtype.Numeric `json:"tax_percent"`
+	DiscountPercent  pgtype.Numeric `json:"discount_percent"`
+	Notes            pgtype.Text    `json:"notes"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
 }
 
 type SalesOrder struct {
-	ID                   pgtype.UUID
-	TenantID             pgtype.UUID
-	SoNumber             string
-	CustomerID           pgtype.UUID
-	LocationID           pgtype.UUID
-	OrderDate            pgtype.Date
-	ExpectedDeliveryDate pgtype.Date
-	ActualDeliveryDate   pgtype.Date
-	TotalAmount          pgtype.Numeric
-	TaxAmount            pgtype.Numeric
-	DiscountAmount       pgtype.Numeric
-	FinalAmount          pgtype.Numeric
-	Status               string
-	Notes                pgtype.Text
-	CreatedBy            pgtype.UUID
-	ApprovedBy           pgtype.UUID
-	ApprovedAt           pgtype.Timestamptz
-	CreatedAt            pgtype.Timestamptz
-	UpdatedAt            pgtype.Timestamptz
+	ID                   uuid.UUID          `json:"id"`
+	TenantID             uuid.UUID          `json:"tenant_id"`
+	SoNumber             string             `json:"so_number"`
+	CustomerID           uuid.UUID          `json:"customer_id"`
+	LocationID           pgtype.UUID        `json:"location_id"`
+	OrderDate            time.Time          `json:"order_date"`
+	ExpectedDeliveryDate pgtype.Date        `json:"expected_delivery_date"`
+	ActualDeliveryDate   pgtype.Date        `json:"actual_delivery_date"`
+	TotalAmount          pgtype.Numeric     `json:"total_amount"`
+	TaxAmount            pgtype.Numeric     `json:"tax_amount"`
+	DiscountAmount       pgtype.Numeric     `json:"discount_amount"`
+	FinalAmount          pgtype.Numeric     `json:"final_amount"`
+	Status               string             `json:"status"`
+	Notes                pgtype.Text        `json:"notes"`
+	CreatedBy            pgtype.UUID        `json:"created_by"`
+	ApprovedBy           pgtype.UUID        `json:"approved_by"`
+	ApprovedAt           pgtype.Timestamptz `json:"approved_at"`
+	CreatedAt            time.Time          `json:"created_at"`
+	UpdatedAt            time.Time          `json:"updated_at"`
 }
 
 type SalesOrderItem struct {
-	ID              pgtype.UUID
-	TenantID        pgtype.UUID
-	SalesOrderID    pgtype.UUID
-	ProductID       pgtype.UUID
-	BatchID         pgtype.UUID
-	QuantityOrdered pgtype.Numeric
-	QuantityShipped pgtype.Numeric
-	UnitPrice       pgtype.Numeric
-	TotalPrice      pgtype.Numeric
-	TaxPercent      pgtype.Numeric
-	DiscountPercent pgtype.Numeric
-	Notes           pgtype.Text
-	CreatedAt       pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	SalesOrderID    uuid.UUID      `json:"sales_order_id"`
+	ProductID       uuid.UUID      `json:"product_id"`
+	BatchID         pgtype.UUID    `json:"batch_id"`
+	QuantityOrdered pgtype.Numeric `json:"quantity_ordered"`
+	QuantityShipped pgtype.Numeric `json:"quantity_shipped"`
+	UnitPrice       pgtype.Numeric `json:"unit_price"`
+	TotalPrice      pgtype.Numeric `json:"total_price"`
+	TaxPercent      pgtype.Numeric `json:"tax_percent"`
+	DiscountPercent pgtype.Numeric `json:"discount_percent"`
+	Notes           pgtype.Text    `json:"notes"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
 type Supplier struct {
-	ID            pgtype.UUID
-	TenantID      pgtype.UUID
-	Name          string
-	ContactPerson pgtype.Text
-	Email         pgtype.Text
-	Phone         pgtype.Text
-	Address       pgtype.Text
-	TaxID         pgtype.Text
-	PaymentMode   pgtype.Text
-	IsActive      pgtype.Bool
+	ID            uuid.UUID   `json:"id"`
+	TenantID      uuid.UUID   `json:"tenant_id"`
+	Name          string      `json:"name"`
+	ContactPerson pgtype.Text `json:"contact_person"`
+	Email         pgtype.Text `json:"email"`
+	Phone         pgtype.Text `json:"phone"`
+	Address       pgtype.Text `json:"address"`
+	TaxID         pgtype.Text `json:"tax_id"`
+	PaymentMode   pgtype.Text `json:"payment_mode"`
+	IsActive      pgtype.Bool `json:"is_active"`
 }
 
 type Tenant struct {
-	ID                 pgtype.UUID
-	Name               string
-	Email              string
-	Phone              string
-	Address            pgtype.Text
-	RegistrationNumber pgtype.Text
-	IsActive           bool
-	CreatedAt          pgtype.Timestamptz
+	ID                 uuid.UUID   `json:"id"`
+	Name               string      `json:"name"`
+	Email              string      `json:"email"`
+	Phone              string      `json:"phone"`
+	Address            pgtype.Text `json:"address"`
+	RegistrationNumber pgtype.Text `json:"registration_number"`
+	IsActive           bool        `json:"is_active"`
+	CreatedAt          time.Time   `json:"created_at"`
 }
 
 type Unit struct {
-	ID           pgtype.UUID
-	TenantID     pgtype.UUID
-	Name         string
-	Abbreviation string
-	CreatedAt    pgtype.Timestamptz
+	ID           uuid.UUID `json:"id"`
+	TenantID     uuid.UUID `json:"tenant_id"`
+	Name         string    `json:"name"`
+	Abbreviation string    `json:"abbreviation"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type User struct {
-	ID            pgtype.UUID
-	Name          string
-	Email         string
-	Password      string
-	Phone         string
-	TenantID      pgtype.UUID
-	Role          interface{}
-	EmailVerified pgtype.Bool
-	IsActive      pgtype.Bool
-	CreatedAt     pgtype.Timestamptz
+	ID            uuid.UUID   `json:"id"`
+	Name          string      `json:"name"`
+	Email         string      `json:"email"`
+	Password      string      `json:"password"`
+	Phone         string      `json:"phone"`
+	TenantID      uuid.UUID   `json:"tenant_id"`
+	Role          interface{} `json:"role"`
+	EmailVerified pgtype.Bool `json:"email_verified"`
+	IsActive      pgtype.Bool `json:"is_active"`
+	CreatedAt     time.Time   `json:"created_at"`
 }

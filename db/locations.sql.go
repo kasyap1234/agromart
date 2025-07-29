@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -18,18 +19,18 @@ RETURNING id, tenant_id, name, address, city, state, postal_code, country, phone
 `
 
 type CreateLocationParams struct {
-	TenantID     pgtype.UUID
-	Name         string
-	Address      pgtype.Text
-	City         pgtype.Text
-	State        pgtype.Text
-	PostalCode   pgtype.Text
-	Country      pgtype.Text
-	Phone        pgtype.Text
-	Email        pgtype.Text
-	LocationType string
-	IsActive     bool
-	Notes        pgtype.Text
+	TenantID     uuid.UUID   `json:"tenant_id"`
+	Name         string      `json:"name"`
+	Address      pgtype.Text `json:"address"`
+	City         pgtype.Text `json:"city"`
+	State        pgtype.Text `json:"state"`
+	PostalCode   pgtype.Text `json:"postal_code"`
+	Country      pgtype.Text `json:"country"`
+	Phone        pgtype.Text `json:"phone"`
+	Email        pgtype.Text `json:"email"`
+	LocationType string      `json:"location_type"`
+	IsActive     bool        `json:"is_active"`
+	Notes        pgtype.Text `json:"notes"`
 }
 
 func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) (Location, error) {
@@ -74,8 +75,8 @@ WHERE id = $1 AND tenant_id = $2
 `
 
 type GetLocationByIDParams struct {
-	ID       pgtype.UUID
-	TenantID pgtype.UUID
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetLocationByID(ctx context.Context, arg GetLocationByIDParams) (Location, error) {
@@ -109,11 +110,11 @@ LIMIT $4 OFFSET $5
 `
 
 type ListLocationsParams struct {
-	TenantID     pgtype.UUID
-	LocationType string
-	IsActive     bool
-	Limit        int32
-	Offset       int32
+	TenantID     uuid.UUID `json:"tenant_id"`
+	LocationType string    `json:"location_type"`
+	IsActive     bool      `json:"is_active"`
+	Limit        int32     `json:"limit"`
+	Offset       int32     `json:"offset"`
 }
 
 func (q *Queries) ListLocations(ctx context.Context, arg ListLocationsParams) ([]Location, error) {
@@ -128,7 +129,7 @@ func (q *Queries) ListLocations(ctx context.Context, arg ListLocationsParams) ([
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Location
+	items := []Location{}
 	for rows.Next() {
 		var i Location
 		if err := rows.Scan(
@@ -166,19 +167,19 @@ RETURNING id, tenant_id, name, address, city, state, postal_code, country, phone
 `
 
 type UpdateLocationParams struct {
-	ID           pgtype.UUID
-	Name         string
-	Address      pgtype.Text
-	City         pgtype.Text
-	State        pgtype.Text
-	PostalCode   pgtype.Text
-	Country      pgtype.Text
-	Phone        pgtype.Text
-	Email        pgtype.Text
-	LocationType string
-	IsActive     bool
-	Notes        pgtype.Text
-	TenantID     pgtype.UUID
+	ID           uuid.UUID   `json:"id"`
+	Name         string      `json:"name"`
+	Address      pgtype.Text `json:"address"`
+	City         pgtype.Text `json:"city"`
+	State        pgtype.Text `json:"state"`
+	PostalCode   pgtype.Text `json:"postal_code"`
+	Country      pgtype.Text `json:"country"`
+	Phone        pgtype.Text `json:"phone"`
+	Email        pgtype.Text `json:"email"`
+	LocationType string      `json:"location_type"`
+	IsActive     bool        `json:"is_active"`
+	Notes        pgtype.Text `json:"notes"`
+	TenantID     uuid.UUID   `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateLocation(ctx context.Context, arg UpdateLocationParams) (Location, error) {

@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -18,14 +19,14 @@ RETURNING id, tenant_id, name, contact_person, email, phone, address, payment_mo
 `
 
 type CreateCustomerParams struct {
-	TenantID      pgtype.UUID
-	Name          string
-	ContactPerson pgtype.Text
-	Email         pgtype.Text
-	Phone         pgtype.Text
-	Address       pgtype.Text
-	PaymentMode   pgtype.Text
-	IsActive      pgtype.Bool
+	TenantID      uuid.UUID   `json:"tenant_id"`
+	Name          string      `json:"name"`
+	ContactPerson pgtype.Text `json:"contact_person"`
+	Email         pgtype.Text `json:"email"`
+	Phone         pgtype.Text `json:"phone"`
+	Address       pgtype.Text `json:"address"`
+	PaymentMode   pgtype.Text `json:"payment_mode"`
+	IsActive      pgtype.Bool `json:"is_active"`
 }
 
 func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error) {
@@ -62,8 +63,8 @@ WHERE id = $1 AND tenant_id = $2
 `
 
 type GetCustomerByIDParams struct {
-	ID       pgtype.UUID
-	TenantID pgtype.UUID
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetCustomerByID(ctx context.Context, arg GetCustomerByIDParams) (Customer, error) {
@@ -93,10 +94,10 @@ LIMIT $3 OFFSET $4
 `
 
 type ListCustomersParams struct {
-	TenantID pgtype.UUID
-	IsActive pgtype.Bool
-	Limit    int32
-	Offset   int32
+	TenantID uuid.UUID   `json:"tenant_id"`
+	IsActive pgtype.Bool `json:"is_active"`
+	Limit    int32       `json:"limit"`
+	Offset   int32       `json:"offset"`
 }
 
 func (q *Queries) ListCustomers(ctx context.Context, arg ListCustomersParams) ([]Customer, error) {
@@ -110,7 +111,7 @@ func (q *Queries) ListCustomers(ctx context.Context, arg ListCustomersParams) ([
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Customer
+	items := []Customer{}
 	for rows.Next() {
 		var i Customer
 		if err := rows.Scan(
@@ -144,15 +145,15 @@ RETURNING id, tenant_id, name, contact_person, email, phone, address, payment_mo
 `
 
 type UpdateCustomerParams struct {
-	ID            pgtype.UUID
-	Name          string
-	ContactPerson pgtype.Text
-	Email         pgtype.Text
-	Phone         pgtype.Text
-	Address       pgtype.Text
-	PaymentMode   pgtype.Text
-	IsActive      pgtype.Bool
-	TenantID      pgtype.UUID
+	ID            uuid.UUID   `json:"id"`
+	Name          string      `json:"name"`
+	ContactPerson pgtype.Text `json:"contact_person"`
+	Email         pgtype.Text `json:"email"`
+	Phone         pgtype.Text `json:"phone"`
+	Address       pgtype.Text `json:"address"`
+	PaymentMode   pgtype.Text `json:"payment_mode"`
+	IsActive      pgtype.Bool `json:"is_active"`
+	TenantID      uuid.UUID   `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (Customer, error) {

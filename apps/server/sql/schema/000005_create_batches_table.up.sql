@@ -3,8 +3,8 @@ CREATE TABLE IF NOT EXISTS batches(
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     batch_number TEXT NOT NULL,
-    expiry_date DATE,
-    cost NUMERIC(12,2), -- Standardized precision to match products table
+    expiry_date DATE NOT NULL,
+    cost NUMERIC(12,2) NOT NULL DEFAULT 0.00, -- Standardized precision to match products table
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     -- Removed unit_id since batches inherit unit from products
     UNIQUE(tenant_id, product_id, batch_number)

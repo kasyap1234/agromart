@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -18,11 +19,11 @@ RETURNING id, name, email, phone, address, registration_number, is_active, creat
 `
 
 type CreateTenantParams struct {
-	Name               string
-	Email              string
-	Phone              string
-	Address            pgtype.Text
-	RegistrationNumber pgtype.Text
+	Name               string      `json:"name"`
+	Email              string      `json:"email"`
+	Phone              string      `json:"phone"`
+	Address            pgtype.Text `json:"address"`
+	RegistrationNumber pgtype.Text `json:"registration_number"`
 }
 
 func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error) {
@@ -52,7 +53,7 @@ SELECT id, name, email, phone, address, registration_number, is_active, created_
 WHERE id = $1
 `
 
-func (q *Queries) GetTenantByID(ctx context.Context, id pgtype.UUID) (Tenant, error) {
+func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error) {
 	row := q.db.QueryRow(ctx, getTenantByID, id)
 	var i Tenant
 	err := row.Scan(
@@ -75,8 +76,8 @@ LIMIT $1 OFFSET $2
 `
 
 type ListTenantsParams struct {
-	Limit  int32
-	Offset int32
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
 }
 
 func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error) {
@@ -85,7 +86,7 @@ func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Ten
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Tenant
+	items := []Tenant{}
 	for rows.Next() {
 		var i Tenant
 		if err := rows.Scan(
@@ -116,13 +117,13 @@ RETURNING id, name, email, phone, address, registration_number, is_active, creat
 `
 
 type UpdateTenantParams struct {
-	ID                 pgtype.UUID
-	Name               string
-	Email              string
-	Phone              string
-	Address            pgtype.Text
-	RegistrationNumber pgtype.Text
-	IsActive           bool
+	ID                 uuid.UUID   `json:"id"`
+	Name               string      `json:"name"`
+	Email              string      `json:"email"`
+	Phone              string      `json:"phone"`
+	Address            pgtype.Text `json:"address"`
+	RegistrationNumber pgtype.Text `json:"registration_number"`
+	IsActive           bool        `json:"is_active"`
 }
 
 func (q *Queries) UpdateTenant(ctx context.Context, arg UpdateTenantParams) (Tenant, error) {

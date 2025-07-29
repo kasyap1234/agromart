@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -16,8 +17,8 @@ SELECT EXISTS(SELECT 1 FROM products WHERE id = $1 AND tenant_id = $2)
 `
 
 type CheckProductExistsParams struct {
-	ID       pgtype.UUID
-	TenantID pgtype.UUID
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) CheckProductExists(ctx context.Context, arg CheckProductExistsParams) (bool, error) {
@@ -31,7 +32,7 @@ const countProducts = `-- name: CountProducts :one
 SELECT COUNT(*) FROM products WHERE tenant_id = $1
 `
 
-func (q *Queries) CountProducts(ctx context.Context, tenantID pgtype.UUID) (int64, error) {
+func (q *Queries) CountProducts(ctx context.Context, tenantID uuid.UUID) (int64, error) {
 	row := q.db.QueryRow(ctx, countProducts, tenantID)
 	var count int64
 	err := row.Scan(&count)
@@ -45,16 +46,16 @@ RETURNING id, tenant_id, sku, name, price, description, image_url, brand, unit_i
 `
 
 type CreateProductParams struct {
-	TenantID     pgtype.UUID
-	Sku          string
-	Name         string
-	Price        pgtype.Numeric
-	Description  pgtype.Text
-	ImageUrl     pgtype.Text
-	Brand        pgtype.Text
-	UnitID       pgtype.UUID
-	PricePerUnit pgtype.Numeric
-	GstPercent   pgtype.Numeric
+	TenantID     uuid.UUID      `json:"tenant_id"`
+	Sku          string         `json:"sku"`
+	Name         string         `json:"name"`
+	Price        pgtype.Numeric `json:"price"`
+	Description  pgtype.Text    `json:"description"`
+	ImageUrl     pgtype.Text    `json:"image_url"`
+	Brand        pgtype.Text    `json:"brand"`
+	UnitID       uuid.UUID      `json:"unit_id"`
+	PricePerUnit pgtype.Numeric `json:"price_per_unit"`
+	GstPercent   pgtype.Numeric `json:"gst_percent"`
 }
 
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
@@ -95,9 +96,9 @@ RETURNING id, tenant_id, name, abbreviation, created_at
 `
 
 type CreateUnitParams struct {
-	TenantID     pgtype.UUID
-	Name         string
-	Abbreviation string
+	TenantID     uuid.UUID `json:"tenant_id"`
+	Name         string    `json:"name"`
+	Abbreviation string    `json:"abbreviation"`
 }
 
 func (q *Queries) CreateUnit(ctx context.Context, arg CreateUnitParams) (Unit, error) {
@@ -119,8 +120,8 @@ WHERE id = $1 AND tenant_id = $2
 `
 
 type GetProductByIDParams struct {
-	ID       pgtype.UUID
-	TenantID pgtype.UUID
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetProductByID(ctx context.Context, arg GetProductByIDParams) (Product, error) {
@@ -149,8 +150,8 @@ WHERE sku = $1 AND tenant_id = $2
 `
 
 type GetProductBySKUParams struct {
-	Sku      string
-	TenantID pgtype.UUID
+	Sku      string    `json:"sku"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetProductBySKU(ctx context.Context, arg GetProductBySKUParams) (Product, error) {
@@ -179,8 +180,8 @@ WHERE id = $1 AND tenant_id = $2
 `
 
 type GetUnitByIDParams struct {
-	ID       pgtype.UUID
-	TenantID pgtype.UUID
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetUnitByID(ctx context.Context, arg GetUnitByIDParams) (Unit, error) {
@@ -204,9 +205,9 @@ LIMIT $2 OFFSET $3
 `
 
 type ListProductsParams struct {
-	TenantID pgtype.UUID
-	Limit    int32
-	Offset   int32
+	TenantID uuid.UUID `json:"tenant_id"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
 }
 
 func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]Product, error) {
@@ -215,7 +216,7 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]P
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Product
+	items := []Product{}
 	for rows.Next() {
 		var i Product
 		if err := rows.Scan(
@@ -250,9 +251,9 @@ LIMIT $2 OFFSET $3
 `
 
 type ListUnitsParams struct {
-	TenantID pgtype.UUID
-	Limit    int32
-	Offset   int32
+	TenantID uuid.UUID `json:"tenant_id"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
 }
 
 func (q *Queries) ListUnits(ctx context.Context, arg ListUnitsParams) ([]Unit, error) {
@@ -261,7 +262,7 @@ func (q *Queries) ListUnits(ctx context.Context, arg ListUnitsParams) ([]Unit, e
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Unit
+	items := []Unit{}
 	for rows.Next() {
 		var i Unit
 		if err := rows.Scan(
@@ -289,10 +290,10 @@ LIMIT $3 OFFSET $4
 `
 
 type SearchProductsParams struct {
-	TenantID pgtype.UUID
-	Name     string
-	Limit    int32
-	Offset   int32
+	TenantID uuid.UUID `json:"tenant_id"`
+	Name     string    `json:"name"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
 }
 
 func (q *Queries) SearchProducts(ctx context.Context, arg SearchProductsParams) ([]Product, error) {
@@ -306,7 +307,7 @@ func (q *Queries) SearchProducts(ctx context.Context, arg SearchProductsParams) 
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Product
+	items := []Product{}
 	for rows.Next() {
 		var i Product
 		if err := rows.Scan(
@@ -341,16 +342,16 @@ RETURNING id, tenant_id, sku, name, price, description, image_url, brand, unit_i
 `
 
 type UpdateProductDetailsParams struct {
-	ID           pgtype.UUID
-	Name         string
-	Price        pgtype.Numeric
-	Description  pgtype.Text
-	ImageUrl     pgtype.Text
-	Brand        pgtype.Text
-	UnitID       pgtype.UUID
-	PricePerUnit pgtype.Numeric
-	GstPercent   pgtype.Numeric
-	TenantID     pgtype.UUID
+	ID           uuid.UUID      `json:"id"`
+	Name         string         `json:"name"`
+	Price        pgtype.Numeric `json:"price"`
+	Description  pgtype.Text    `json:"description"`
+	ImageUrl     pgtype.Text    `json:"image_url"`
+	Brand        pgtype.Text    `json:"brand"`
+	UnitID       uuid.UUID      `json:"unit_id"`
+	PricePerUnit pgtype.Numeric `json:"price_per_unit"`
+	GstPercent   pgtype.Numeric `json:"gst_percent"`
+	TenantID     uuid.UUID      `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateProductDetails(ctx context.Context, arg UpdateProductDetailsParams) (Product, error) {
@@ -399,16 +400,16 @@ WHERE id = $9 AND tenant_id = $10
 `
 
 type UpdateProductPatchParams struct {
-	Name         pgtype.Text
-	Price        pgtype.Numeric
-	Description  pgtype.Text
-	Brand        pgtype.Text
-	ImageUrl     pgtype.Text
-	PricePerUnit pgtype.Numeric
-	GstPercent   pgtype.Numeric
-	UnitID       pgtype.UUID
-	ID           pgtype.UUID
-	TenantID     pgtype.UUID
+	Name         pgtype.Text    `json:"name"`
+	Price        pgtype.Numeric `json:"price"`
+	Description  pgtype.Text    `json:"description"`
+	Brand        pgtype.Text    `json:"brand"`
+	ImageUrl     pgtype.Text    `json:"image_url"`
+	PricePerUnit pgtype.Numeric `json:"price_per_unit"`
+	GstPercent   pgtype.Numeric `json:"gst_percent"`
+	UnitID       pgtype.UUID    `json:"unit_id"`
+	ID           uuid.UUID      `json:"id"`
+	TenantID     uuid.UUID      `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateProductPatch(ctx context.Context, arg UpdateProductPatchParams) error {
@@ -435,10 +436,10 @@ RETURNING id, tenant_id, name, abbreviation, created_at
 `
 
 type UpdateUnitParams struct {
-	ID           pgtype.UUID
-	Name         string
-	Abbreviation string
-	TenantID     pgtype.UUID
+	ID           uuid.UUID `json:"id"`
+	Name         string    `json:"name"`
+	Abbreviation string    `json:"abbreviation"`
+	TenantID     uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateUnit(ctx context.Context, arg UpdateUnitParams) (Unit, error) {

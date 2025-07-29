@@ -7,7 +7,9 @@ package db
 
 import (
 	"context"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -19,10 +21,10 @@ DO UPDATE SET quantity = inventory.quantity + $4
 `
 
 type AddInventoryQuantityParams struct {
-	TenantID  pgtype.UUID
-	ProductID pgtype.UUID
-	BatchID   pgtype.UUID
-	Quantity  pgtype.Numeric
+	TenantID  uuid.UUID      `json:"tenant_id"`
+	ProductID uuid.UUID      `json:"product_id"`
+	BatchID   uuid.UUID      `json:"batch_id"`
+	Quantity  pgtype.Numeric `json:"quantity"`
 }
 
 func (q *Queries) AddInventoryQuantity(ctx context.Context, arg AddInventoryQuantityParams) error {
@@ -42,11 +44,11 @@ RETURNING id, tenant_id, product_id, batch_number, expiry_date, cost, created_at
 `
 
 type CreateBatchParams struct {
-	TenantID    pgtype.UUID
-	ProductID   pgtype.UUID
-	BatchNumber string
-	ExpiryDate  pgtype.Date
-	Cost        pgtype.Numeric
+	TenantID    uuid.UUID      `json:"tenant_id"`
+	ProductID   uuid.UUID      `json:"product_id"`
+	BatchNumber string         `json:"batch_number"`
+	ExpiryDate  time.Time      `json:"expiry_date"`
+	Cost        pgtype.Numeric `json:"cost"`
 }
 
 func (q *Queries) CreateBatch(ctx context.Context, arg CreateBatchParams) (Batch, error) {
@@ -76,13 +78,13 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateInventoryLogParams struct {
-	TenantID        pgtype.UUID
-	ProductID       pgtype.UUID
-	BatchID         pgtype.UUID
-	TransactionType string
-	QuantityChange  pgtype.Numeric
-	ReferenceID     pgtype.UUID
-	Notes           pgtype.Text
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	ProductID       uuid.UUID      `json:"product_id"`
+	BatchID         uuid.UUID      `json:"batch_id"`
+	TransactionType string         `json:"transaction_type"`
+	QuantityChange  pgtype.Numeric `json:"quantity_change"`
+	ReferenceID     pgtype.UUID    `json:"reference_id"`
+	Notes           pgtype.Text    `json:"notes"`
 }
 
 func (q *Queries) CreateInventoryLog(ctx context.Context, arg CreateInventoryLogParams) error {
@@ -104,8 +106,8 @@ WHERE id = $1 AND tenant_id = $2
 `
 
 type GetBatchByIDParams struct {
-	ID       pgtype.UUID
-	TenantID pgtype.UUID
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetBatchByID(ctx context.Context, arg GetBatchByIDParams) (Batch, error) {
@@ -129,9 +131,9 @@ WHERE tenant_id = $1 AND product_id = $2 AND batch_id = $3
 `
 
 type GetInventoryByProductBatchParams struct {
-	TenantID  pgtype.UUID
-	ProductID pgtype.UUID
-	BatchID   pgtype.UUID
+	TenantID  uuid.UUID `json:"tenant_id"`
+	ProductID uuid.UUID `json:"product_id"`
+	BatchID   uuid.UUID `json:"batch_id"`
 }
 
 func (q *Queries) GetInventoryByProductBatch(ctx context.Context, arg GetInventoryByProductBatchParams) (Inventory, error) {
@@ -155,10 +157,10 @@ LIMIT $3 OFFSET $4
 `
 
 type GetInventoryLogByBatchParams struct {
-	TenantID pgtype.UUID
-	BatchID  pgtype.UUID
-	Limit    int32
-	Offset   int32
+	TenantID uuid.UUID `json:"tenant_id"`
+	BatchID  uuid.UUID `json:"batch_id"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
 }
 
 func (q *Queries) GetInventoryLogByBatch(ctx context.Context, arg GetInventoryLogByBatchParams) ([]InventoryLog, error) {
@@ -172,7 +174,7 @@ func (q *Queries) GetInventoryLogByBatch(ctx context.Context, arg GetInventoryLo
 		return nil, err
 	}
 	defer rows.Close()
-	var items []InventoryLog
+	items := []InventoryLog{}
 	for rows.Next() {
 		var i InventoryLog
 		if err := rows.Scan(
@@ -204,10 +206,10 @@ LIMIT $3 OFFSET $4
 `
 
 type GetInventoryLogByProductParams struct {
-	TenantID  pgtype.UUID
-	ProductID pgtype.UUID
-	Limit     int32
-	Offset    int32
+	TenantID  uuid.UUID `json:"tenant_id"`
+	ProductID uuid.UUID `json:"product_id"`
+	Limit     int32     `json:"limit"`
+	Offset    int32     `json:"offset"`
 }
 
 func (q *Queries) GetInventoryLogByProduct(ctx context.Context, arg GetInventoryLogByProductParams) ([]InventoryLog, error) {
@@ -221,7 +223,7 @@ func (q *Queries) GetInventoryLogByProduct(ctx context.Context, arg GetInventory
 		return nil, err
 	}
 	defer rows.Close()
-	var items []InventoryLog
+	items := []InventoryLog{}
 	for rows.Next() {
 		var i InventoryLog
 		if err := rows.Scan(
@@ -255,15 +257,15 @@ HAVING SUM(i.quantity) <= $2
 `
 
 type GetLowStockReportParams struct {
-	TenantID pgtype.UUID
-	Quantity pgtype.Numeric
+	TenantID uuid.UUID      `json:"tenant_id"`
+	Quantity pgtype.Numeric `json:"quantity"`
 }
 
 type GetLowStockReportRow struct {
-	ID            pgtype.UUID
-	Name          string
-	Sku           string
-	TotalQuantity int64
+	ID            uuid.UUID `json:"id"`
+	Name          string    `json:"name"`
+	Sku           string    `json:"sku"`
+	TotalQuantity int64     `json:"total_quantity"`
 }
 
 func (q *Queries) GetLowStockReport(ctx context.Context, arg GetLowStockReportParams) ([]GetLowStockReportRow, error) {
@@ -272,7 +274,7 @@ func (q *Queries) GetLowStockReport(ctx context.Context, arg GetLowStockReportPa
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetLowStockReportRow
+	items := []GetLowStockReportRow{}
 	for rows.Next() {
 		var i GetLowStockReportRow
 		if err := rows.Scan(
@@ -300,14 +302,14 @@ ORDER BY b.expiry_date ASC
 `
 
 type GetProductInventoryDetailsParams struct {
-	TenantID  pgtype.UUID
-	ProductID pgtype.UUID
+	TenantID  uuid.UUID `json:"tenant_id"`
+	ProductID uuid.UUID `json:"product_id"`
 }
 
 type GetProductInventoryDetailsRow struct {
-	BatchNumber string
-	ExpiryDate  pgtype.Date
-	Quantity    pgtype.Numeric
+	BatchNumber string         `json:"batch_number"`
+	ExpiryDate  time.Time      `json:"expiry_date"`
+	Quantity    pgtype.Numeric `json:"quantity"`
 }
 
 func (q *Queries) GetProductInventoryDetails(ctx context.Context, arg GetProductInventoryDetailsParams) ([]GetProductInventoryDetailsRow, error) {
@@ -316,7 +318,7 @@ func (q *Queries) GetProductInventoryDetails(ctx context.Context, arg GetProduct
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetProductInventoryDetailsRow
+	items := []GetProductInventoryDetailsRow{}
 	for rows.Next() {
 		var i GetProductInventoryDetailsRow
 		if err := rows.Scan(&i.BatchNumber, &i.ExpiryDate, &i.Quantity); err != nil {
@@ -337,8 +339,8 @@ WHERE tenant_id = $1 AND product_id = $2
 `
 
 type GetProductQuantityParams struct {
-	TenantID  pgtype.UUID
-	ProductID pgtype.UUID
+	TenantID  uuid.UUID `json:"tenant_id"`
+	ProductID uuid.UUID `json:"product_id"`
 }
 
 func (q *Queries) GetProductQuantity(ctx context.Context, arg GetProductQuantityParams) (interface{}, error) {
@@ -367,19 +369,19 @@ LIMIT $2 OFFSET $3
 `
 
 type ListAllInventoryParams struct {
-	TenantID pgtype.UUID
-	Limit    int32
-	Offset   int32
+	TenantID uuid.UUID `json:"tenant_id"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
 }
 
 type ListAllInventoryRow struct {
-	ID               pgtype.UUID
-	ProductName      string
-	Sku              string
-	BatchNumber      string
-	ExpiryDate       pgtype.Date
-	Quantity         pgtype.Numeric
-	UnitAbbreviation string
+	ID               uuid.UUID      `json:"id"`
+	ProductName      string         `json:"product_name"`
+	Sku              string         `json:"sku"`
+	BatchNumber      string         `json:"batch_number"`
+	ExpiryDate       time.Time      `json:"expiry_date"`
+	Quantity         pgtype.Numeric `json:"quantity"`
+	UnitAbbreviation string         `json:"unit_abbreviation"`
 }
 
 func (q *Queries) ListAllInventory(ctx context.Context, arg ListAllInventoryParams) ([]ListAllInventoryRow, error) {
@@ -388,7 +390,7 @@ func (q *Queries) ListAllInventory(ctx context.Context, arg ListAllInventoryPara
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListAllInventoryRow
+	items := []ListAllInventoryRow{}
 	for rows.Next() {
 		var i ListAllInventoryRow
 		if err := rows.Scan(
@@ -417,10 +419,10 @@ WHERE tenant_id = $2 AND product_id = $3 AND batch_id = $4
 `
 
 type ReduceInventoryQuantityParams struct {
-	Quantity  pgtype.Numeric
-	TenantID  pgtype.UUID
-	ProductID pgtype.UUID
-	BatchID   pgtype.UUID
+	Quantity  pgtype.Numeric `json:"quantity"`
+	TenantID  uuid.UUID      `json:"tenant_id"`
+	ProductID uuid.UUID      `json:"product_id"`
+	BatchID   uuid.UUID      `json:"batch_id"`
 }
 
 func (q *Queries) ReduceInventoryQuantity(ctx context.Context, arg ReduceInventoryQuantityParams) error {
@@ -440,10 +442,10 @@ WHERE tenant_id = $2 AND product_id = $3 AND batch_id = $4
 `
 
 type SetInventoryQuantityParams struct {
-	Quantity  pgtype.Numeric
-	TenantID  pgtype.UUID
-	ProductID pgtype.UUID
-	BatchID   pgtype.UUID
+	Quantity  pgtype.Numeric `json:"quantity"`
+	TenantID  uuid.UUID      `json:"tenant_id"`
+	ProductID uuid.UUID      `json:"product_id"`
+	BatchID   uuid.UUID      `json:"batch_id"`
 }
 
 func (q *Queries) SetInventoryQuantity(ctx context.Context, arg SetInventoryQuantityParams) error {
@@ -464,11 +466,11 @@ RETURNING id, tenant_id, product_id, batch_number, expiry_date, cost, created_at
 `
 
 type UpdateBatchParams struct {
-	ID          pgtype.UUID
-	BatchNumber string
-	ExpiryDate  pgtype.Date
-	Cost        pgtype.Numeric
-	TenantID    pgtype.UUID
+	ID          uuid.UUID      `json:"id"`
+	BatchNumber string         `json:"batch_number"`
+	ExpiryDate  time.Time      `json:"expiry_date"`
+	Cost        pgtype.Numeric `json:"cost"`
+	TenantID    uuid.UUID      `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateBatch(ctx context.Context, arg UpdateBatchParams) (Batch, error) {

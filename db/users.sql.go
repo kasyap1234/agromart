@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -18,12 +19,12 @@ RETURNING id, name, email, password, phone, tenant_id, role, email_verified, is_
 `
 
 type CreateUserParams struct {
-	Name     string
-	Email    string
-	Password string
-	Phone    string
-	TenantID pgtype.UUID
-	Role     interface{}
+	Name     string      `json:"name"`
+	Email    string      `json:"email"`
+	Password string      `json:"password"`
+	Phone    string      `json:"phone"`
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Role     interface{} `json:"role"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -57,8 +58,8 @@ WHERE email = $1 AND tenant_id = $2
 `
 
 type GetUserByEmailParams struct {
-	Email    string
-	TenantID pgtype.UUID
+	Email    string    `json:"email"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (User, error) {
@@ -84,7 +85,7 @@ SELECT id, name, email, password, phone, tenant_id, role, email_verified, is_act
 WHERE id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error) {
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
@@ -110,10 +111,10 @@ LIMIT $3 OFFSET $4
 `
 
 type ListUsersByRoleParams struct {
-	TenantID pgtype.UUID
-	Role     interface{}
-	Limit    int32
-	Offset   int32
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Role     interface{} `json:"role"`
+	Limit    int32       `json:"limit"`
+	Offset   int32       `json:"offset"`
 }
 
 func (q *Queries) ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams) ([]User, error) {
@@ -127,7 +128,7 @@ func (q *Queries) ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams
 		return nil, err
 	}
 	defer rows.Close()
-	var items []User
+	items := []User{}
 	for rows.Next() {
 		var i User
 		if err := rows.Scan(
@@ -160,13 +161,13 @@ RETURNING id, name, email, password, phone, tenant_id, role, email_verified, is_
 `
 
 type UpdateUserParams struct {
-	ID            pgtype.UUID
-	Name          string
-	Email         string
-	Phone         string
-	Role          interface{}
-	EmailVerified pgtype.Bool
-	TenantID      pgtype.UUID
+	ID            uuid.UUID   `json:"id"`
+	Name          string      `json:"name"`
+	Email         string      `json:"email"`
+	Phone         string      `json:"phone"`
+	Role          interface{} `json:"role"`
+	EmailVerified pgtype.Bool `json:"email_verified"`
+	TenantID      uuid.UUID   `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
@@ -202,9 +203,9 @@ WHERE id = $2 AND tenant_id = $3
 `
 
 type UpdateUserPasswordParams struct {
-	Password string
-	ID       pgtype.UUID
-	TenantID pgtype.UUID
+	Password string    `json:"password"`
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {

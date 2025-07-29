@@ -6,7 +6,6 @@ import (
 	"github.com/kasyap1234/agromart/apps/server/pkg/errors"
 	"github.com/kasyap1234/agromart/apps/server/pkg/httpx"
 	"github.com/kasyap1234/agromart/db"
-	"github.com/kasyap1234/agromart/internal/utils"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -28,7 +27,7 @@ func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 			return httpx.Unauthorized(c, errors.ErrUnauthorized.Error())
 		}
 		queries := &db.Queries{}
-		user, err := queries.GetUserByID(context.Background(), utils.UUIDToPgUUID(uid))
+		user, err := queries.GetUserByID(context.Background(), uid)
 		if err != nil {
 			return httpx.Unauthorized(c, errors.ErrUnauthorized.Error())
 

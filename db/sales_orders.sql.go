@@ -7,7 +7,9 @@ package db
 
 import (
 	"context"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -18,11 +20,11 @@ RETURNING id, tenant_id, so_number, customer_id, location_id, order_date, expect
 `
 
 type CreateSalesOrderParams struct {
-	TenantID   pgtype.UUID
-	SoNumber   string
-	CustomerID pgtype.UUID
-	LocationID pgtype.UUID
-	CreatedBy  pgtype.UUID
+	TenantID   uuid.UUID   `json:"tenant_id"`
+	SoNumber   string      `json:"so_number"`
+	CustomerID uuid.UUID   `json:"customer_id"`
+	LocationID pgtype.UUID `json:"location_id"`
+	CreatedBy  pgtype.UUID `json:"created_by"`
 }
 
 func (q *Queries) CreateSalesOrder(ctx context.Context, arg CreateSalesOrderParams) (SalesOrder, error) {
@@ -65,12 +67,12 @@ RETURNING id, tenant_id, sales_order_id, product_id, batch_id, quantity_ordered,
 `
 
 type CreateSalesOrderItemParams struct {
-	TenantID        pgtype.UUID
-	SalesOrderID    pgtype.UUID
-	ProductID       pgtype.UUID
-	QuantityOrdered pgtype.Numeric
-	UnitPrice       pgtype.Numeric
-	TotalPrice      pgtype.Numeric
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	SalesOrderID    uuid.UUID      `json:"sales_order_id"`
+	ProductID       uuid.UUID      `json:"product_id"`
+	QuantityOrdered pgtype.Numeric `json:"quantity_ordered"`
+	UnitPrice       pgtype.Numeric `json:"unit_price"`
+	TotalPrice      pgtype.Numeric `json:"total_price"`
 }
 
 func (q *Queries) CreateSalesOrderItem(ctx context.Context, arg CreateSalesOrderItemParams) (SalesOrderItem, error) {
@@ -115,18 +117,18 @@ ORDER BY total_sales_amount DESC
 `
 
 type GetCustomerSalesSummaryRow struct {
-	CustomerName     string
-	TotalSalesAmount int64
-	TotalOrders      int64
+	CustomerName     string `json:"customer_name"`
+	TotalSalesAmount int64  `json:"total_sales_amount"`
+	TotalOrders      int64  `json:"total_orders"`
 }
 
-func (q *Queries) GetCustomerSalesSummary(ctx context.Context, tenantID pgtype.UUID) ([]GetCustomerSalesSummaryRow, error) {
+func (q *Queries) GetCustomerSalesSummary(ctx context.Context, tenantID uuid.UUID) ([]GetCustomerSalesSummaryRow, error) {
 	rows, err := q.db.Query(ctx, getCustomerSalesSummary, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetCustomerSalesSummaryRow
+	items := []GetCustomerSalesSummaryRow{}
 	for rows.Next() {
 		var i GetCustomerSalesSummaryRow
 		if err := rows.Scan(&i.CustomerName, &i.TotalSalesAmount, &i.TotalOrders); err != nil {
@@ -146,8 +148,8 @@ WHERE id = $1 AND tenant_id = $2
 `
 
 type GetSalesOrderParams struct {
-	ID       pgtype.UUID
-	TenantID pgtype.UUID
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetSalesOrder(ctx context.Context, arg GetSalesOrderParams) (SalesOrder, error) {
@@ -183,8 +185,8 @@ WHERE id = $1 AND tenant_id = $2
 `
 
 type GetSalesOrderItemByIDParams struct {
-	ID       pgtype.UUID
-	TenantID pgtype.UUID
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetSalesOrderItemByID(ctx context.Context, arg GetSalesOrderItemByIDParams) (SalesOrderItem, error) {
@@ -215,8 +217,8 @@ WHERE sales_order_id = $1 AND tenant_id = $2
 `
 
 type GetSalesOrderItemsParams struct {
-	SalesOrderID pgtype.UUID
-	TenantID     pgtype.UUID
+	SalesOrderID uuid.UUID `json:"sales_order_id"`
+	TenantID     uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetSalesOrderItems(ctx context.Context, arg GetSalesOrderItemsParams) ([]SalesOrderItem, error) {
@@ -225,7 +227,7 @@ func (q *Queries) GetSalesOrderItems(ctx context.Context, arg GetSalesOrderItems
 		return nil, err
 	}
 	defer rows.Close()
-	var items []SalesOrderItem
+	items := []SalesOrderItem{}
 	for rows.Next() {
 		var i SalesOrderItem
 		if err := rows.Scan(
@@ -270,15 +272,15 @@ ORDER BY total_revenue DESC
 `
 
 type GetSalesReportByDateParams struct {
-	TenantID    pgtype.UUID
-	OrderDate   pgtype.Date
-	OrderDate_2 pgtype.Date
+	TenantID    uuid.UUID `json:"tenant_id"`
+	OrderDate   time.Time `json:"order_date"`
+	OrderDate_2 time.Time `json:"order_date_2"`
 }
 
 type GetSalesReportByDateRow struct {
-	ProductName    string
-	TotalUnitsSold int64
-	TotalRevenue   int64
+	ProductName    string `json:"product_name"`
+	TotalUnitsSold int64  `json:"total_units_sold"`
+	TotalRevenue   int64  `json:"total_revenue"`
 }
 
 func (q *Queries) GetSalesReportByDate(ctx context.Context, arg GetSalesReportByDateParams) ([]GetSalesReportByDateRow, error) {
@@ -287,7 +289,7 @@ func (q *Queries) GetSalesReportByDate(ctx context.Context, arg GetSalesReportBy
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetSalesReportByDateRow
+	items := []GetSalesReportByDateRow{}
 	for rows.Next() {
 		var i GetSalesReportByDateRow
 		if err := rows.Scan(&i.ProductName, &i.TotalUnitsSold, &i.TotalRevenue); err != nil {
@@ -309,10 +311,10 @@ LIMIT $3 OFFSET $4
 `
 
 type ListSalesOrdersByCustomerParams struct {
-	TenantID   pgtype.UUID
-	CustomerID pgtype.UUID
-	Limit      int32
-	Offset     int32
+	TenantID   uuid.UUID `json:"tenant_id"`
+	CustomerID uuid.UUID `json:"customer_id"`
+	Limit      int32     `json:"limit"`
+	Offset     int32     `json:"offset"`
 }
 
 func (q *Queries) ListSalesOrdersByCustomer(ctx context.Context, arg ListSalesOrdersByCustomerParams) ([]SalesOrder, error) {
@@ -326,7 +328,7 @@ func (q *Queries) ListSalesOrdersByCustomer(ctx context.Context, arg ListSalesOr
 		return nil, err
 	}
 	defer rows.Close()
-	var items []SalesOrder
+	items := []SalesOrder{}
 	for rows.Next() {
 		var i SalesOrder
 		if err := rows.Scan(
@@ -368,9 +370,9 @@ RETURNING id, tenant_id, sales_order_id, product_id, batch_id, quantity_ordered,
 `
 
 type UpdateSalesOrderItemQuantityShippedParams struct {
-	ID              pgtype.UUID
-	QuantityShipped pgtype.Numeric
-	TenantID        pgtype.UUID
+	ID              uuid.UUID      `json:"id"`
+	QuantityShipped pgtype.Numeric `json:"quantity_shipped"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateSalesOrderItemQuantityShipped(ctx context.Context, arg UpdateSalesOrderItemQuantityShippedParams) (SalesOrderItem, error) {
@@ -402,9 +404,9 @@ WHERE id = $2 AND tenant_id = $3
 `
 
 type UpdateSalesOrderStatusParams struct {
-	Status   string
-	ID       pgtype.UUID
-	TenantID pgtype.UUID
+	Status   string    `json:"status"`
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateSalesOrderStatus(ctx context.Context, arg UpdateSalesOrderStatusParams) error {

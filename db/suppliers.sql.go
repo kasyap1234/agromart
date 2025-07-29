@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -18,15 +19,15 @@ RETURNING id, tenant_id, name, contact_person, email, phone, address, tax_id, pa
 `
 
 type CreateSupplierParams struct {
-	TenantID      pgtype.UUID
-	Name          string
-	ContactPerson pgtype.Text
-	Email         pgtype.Text
-	Phone         pgtype.Text
-	Address       pgtype.Text
-	TaxID         pgtype.Text
-	PaymentMode   pgtype.Text
-	IsActive      pgtype.Bool
+	TenantID      uuid.UUID   `json:"tenant_id"`
+	Name          string      `json:"name"`
+	ContactPerson pgtype.Text `json:"contact_person"`
+	Email         pgtype.Text `json:"email"`
+	Phone         pgtype.Text `json:"phone"`
+	Address       pgtype.Text `json:"address"`
+	TaxID         pgtype.Text `json:"tax_id"`
+	PaymentMode   pgtype.Text `json:"payment_mode"`
+	IsActive      pgtype.Bool `json:"is_active"`
 }
 
 func (q *Queries) CreateSupplier(ctx context.Context, arg CreateSupplierParams) (Supplier, error) {
@@ -63,8 +64,8 @@ WHERE id = $1 AND tenant_id = $2
 `
 
 type GetSupplierByIDParams struct {
-	ID       pgtype.UUID
-	TenantID pgtype.UUID
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetSupplierByID(ctx context.Context, arg GetSupplierByIDParams) (Supplier, error) {
@@ -93,10 +94,10 @@ LIMIT $3 OFFSET $4
 `
 
 type ListSuppliersParams struct {
-	TenantID pgtype.UUID
-	IsActive pgtype.Bool
-	Limit    int32
-	Offset   int32
+	TenantID uuid.UUID   `json:"tenant_id"`
+	IsActive pgtype.Bool `json:"is_active"`
+	Limit    int32       `json:"limit"`
+	Offset   int32       `json:"offset"`
 }
 
 func (q *Queries) ListSuppliers(ctx context.Context, arg ListSuppliersParams) ([]Supplier, error) {
@@ -110,7 +111,7 @@ func (q *Queries) ListSuppliers(ctx context.Context, arg ListSuppliersParams) ([
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Supplier
+	items := []Supplier{}
 	for rows.Next() {
 		var i Supplier
 		if err := rows.Scan(
@@ -143,16 +144,16 @@ RETURNING id, tenant_id, name, contact_person, email, phone, address, tax_id, pa
 `
 
 type UpdateSupplierParams struct {
-	ID            pgtype.UUID
-	Name          string
-	ContactPerson pgtype.Text
-	Email         pgtype.Text
-	Phone         pgtype.Text
-	Address       pgtype.Text
-	TaxID         pgtype.Text
-	PaymentMode   pgtype.Text
-	IsActive      pgtype.Bool
-	TenantID      pgtype.UUID
+	ID            uuid.UUID   `json:"id"`
+	Name          string      `json:"name"`
+	ContactPerson pgtype.Text `json:"contact_person"`
+	Email         pgtype.Text `json:"email"`
+	Phone         pgtype.Text `json:"phone"`
+	Address       pgtype.Text `json:"address"`
+	TaxID         pgtype.Text `json:"tax_id"`
+	PaymentMode   pgtype.Text `json:"payment_mode"`
+	IsActive      pgtype.Bool `json:"is_active"`
+	TenantID      uuid.UUID   `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateSupplier(ctx context.Context, arg UpdateSupplierParams) (Supplier, error) {

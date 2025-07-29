@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -18,11 +19,11 @@ RETURNING id, tenant_id, po_number, supplier_id, location_id, order_date, expect
 `
 
 type CreatePurchaseOrderParams struct {
-	TenantID   pgtype.UUID
-	PoNumber   string
-	SupplierID pgtype.UUID
-	LocationID pgtype.UUID
-	CreatedBy  pgtype.UUID
+	TenantID   uuid.UUID   `json:"tenant_id"`
+	PoNumber   string      `json:"po_number"`
+	SupplierID uuid.UUID   `json:"supplier_id"`
+	LocationID pgtype.UUID `json:"location_id"`
+	CreatedBy  pgtype.UUID `json:"created_by"`
 }
 
 func (q *Queries) CreatePurchaseOrder(ctx context.Context, arg CreatePurchaseOrderParams) (PurchaseOrder, error) {
@@ -65,12 +66,12 @@ RETURNING id, tenant_id, purchase_order_id, product_id, batch_id, quantity_order
 `
 
 type CreatePurchaseOrderItemParams struct {
-	TenantID        pgtype.UUID
-	PurchaseOrderID pgtype.UUID
-	ProductID       pgtype.UUID
-	QuantityOrdered pgtype.Numeric
-	UnitCost        pgtype.Numeric
-	TotalCost       pgtype.Numeric
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	PurchaseOrderID uuid.UUID      `json:"purchase_order_id"`
+	ProductID       uuid.UUID      `json:"product_id"`
+	QuantityOrdered pgtype.Numeric `json:"quantity_ordered"`
+	UnitCost        pgtype.Numeric `json:"unit_cost"`
+	TotalCost       pgtype.Numeric `json:"total_cost"`
 }
 
 func (q *Queries) CreatePurchaseOrderItem(ctx context.Context, arg CreatePurchaseOrderItemParams) (PurchaseOrderItem, error) {
@@ -116,18 +117,18 @@ ORDER BY p.name
 `
 
 type GetProductMovementReportRow struct {
-	ProductName    string
-	TotalPurchased int64
-	TotalSold      int64
+	ProductName    string `json:"product_name"`
+	TotalPurchased int64  `json:"total_purchased"`
+	TotalSold      int64  `json:"total_sold"`
 }
 
-func (q *Queries) GetProductMovementReport(ctx context.Context, tenantID pgtype.UUID) ([]GetProductMovementReportRow, error) {
+func (q *Queries) GetProductMovementReport(ctx context.Context, tenantID uuid.UUID) ([]GetProductMovementReportRow, error) {
 	rows, err := q.db.Query(ctx, getProductMovementReport, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetProductMovementReportRow
+	items := []GetProductMovementReportRow{}
 	for rows.Next() {
 		var i GetProductMovementReportRow
 		if err := rows.Scan(&i.ProductName, &i.TotalPurchased, &i.TotalSold); err != nil {
@@ -147,8 +148,8 @@ WHERE id = $1 AND tenant_id = $2
 `
 
 type GetPurchaseOrderParams struct {
-	ID       pgtype.UUID
-	TenantID pgtype.UUID
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetPurchaseOrder(ctx context.Context, arg GetPurchaseOrderParams) (PurchaseOrder, error) {
@@ -184,8 +185,8 @@ WHERE id = $1 AND tenant_id = $2
 `
 
 type GetPurchaseOrderItemByIDParams struct {
-	ID       pgtype.UUID
-	TenantID pgtype.UUID
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetPurchaseOrderItemByID(ctx context.Context, arg GetPurchaseOrderItemByIDParams) (PurchaseOrderItem, error) {
@@ -216,8 +217,8 @@ WHERE purchase_order_id = $1 AND tenant_id = $2
 `
 
 type GetPurchaseOrderItemsParams struct {
-	PurchaseOrderID pgtype.UUID
-	TenantID        pgtype.UUID
+	PurchaseOrderID uuid.UUID `json:"purchase_order_id"`
+	TenantID        uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetPurchaseOrderItems(ctx context.Context, arg GetPurchaseOrderItemsParams) ([]PurchaseOrderItem, error) {
@@ -226,7 +227,7 @@ func (q *Queries) GetPurchaseOrderItems(ctx context.Context, arg GetPurchaseOrde
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PurchaseOrderItem
+	items := []PurchaseOrderItem{}
 	for rows.Next() {
 		var i PurchaseOrderItem
 		if err := rows.Scan(
@@ -268,18 +269,18 @@ ORDER BY total_purchased_amount DESC
 `
 
 type GetSupplierPurchaseSummaryRow struct {
-	SupplierName         string
-	TotalPurchasedAmount int64
-	TotalOrders          int64
+	SupplierName         string `json:"supplier_name"`
+	TotalPurchasedAmount int64  `json:"total_purchased_amount"`
+	TotalOrders          int64  `json:"total_orders"`
 }
 
-func (q *Queries) GetSupplierPurchaseSummary(ctx context.Context, tenantID pgtype.UUID) ([]GetSupplierPurchaseSummaryRow, error) {
+func (q *Queries) GetSupplierPurchaseSummary(ctx context.Context, tenantID uuid.UUID) ([]GetSupplierPurchaseSummaryRow, error) {
 	rows, err := q.db.Query(ctx, getSupplierPurchaseSummary, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetSupplierPurchaseSummaryRow
+	items := []GetSupplierPurchaseSummaryRow{}
 	for rows.Next() {
 		var i GetSupplierPurchaseSummaryRow
 		if err := rows.Scan(&i.SupplierName, &i.TotalPurchasedAmount, &i.TotalOrders); err != nil {
@@ -301,10 +302,10 @@ LIMIT $3 OFFSET $4
 `
 
 type ListPurchaseOrdersByStatusParams struct {
-	TenantID pgtype.UUID
-	Status   string
-	Limit    int32
-	Offset   int32
+	TenantID uuid.UUID `json:"tenant_id"`
+	Status   string    `json:"status"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
 }
 
 func (q *Queries) ListPurchaseOrdersByStatus(ctx context.Context, arg ListPurchaseOrdersByStatusParams) ([]PurchaseOrder, error) {
@@ -318,7 +319,7 @@ func (q *Queries) ListPurchaseOrdersByStatus(ctx context.Context, arg ListPurcha
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PurchaseOrder
+	items := []PurchaseOrder{}
 	for rows.Next() {
 		var i PurchaseOrder
 		if err := rows.Scan(
@@ -360,10 +361,10 @@ LIMIT $3 OFFSET $4
 `
 
 type ListPurchaseOrdersBySupplierParams struct {
-	TenantID   pgtype.UUID
-	SupplierID pgtype.UUID
-	Limit      int32
-	Offset     int32
+	TenantID   uuid.UUID `json:"tenant_id"`
+	SupplierID uuid.UUID `json:"supplier_id"`
+	Limit      int32     `json:"limit"`
+	Offset     int32     `json:"offset"`
 }
 
 func (q *Queries) ListPurchaseOrdersBySupplier(ctx context.Context, arg ListPurchaseOrdersBySupplierParams) ([]PurchaseOrder, error) {
@@ -377,7 +378,7 @@ func (q *Queries) ListPurchaseOrdersBySupplier(ctx context.Context, arg ListPurc
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PurchaseOrder
+	items := []PurchaseOrder{}
 	for rows.Next() {
 		var i PurchaseOrder
 		if err := rows.Scan(
@@ -419,9 +420,9 @@ RETURNING id, tenant_id, purchase_order_id, product_id, batch_id, quantity_order
 `
 
 type UpdatePurchaseOrderItemQuantityReceivedParams struct {
-	ID               pgtype.UUID
-	QuantityReceived pgtype.Numeric
-	TenantID         pgtype.UUID
+	ID               uuid.UUID      `json:"id"`
+	QuantityReceived pgtype.Numeric `json:"quantity_received"`
+	TenantID         uuid.UUID      `json:"tenant_id"`
 }
 
 func (q *Queries) UpdatePurchaseOrderItemQuantityReceived(ctx context.Context, arg UpdatePurchaseOrderItemQuantityReceivedParams) (PurchaseOrderItem, error) {
@@ -453,10 +454,10 @@ WHERE id = $3 AND tenant_id = $4
 `
 
 type UpdatePurchaseOrderStatusParams struct {
-	Status     string
-	ApprovedBy pgtype.UUID
-	ID         pgtype.UUID
-	TenantID   pgtype.UUID
+	Status     string      `json:"status"`
+	ApprovedBy pgtype.UUID `json:"approved_by"`
+	ID         uuid.UUID   `json:"id"`
+	TenantID   uuid.UUID   `json:"tenant_id"`
 }
 
 func (q *Queries) UpdatePurchaseOrderStatus(ctx context.Context, arg UpdatePurchaseOrderStatusParams) error {

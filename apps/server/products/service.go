@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kasyap1234/agromart/db"
+	"github.com/kasyap1234/agromart/internal/database"
 	"github.com/kasyap1234/agromart/internal/utils"
 	"github.com/rs/zerolog/log"
 )
@@ -35,20 +36,18 @@ type ProductInputRequest struct {
 
 func (s *ProductService) CheckProductExists(ctx context.Context, productID uuid.UUID, tenantID uuid.UUID) (bool, error) {
 	args := db.CheckProductExistsParams{
-		ID:       utils.UUIDToPgUUID(productID),
-		TenantID: utils.UUIDToPgUUID(tenantID),
+		ID:       productID,
+		TenantID: tenantID,
 	}
 	exists, err := s.q.CheckProductExists(ctx, args)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to check if product exists")
-		return false, err
+		return false, database.WrapError(err, "failed to check if product exists")
 	}
 	return exists, nil
 }
 
 func (s *ProductService) CountProducts(ctx context.Context, tenantID uuid.UUID) (int64, error) {
-	pgTenantID := utils.UUIDToPgUUID(tenantID)
-	count, err := s.q.CountProducts(ctx, pgTenantID)
+	count, err := s.q.CountProducts(ctx, tenantID)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to count products")
 		return 0, err
@@ -58,15 +57,16 @@ func (s *ProductService) CountProducts(ctx context.Context, tenantID uuid.UUID) 
 
 func (s *ProductService) CreateProduct(ctx context.Context, tenantID uuid.UUID, sku string, name string, price int, description string, imageUrl string, brand string, unitID uuid.UUID, pricePerUnit int, GstPercent int) (db.Product, error) {
 	args := db.CreateProductParams{
-		TenantID:     utils.UUIDToPgUUID(tenantID),
+		TenantID:     tenantID,
 		Sku:          sku,
 		Name:         name,
-		Price:        utils.IntToPgNumeric(price),
-		Description:  utils.StringToPgText(description),
-		ImageUrl:     utils.StringToPgText(imageUrl),
-		Brand:        utils.StringToPgText(brand),
-		UnitID:       utils.UUIDToPgUUID(unitID),
-		PricePerUnit: utils.IntToPgNumeric(pricePerUnit),
+		Price:        utils.P.Numeric(price),
+		Description:  utils.P.Text(description),
+		ImageUrl:     utils.P.Text(imageUrl),
+		Brand:        utils.P.Text(brand),
+		UnitID:       unitID,
+		PricePerUnit: utils.P.Numeric(pricePerUnit),
+		GstPercent:   utils.P.Numeric(GstPercent),
 	}
 
 	product, err := s.q.CreateProduct(ctx, args)
@@ -79,7 +79,7 @@ func (s *ProductService) CreateProduct(ctx context.Context, tenantID uuid.UUID, 
 
 func (s *ProductService) CreateUnit(ctx context.Context, ID uuid.UUID, tenantID uuid.UUID, name string, abbreviation string) (db.Unit, error) {
 	args := db.CreateUnitParams{
-		TenantID:     utils.UUIDToPgUUID(tenantID),
+		TenantID:     tenantID,
 		Name:         name,
 		Abbreviation: abbreviation,
 	}
@@ -93,8 +93,8 @@ func (s *ProductService) CreateUnit(ctx context.Context, ID uuid.UUID, tenantID 
 
 func (s *ProductService) GetProductByID(ctx context.Context, ID uuid.UUID, tenantID uuid.UUID) (db.Product, error) {
 	args := db.GetProductByIDParams{
-		ID:       utils.UUIDToPgUUID(ID),
-		TenantID: utils.UUIDToPgUUID(tenantID),
+		ID:       ID,
+		TenantID: tenantID,
 	}
 	product, err := s.q.GetProductByID(ctx, args)
 
@@ -109,7 +109,7 @@ func (s *ProductService) GetProductByID(ctx context.Context, ID uuid.UUID, tenan
 func (s *ProductService) GetProductBySKU(ctx context.Context, sku string, tenantID uuid.UUID) (db.Product, error) {
 	args := db.GetProductBySKUParams{
 		Sku:      sku,
-		TenantID: utils.UUIDToPgUUID(tenantID),
+		TenantID: tenantID,
 	}
 	product, err := s.q.GetProductBySKU(ctx, args)
 	if err != nil {
@@ -121,8 +121,8 @@ func (s *ProductService) GetProductBySKU(ctx context.Context, sku string, tenant
 
 func (s *ProductService) GetUnitByID(ctx context.Context, ID uuid.UUID, tenantID uuid.UUID) (db.Unit, error) {
 	args := db.GetUnitByIDParams{
-		ID:       utils.UUIDToPgUUID(ID),
-		TenantID: utils.UUIDToPgUUID(tenantID),
+		ID:       ID,
+		TenantID: tenantID,
 	}
 	unit, err := s.q.GetUnitByID(ctx, args)
 	if err != nil {
@@ -134,7 +134,7 @@ func (s *ProductService) GetUnitByID(ctx context.Context, ID uuid.UUID, tenantID
 
 func (s *ProductService) ListProducts(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]db.Product, error) {
 	args := db.ListProductsParams{
-		TenantID: utils.UUIDToPgUUID(tenantID),
+		TenantID: tenantID,
 		Limit:    int32(limit),
 		Offset:   int32(offset),
 	}
@@ -148,7 +148,7 @@ func (s *ProductService) ListProducts(ctx context.Context, tenantID uuid.UUID, l
 
 func (s *ProductService) ListUnits(ctx context.Context, tenantID uuid.UUID, limit int, offset int) ([]db.Unit, error) {
 	args := db.ListUnitsParams{
-		TenantID: utils.UUIDToPgUUID(tenantID),
+		TenantID: tenantID,
 		Limit:    int32(limit),
 		Offset:   int32(offset),
 	}
@@ -161,8 +161,10 @@ func (s *ProductService) ListUnits(ctx context.Context, tenantID uuid.UUID, limi
 
 func (s *ProductService) SearchProducts(ctx context.Context, tenantID uuid.UUID, name string, limit int, offset int) ([]db.Product, error) {
 	args := db.SearchProductsParams{
-		TenantID: utils.UUIDToPgUUID(tenantID),
+		TenantID: tenantID,
 		Name:     name,
+		Limit:    int32(limit),
+		Offset:   int32(offset),
 	}
 	products, err := s.q.SearchProducts(ctx, args)
 	if err != nil {
@@ -174,16 +176,16 @@ func (s *ProductService) SearchProducts(ctx context.Context, tenantID uuid.UUID,
 
 func ToUpdateProductPatchParms(p ProductInputRequest, productID, tenantID uuid.UUID) db.UpdateProductPatchParams {
 	return db.UpdateProductPatchParams{
-		ID:           utils.UUIDToPgUUID(productID),
-		TenantID:     utils.UUIDToPgUUID(tenantID),
-		Name:         utils.StringToPgText(*p.Name),
-		Price:        utils.IntToPgNumeric(*p.Price),
-		Description:  utils.StringToPgText(*p.Description),
-		ImageUrl:     utils.StringToPgText(*p.ImageUrl),
-		Brand:        utils.StringToPgText(*p.Brand),
-		PricePerUnit: utils.IntToPgNumeric(*p.PricePerUnit),
-		GstPercent:   utils.IntToPgNumeric(*p.GstPercent),
-		UnitID:       utils.UUIDToPgUUID(*p.UnitID),
+		ID:           productID,
+		TenantID:     tenantID,
+		Name:         utils.P.TextPtr(p.Name),
+		Price:        utils.P.NumericPtr(p.Price),
+		Description:  utils.P.TextPtr(p.Description),
+		ImageUrl:     utils.P.TextPtr(p.ImageUrl),
+		Brand:        utils.P.TextPtr(p.Brand),
+		PricePerUnit: utils.P.NumericPtr(p.PricePerUnit),
+		GstPercent:   utils.P.NumericPtr(p.GstPercent),
+		UnitID:       utils.P.UUIDPtr(p.UnitID),
 	}
 }
 func (s *ProductService) PatchProduct(ctx context.Context, tenantID, productID uuid.UUID, patch ProductInputRequest) error {
