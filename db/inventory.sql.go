@@ -37,6 +37,18 @@ func (q *Queries) AddInventoryQuantity(ctx context.Context, arg AddInventoryQuan
 	return err
 }
 
+const countProductsByTenant = `-- name: CountProductsByTenant :one
+SELECT COUNT(*) FROM products
+WHERE tenant_id = $1
+`
+
+func (q *Queries) CountProductsByTenant(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countProductsByTenant, tenantID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createBatch = `-- name: CreateBatch :one
 INSERT INTO batches (tenant_id, product_id, batch_number, expiry_date, cost)
 VALUES ($1, $2, $3, $4, $5)
@@ -123,6 +135,70 @@ func (q *Queries) GetBatchByID(ctx context.Context, arg GetBatchByIDParams) (Bat
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getExpiringBatches = `-- name: GetExpiringBatches :many
+SELECT
+    b.id as batch_id,
+    b.batch_number,
+    b.expiry_date,
+    p.id as product_id,
+    p.name as product_name,
+    p.sku as product_sku,
+    i.quantity,
+    EXTRACT(DAY FROM (b.expiry_date - CURRENT_DATE)) as days_until_expiry
+FROM batches b
+JOIN products p ON b.product_id = p.id
+JOIN inventory i ON b.id = i.batch_id
+WHERE b.tenant_id = $1
+    AND b.expiry_date <= $2
+    AND i.quantity > 0
+ORDER BY b.expiry_date ASC
+`
+
+type GetExpiringBatchesParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	ExpiryDate time.Time `json:"expiry_date"`
+}
+
+type GetExpiringBatchesRow struct {
+	BatchID         uuid.UUID      `json:"batch_id"`
+	BatchNumber     string         `json:"batch_number"`
+	ExpiryDate      time.Time      `json:"expiry_date"`
+	ProductID       uuid.UUID      `json:"product_id"`
+	ProductName     string         `json:"product_name"`
+	ProductSku      string         `json:"product_sku"`
+	Quantity        pgtype.Numeric `json:"quantity"`
+	DaysUntilExpiry float64        `json:"days_until_expiry"`
+}
+
+func (q *Queries) GetExpiringBatches(ctx context.Context, arg GetExpiringBatchesParams) ([]GetExpiringBatchesRow, error) {
+	rows, err := q.db.Query(ctx, getExpiringBatches, arg.TenantID, arg.ExpiryDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetExpiringBatchesRow{}
+	for rows.Next() {
+		var i GetExpiringBatchesRow
+		if err := rows.Scan(
+			&i.BatchID,
+			&i.BatchNumber,
+			&i.ExpiryDate,
+			&i.ProductID,
+			&i.ProductName,
+			&i.ProductSku,
+			&i.Quantity,
+			&i.DaysUntilExpiry,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getInventoryByProductBatch = `-- name: GetInventoryByProductBatch :one
@@ -245,6 +321,20 @@ func (q *Queries) GetInventoryLogByProduct(ctx context.Context, arg GetInventory
 		return nil, err
 	}
 	return items, nil
+}
+
+const getInventoryValue = `-- name: GetInventoryValue :one
+SELECT COALESCE(SUM(i.quantity * b.cost), 0) as total_value
+FROM inventory i
+JOIN batches b ON i.batch_id = b.id
+WHERE i.tenant_id = $1
+`
+
+func (q *Queries) GetInventoryValue(ctx context.Context, tenantID uuid.UUID) (interface{}, error) {
+	row := q.db.QueryRow(ctx, getInventoryValue, tenantID)
+	var total_value interface{}
+	err := row.Scan(&total_value)
+	return total_value, err
 }
 
 const getLowStockReport = `-- name: GetLowStockReport :many

@@ -1,54 +1,113 @@
-version: "3"
+version: '3.8'
 
-vars:
-  OUTPUT_DIR: bin
-  BACKEND_PATH: ./server/cmd/api
+services:
+  # Database
+  db:
+    image: postgres:17.5-bookworm
+    container_name: agromart_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${APP_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD:-password}
+      POSTGRES_DB: ${APP_DB_NAME:-agromart}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./apps/server/sql/schema:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${APP_DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - agromart-network
 
-tasks:
-  default:
-    cmds:
-      - echo "Available tasks: build:mac, build:linux, build:graviton"
-    silent: true
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: agromart_backend
+    restart: unless-stopped
+    environment:
+      APP_DB_HOST: db
+      APP_DB_PORT: 5432
+      APP_DB_USER: ${APP_DB_USER:-postgres}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-password}
+      APP_DB_NAME: ${APP_DB_NAME:-agromart}
+      APP_APPPORT: ${APP_PORT:-8080}
+      MAX_CONNS: ${MAX_CONNS:-25}
+      MIN_CONNS: ${MIN_CONNS:-5}
+      MAX_CONN_LIFE_TIME: ${MAX_CONN_LIFE_TIME:-1h}
+      MAX_CONN_IDLE_TIME: ${MAX_CONN_IDLE_TIME:-30m}
+      HEALTH_CHECK_PERIOD: ${HEALTH_CHECK_PERIOD:-1m}
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - agromart-network
 
-  build:
-    internal: true  # Hide from `task --list`
-    vars:
-      GOOS: '{{.GOOS | default "linux"}}'
-      GOARCH: '{{.GOARCH | default "amd64"}}'
-      OUTPUT: '{{.OUTPUT | default "api"}}'
-    cmds:
-      - mkdir -p {{.OUTPUT_DIR}}
-      - GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o {{.OUTPUT_DIR}}/{{.OUTPUT}} {{.BACKEND_PATH}}
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: agromart_frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080/api}
+      NODE_ENV: ${NODE_ENV:-production}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-AgroMart}
+      NEXT_PUBLIC_APP_VERSION: ${NEXT_PUBLIC_APP_VERSION:-1.0.0}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - agromart-network
 
-  build:mac:
-    desc: "Build for macOS (Apple Silicon)"
-    cmds:
-      - task: build
-        vars:
-          GOOS: darwin
-          GOARCH: arm64
-          OUTPUT: api-mac-arm64
+  # Redis for caching (optional but recommended for production)
+  redis:
+    image: redis:7-alpine
+    container_name: agromart_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis-password}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agromart-network
 
-  build:linux:
-    desc: "Build for Linux (x86_64)"
-    cmds:
-      - task: build
-        vars:
-          GOOS: linux
-          GOARCH: amd64
-          OUTPUT: api-linux-amd64
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
 
-  build:graviton:
-    desc: "Build for AWS Graviton (Linux ARM64)"
-    cmds:
-      - task: build
-        vars:
-          GOOS: linux
-          GOARCH: arm64
-          OUTPUT: api-linux-arm64
-  build:all:
-    desc: "Build for all major targets"
-    cmds:
-      - task: build:mac
-      - task: build:linux
-      - task: build:graviton
+networks:
+  agromart-network:
+    driver: bridge

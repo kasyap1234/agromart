@@ -2,12 +2,14 @@ package inventory
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kasyap1234/agromart/db"
-	"github.com/kasyap1234/agromart/internal/utils"
+	"agromart2/db"
+	"agromart2/internal/utils"
 )
 
 type InventoryService struct {
@@ -158,4 +160,136 @@ func (s *InventoryService) CreateInventoryLog(ctx context.Context, tenantID, pro
 		Notes:           utils.P.Text(notes),
 	}
 	return s.queries.CreateInventoryLog(ctx, args)
+}
+
+// GetExpiringBatches gets batches that are expiring within specified days
+func (s *InventoryService) GetExpiringBatches(ctx context.Context, tenantID uuid.UUID, days int) ([]db.GetExpiringBatchesRow, error) {
+	expiryDate := time.Now().AddDate(0, 0, days)
+	
+	args := db.GetExpiringBatchesParams{
+		TenantID:   tenantID,
+		ExpiryDate: expiryDate,
+	}
+	return s.queries.GetExpiringBatches(ctx, args)
+}
+
+// GetInventoryValue calculates total inventory value for a tenant
+func (s *InventoryService) GetInventoryValue(ctx context.Context, tenantID uuid.UUID) (interface{}, error) {
+	return s.queries.GetInventoryValue(ctx, tenantID)
+}
+
+// TransferInventory transfers inventory between batches (for batch corrections)
+func (s *InventoryService) TransferInventory(ctx context.Context, tenantID, productID, fromBatchID, toBatchID uuid.UUID, quantity int, referenceID uuid.UUID, notes string) error {
+	// Start transaction
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	// Reduce from source batch
+	err = qtx.ReduceInventoryQuantity(ctx, db.ReduceInventoryQuantityParams{
+		Quantity:  utils.P.Numeric(quantity),
+		TenantID:  tenantID,
+		ProductID: productID,
+		BatchID:   fromBatchID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to reduce from source batch: %w", err)
+	}
+
+	// Add to destination batch
+	err = qtx.AddInventoryQuantity(ctx, db.AddInventoryQuantityParams{
+		TenantID:  tenantID,
+		ProductID: productID,
+		BatchID:   toBatchID,
+		Quantity:  utils.P.Numeric(quantity),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to add to destination batch: %w", err)
+	}
+
+	// Log the transfer
+	err = qtx.CreateInventoryLog(ctx, db.CreateInventoryLogParams{
+		TenantID:        tenantID,
+		ProductID:       productID,
+		BatchID:         fromBatchID,
+		TransactionType: "TRANSFER_OUT",
+		QuantityChange:  utils.P.Numeric(quantity),
+		ReferenceID:     utils.P.UUID(referenceID),
+		Notes:           utils.P.Text(fmt.Sprintf("Transfer to batch %s: %s", toBatchID, notes)),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to log transfer out: %w", err)
+	}
+
+	err = qtx.CreateInventoryLog(ctx, db.CreateInventoryLogParams{
+		TenantID:        tenantID,
+		ProductID:       productID,
+		BatchID:         toBatchID,
+		TransactionType: "TRANSFER_IN",
+		QuantityChange:  utils.P.Numeric(quantity),
+		ReferenceID:     utils.P.UUID(referenceID),
+		Notes:           utils.P.Text(fmt.Sprintf("Transfer from batch %s: %s", fromBatchID, notes)),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to log transfer in: %w", err)
+	}
+
+	// Commit transaction
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	log.Printf("Transferred %d quantity from batch %s to batch %s for product %s", 
+		quantity, fromBatchID, toBatchID, productID)
+	return nil
+}
+
+// CheckInventoryAvailability checks if enough inventory is available for a specific product and batch
+func (s *InventoryService) CheckInventoryAvailability(ctx context.Context, tenantID, productID, batchID uuid.UUID, requiredQuantity int) (bool, error) {
+	inventory, err := s.GetInventoryByProductBatch(ctx, tenantID, productID, batchID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get inventory: %w", err)
+	}
+
+	// Convert numeric to float64 for comparison
+	currentQuantity, _ := inventory.Quantity.Float64Value()
+	return currentQuantity.Float64 >= float64(requiredQuantity), nil
+}
+
+// GetInventorySummary gets a summary of inventory for dashboard
+func (s *InventoryService) GetInventorySummary(ctx context.Context, tenantID uuid.UUID) (map[string]interface{}, error) {
+	// Get total products
+	totalProducts, err := s.queries.CountProductsByTenant(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count products: %w", err)
+	}
+
+	// Get low stock count
+	lowStockProducts, err := s.GetLowStockReport(ctx, tenantID, 10)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get low stock count: %w", err)
+	}
+
+	// Get total inventory value
+	totalValue, err := s.GetInventoryValue(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get inventory value: %w", err)
+	}
+
+	// Get expiring batches (within 30 days)
+	expiringBatches, err := s.GetExpiringBatches(ctx, tenantID, 30)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get expiring batches: %w", err)
+	}
+
+	return map[string]interface{}{
+		"total_products":     totalProducts,
+		"low_stock_count":    len(lowStockProducts),
+		"total_value":        totalValue,
+		"expiring_batches":   len(expiringBatches),
+	}, nil
 }

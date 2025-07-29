@@ -1,6 +1,6 @@
 -- name: CreateSupplier :one
-INSERT INTO suppliers (tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO suppliers (tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: GetSupplierByID :one
@@ -15,6 +15,37 @@ RETURNING *;
 
 -- name: ListSuppliers :many
 SELECT * FROM suppliers
-WHERE tenant_id = $1 AND is_active = $2
+WHERE tenant_id = $1
+ORDER BY name
+LIMIT $2 OFFSET $3;
+
+-- name: ListActiveSuppliers :many
+SELECT * FROM suppliers
+WHERE tenant_id = $1 AND (is_active IS NULL OR is_active = true)
+ORDER BY name
+LIMIT $2 OFFSET $3;
+
+-- name: SearchSuppliers :many
+SELECT * FROM suppliers
+WHERE tenant_id = $1 AND name ILIKE $2
 ORDER BY name
 LIMIT $3 OFFSET $4;
+
+-- name: CountSuppliers :one
+SELECT COUNT(*) FROM suppliers
+WHERE tenant_id = $1;
+
+-- name: CheckSupplierExists :one
+SELECT EXISTS(
+    SELECT 1 FROM suppliers
+    WHERE id = $1 AND tenant_id = $2
+);
+
+-- name: DeactivateSupplier :exec
+UPDATE suppliers
+SET is_active = false
+WHERE id = $1 AND tenant_id = $2;
+
+-- name: GetSupplierByName :one
+SELECT * FROM suppliers
+WHERE tenant_id = $1 AND name = $2;

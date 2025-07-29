@@ -16,6 +16,7 @@ type Config struct {
 	DB_User           string        `mapstructure:"APP_DB_USER"`
 	DB_Password       string        `mapstructure:"APP_DB_PASSWORD"`
 	DB_Name           string        `mapstructure:"APP_DB_NAME"`
+	JWTSecret         string        `mapstructure:"JWT_SECRET"`
 	MaxConns          int           `mapstructure:"MAX_CONNS"`
 	MinConns          int           `mapstructure:"MIN_CONNS"`
 	MaxConnLifeTime   time.Duration `mapstructure:"MAX_CONN_LIFE_TIME"`
@@ -24,23 +25,39 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
-	// Read from .env file
-	viper.SetConfigFile("/Users/kasyapdharanikota/GolandProjects/agromart/.env")
-	viper.SetConfigType("env")
+	// Set default values
+	viper.SetDefault("APP_APPPORT", 8080)
+	viper.SetDefault("APP_DB_HOST", "localhost")
+	viper.SetDefault("APP_DB_PORT", 5432)
+	viper.SetDefault("APP_DB_USER", "postgres")
+	viper.SetDefault("APP_DB_PASSWORD", "password")
+	viper.SetDefault("APP_DB_NAME", "agromart")
+	viper.SetDefault("JWT_SECRET", "your-secret-key-change-in-production")
+	viper.SetDefault("MAX_CONNS", 25)
+	viper.SetDefault("MIN_CONNS", 5)
+	viper.SetDefault("MAX_CONN_LIFE_TIME", "1h")
+	viper.SetDefault("MAX_CONN_IDLE_TIME", "30m")
+	viper.SetDefault("HEALTH_CHECK_PERIOD", "1m")
 
-	// Read from config file first
+	// Try to read from .env file (optional)
+	viper.SetConfigName(".env")
+	viper.SetConfigType("env")
+	viper.AddConfigPath(".")
+	viper.AddConfigPath("./apps/server")
+	viper.AddConfigPath("/app")
+
+	// Read from config file if it exists (don't fail if it doesn't)
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("error reading .env file: %w", err)
+		log.Printf("Warning: Could not read config file: %v. Using environment variables and defaults.", err)
 	}
 
-	// Then override with environment variables if available
-
+	// Environment variables take precedence
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	var c Config
 	if err := viper.Unmarshal(&c); err != nil {
-		log.Fatalf("unable to decode config into struct: %v", err)
+		return nil, fmt.Errorf("unable to decode config into struct: %w", err)
 	}
 
 	return &c, nil
