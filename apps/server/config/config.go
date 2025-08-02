@@ -60,5 +60,30 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("unable to decode config into struct: %w", err)
 	}
 
+	// Manually parse duration strings from environment variables
+	if healthCheckPeriodStr := viper.GetString("HEALTH_CHECK_PERIOD"); healthCheckPeriodStr != "" {
+		duration, err := time.ParseDuration(healthCheckPeriodStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid HEALTH_CHECK_PERIOD duration: %w", err)
+		}
+		c.HealthCheckPeriod = duration
+	}
+
+	if maxConnLifeTimeStr := viper.GetString("MAX_CONN_LIFE_TIME"); maxConnLifeTimeStr != "" {
+		duration, err := time.ParseDuration(maxConnLifeTimeStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid MAX_CONN_LIFE_TIME duration: %w", err)
+		}
+		c.MaxConnLifeTime = duration
+	}
+
+	if maxConnIdleTimeStr := viper.GetString("MAX_CONN_IDLE_TIME"); maxConnIdleTimeStr != "" {
+		duration, err := time.ParseDuration(maxConnIdleTimeStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid MAX_CONN_IDLE_TIME duration: %w", err)
+		}
+		c.MaxConnIdleTime = duration
+	}
+
 	return &c, nil
 }

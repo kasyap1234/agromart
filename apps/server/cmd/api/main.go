@@ -33,14 +33,17 @@ func main() {
 
 	// Initialize database configuration
 	dbConfig := &database.Config{
-		Host:     conf.DB_Host,
-		Port:     conf.DB_Port,
-		User:     conf.DB_User,
-		Password: conf.DB_Password,
-		Database: conf.DB_Name,
-		SSLMode:  "disable",
-		MaxConns: 25,
-		MinConns: 5,
+		Host:              conf.DB_Host,
+		Port:              conf.DB_Port,
+		User:              conf.DB_User,
+		Password:          conf.DB_Password,
+		Database:          conf.DB_Name,
+		SSLMode:           "disable",
+		MaxConns:          int32(conf.MaxConns),
+		MinConns:          int32(conf.MinConns),
+		MaxConnLifetime:   conf.MaxConnLifeTime,
+		MaxConnIdleTime:   conf.MaxConnIdleTime,
+		HealthCheckPeriod: conf.HealthCheckPeriod,
 	}
 
 	if err := dbConfig.Validate(); err != nil {
