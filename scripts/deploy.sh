@@ -2,7 +2,7 @@
 
 # AgroMart Deployment Script
 # Usage: ./scripts/deploy.sh [environment]
-# Environment: dev, staging, prod (default: dev)
+# Environment: dev, staging, prod, test (default: dev)
 
 set -e
 
@@ -56,8 +56,12 @@ case $ENVIRONMENT in
         COMPOSE_FILE="docker-compose.prod.yml"
         ENV_FILE=".env.production"
         ;;
+    "test")
+        COMPOSE_FILE="docker-compose.prod.yml"
+        ENV_FILE=".env.test"
+        ;;
     *)
-        print_error "Invalid environment: $ENVIRONMENT. Use dev, staging, or prod."
+        print_error "Invalid environment: $ENVIRONMENT. Use dev, staging, prod, or test."
         exit 1
         ;;
 esac
@@ -135,7 +139,7 @@ else
 fi
 
 # Check frontend (if not production with nginx)
-if [ "$ENVIRONMENT" != "prod" ]; then
+if [ "$ENVIRONMENT" != "prod" ] && [ "$ENVIRONMENT" != "test" ]; then
     if curl -f http://localhost:${FRONTEND_PORT:-3000} > /dev/null 2>&1; then
         print_status "✅ Frontend is healthy"
     else
@@ -159,7 +163,7 @@ fi
 print_status "🎉 Deployment completed successfully!"
 print_status "Services are running:"
 
-if [ "$ENVIRONMENT" = "prod" ]; then
+if [ "$ENVIRONMENT" = "prod" ] || [ "$ENVIRONMENT" = "test" ]; then
     print_status "  - Application: http://localhost (via Nginx)"
     print_status "  - API: http://localhost/api"
 else
