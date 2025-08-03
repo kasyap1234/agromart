@@ -1,42 +1,78 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	_ "github.com/lib/pq"
+	echoMiddleware "github.com/labstack/echo/v4/middleware"
 
+	"agromart2/apps/server/config"
 	"agromart2/internal/auth"
-	"agromart2/internal/db"
+	"agromart2/internal/database"
+	"agromart2/internal/middleware"
+	
+	"agromart2/db"
 	"agromart2/apps/server/products"
 	"agromart2/apps/server/inventory"
+	"agromart2/apps/server/handler"
 )
 
 func main() {
-	// Initialize database connection
-	database, err := sql.Open("postgres", getDatabaseURL())
+	// Load configuration
+	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		log.Fatal("Failed to load config:", err)
 	}
-	defer database.Close()
+
+	// Create database config
+	dbConfig := &database.Config{
+		Host:              cfg.DB_Host,
+		Port:              cfg.DB_Port,
+		User:              cfg.DB_User,
+		Password:          cfg.DB_Password,
+		Database:          cfg.DB_Name,
+		SSLMode:           "disable",
+		MaxConns:          int32(cfg.MaxConns),
+		MinConns:          int32(cfg.MinConns),
+		MaxConnLifetime:   cfg.MaxConnLifeTime,
+		MaxConnIdleTime:   cfg.MaxConnIdleTime,
+		HealthCheckPeriod: cfg.HealthCheckPeriod,
+	}
+
+	// Validate config
+	if err := dbConfig.Validate(); err != nil {
+		log.Fatal("Invalid database config:", err)
+	}
+
+	// Initialize database connection pool
+	ctx := context.Background()
+	pool, err := dbConfig.NewPool(ctx)
+	if err != nil {
+		log.Fatal("Failed to create database connection pool:", err)
+	}
+	defer pool.Close()
 
 	// Test database connection
-	if err := database.Ping(); err != nil {
+	if err := pool.Ping(ctx); err != nil {
 		log.Fatal("Failed to ping database:", err)
 	}
 
 	// Initialize SQLC queries
-	queries := db.New(database)
+	queries := db.New(pool)
+
+	// Initialize JWT service
+	jwtService := auth.NewJWTService(cfg.JWTSecret)
 
 	// Initialize services
-	authService := auth.NewAuthService(queries, database)
-	productService := products.NewService(queries)
-	inventoryService := inventory.NewService(nil, queries) // Note: pgxpool not used in current service
+	authService := auth.NewAuthService(pool, queries, jwtService)
+	productService := products.NewProductService(pool, queries)
+	inventoryService := inventory.NewService(pool, queries)
 
 	// Initialize handlers
+	authHandler := handler.NewAuthHandler(authService)
 	productHandler := products.NewHandler(productService)
 	inventoryHandler := inventory.NewHandler(inventoryService)
 
@@ -44,14 +80,16 @@ func main() {
 	e := echo.New()
 
 	// Middleware
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+	e.Use(echoMiddleware.Logger())
+	e.Use(echoMiddleware.Recover())
+	e.Use(middleware.RequestIDMiddleware)
+	e.Use(middleware.ErrorHandler)
+	e.Use(echoMiddleware.CORS())
 
 	// Health check
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(200, map[string]string{
-			"status": "ok",
+			"status":  "ok",
 			"service": "agromart-api",
 		})
 	})
@@ -63,37 +101,22 @@ func main() {
 	authGroup := api.Group("/auth")
 	authMiddleware := auth.NewMiddleware(authService)
 	
-	authGroup.POST("/register", func(c echo.Context) error {
-		// TODO: Implement register handler
-		return c.JSON(501, map[string]string{"error": "not implemented"})
-	})
-	
-	authGroup.POST("/login", func(c echo.Context) error {
-		// TODO: Implement login handler
-		return c.JSON(501, map[string]string{"error": "not implemented"})
-	})
-	
-	authGroup.POST("/logout", func(c echo.Context) error {
-		// TODO: Implement logout handler
-		return c.JSON(501, map[string]string{"error": "not implemented"})
-	})
-	
-	authGroup.GET("/me", authMiddleware.RequireAuth(func(c echo.Context) error {
-		// TODO: Implement me handler
-		return c.JSON(501, map[string]string{"error": "not implemented"})
-	}))
+	authGroup.POST("/register", authHandler.Register)
+	authGroup.POST("/login", authHandler.Login)
+	authGroup.POST("/logout", authHandler.Logout)
+	authGroup.POST("/refresh", authHandler.RefreshToken)
+	authGroup.GET("/me", authMiddleware.RequireAuth(authHandler.Me))
 
 	// Protected routes
 	protected := api.Group("")
 	protected.Use(authMiddleware.RequireAuth)
+	
+	// Auth protected routes
+	authHandler.RegisterProtectedRoutes(protected)
 
 	// Product routes
 	productGroup := protected.Group("/products")
 	productHandler.RegisterRoutes(productGroup)
-
-	// Unit routes
-	unitGroup := protected.Group("/units")
-	// TODO: Implement unit handlers
 
 	// Inventory routes
 	inventoryGroup := protected.Group("")
@@ -131,23 +154,15 @@ func main() {
 	})
 
 	// Start server
-	port := getPort()
+	port := getPort(cfg.AppPort)
 	log.Printf("Server starting on port %s", port)
 	log.Fatal(e.Start(":" + port))
 }
 
-func getDatabaseURL() string {
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		dbURL = "postgres://username:password@localhost/agromart2?sslmode=disable"
-	}
-	return dbURL
-}
-
-func getPort() string {
+func getPort(defaultPort int) string {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		return strconv.Itoa(defaultPort)
 	}
 	return port
 }

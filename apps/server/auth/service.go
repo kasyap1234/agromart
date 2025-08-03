@@ -7,10 +7,9 @@ import (
 	"errors"
 	"time"
 
+	"agromart2/db"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"agromart2/db"
-	"agromart2/internal/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -83,10 +82,9 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*Login
 
 	// Create tenant first
 	tenant, err := s.queries.CreateTenant(ctx, db.CreateTenantParams{
-		Name:     req.Company,
-		Email:    req.Email,
-		Phone:    req.Phone,
-		IsActive: true,
+		Name:  req.Company,
+		Email: req.Email,
+		Phone: req.Phone,
 	})
 	if err != nil {
 		return nil, err
@@ -100,14 +98,12 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*Login
 
 	// Create admin user
 	user, err := s.queries.CreateUser(ctx, db.CreateUserParams{
-		Name:          req.Name,
-		Email:         req.Email,
-		Password:      string(hashedPassword),
-		Phone:         req.Phone,
-		TenantID:      tenant.ID,
-		Role:          "admin", // First user is always admin
-		EmailVerified: utils.P.Bool(true),
-		IsActive:      utils.P.Bool(true),
+		Name:     req.Name,
+		Email:    req.Email,
+		Password: string(hashedPassword),
+		Phone:    req.Phone,
+		TenantID: tenant.ID,
+		Role:     "admin", // First user is always admin
 	})
 	if err != nil {
 		return nil, err
@@ -173,7 +169,7 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*LoginRespon
 	}
 
 	// Check if user is active
-	if !utils.P.FromBool(user.IsActive) {
+	if !user.IsActive.Bool {
 		return nil, errors.New("account is disabled")
 	}
 
@@ -216,7 +212,7 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*LoginRespon
 
 func (s *AuthService) generateTokens(user db.User, tenant db.Tenant) (string, string, time.Time, error) {
 	expiresAt := time.Now().Add(24 * time.Hour)
-	
+
 	claims := Claims{
 		UserID:   user.ID.String(),
 		TenantID: tenant.ID.String(),

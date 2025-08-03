@@ -26,7 +26,7 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	}
 
 	// Basic validation
-	if req.Email == "" || req.Password == "" || req.Name == "" || req.CompanyName == "" {
+	if req.Email == "" || req.Password == "" || req.FirstName == "" || req.LastName == "" || req.CompanyName == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing required fields")
 	}
 
@@ -37,7 +37,11 @@ func (h *AuthHandler) Register(c echo.Context) error {
 
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"success": true,
-		"data":    response,
+		"data": map[string]interface{}{
+			"user":         response.User,
+			"token":        response.Token,
+			"refresh_token": response.RefreshToken,
+		},
 		"message": "User registered successfully",
 	})
 }
@@ -61,7 +65,11 @@ func (h *AuthHandler) Login(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"success": true,
-		"data":    response,
+		"data": map[string]interface{}{
+			"user":         response.User,
+			"token":        response.Token,
+			"refresh_token": response.RefreshToken,
+		},
 		"message": "Login successful",
 	})
 }
@@ -81,7 +89,10 @@ func (h *AuthHandler) Me(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"success": true,
-		"data":    userWithTenant,
+		"data": map[string]interface{}{
+			"user":   userWithTenant.User,
+			"tenant": userWithTenant.Tenant,
+		},
 	})
 }
 
@@ -106,7 +117,11 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"success": true,
-		"data":    response,
+		"data": map[string]interface{}{
+			"user":         response.User,
+			"token":        response.Token,
+			"refresh_token": response.RefreshToken,
+		},
 		"message": "Token refreshed successfully",
 	})
 }

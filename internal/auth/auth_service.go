@@ -24,10 +24,11 @@ type LoginRequest struct {
 }
 
 type RegisterRequest struct {
-	Name        string `json:"name" validate:"required"`
+	FirstName   string `json:"first_name" validate:"required"`
+	LastName    string `json:"last_name" validate:"required"`
 	Email       string `json:"email" validate:"required,email"`
 	Password    string `json:"password" validate:"required,min=6"`
-	Phone       string `json:"phone" validate:"required"`
+	Phone       string `json:"phone,omitempty"`
 	CompanyName string `json:"company_name" validate:"required"`
 	Role        string `json:"role,omitempty"`
 }
@@ -88,7 +89,7 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 
 	// Create user
 	user, err := qtx.CreateUser(ctx, db.CreateUserParams{
-		Name:     req.Name,
+		Name:     fmt.Sprintf("%s %s", req.FirstName, req.LastName),
 		Email:    req.Email,
 		Password: string(hashedPassword),
 		Phone:    req.Phone,
@@ -125,7 +126,7 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 // Login authenticates a user
 func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*AuthResponse, error) {
 	// First, we need to find the user by email across all tenants
-	// This is a simplified approach - in production, you might want tenant-specific login
+	// This is a simplified approach - in production, you might want to have tenant-specific login
 	user, err := s.getUserByEmailAcrossTenants(ctx, req.Email)
 	if err != nil {
 		return nil, errors.New("invalid credentials")

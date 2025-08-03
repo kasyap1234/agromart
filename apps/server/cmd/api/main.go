@@ -13,6 +13,7 @@ import (
 	"agromart2/apps/server/handler"
 	"agromart2/apps/server/inventory"
 	"agromart2/apps/server/products"
+	"agromart2/apps/server/purchase_orders"
 	"agromart2/apps/server/suppliers"
 	"agromart2/db"
 	"agromart2/internal/auth"
@@ -77,6 +78,7 @@ func main() {
 	inventoryService := inventory.NewService(dbPool, queries)
 	supplierService := suppliers.NewSupplierService(dbPool, queries)
 	customerService := customers.NewCustomerService(dbPool, queries)
+	purchaseOrderService := purchase_orders.NewPurchaseOrderService(dbPool, queries)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -84,6 +86,7 @@ func main() {
 	inventoryHandler := inventory.NewHandler(inventoryService)
 	supplierHandler := suppliers.NewHandler(supplierService)
 	customerHandler := customers.NewHandler(customerService)
+	purchaseOrderHandler := purchase_orders.NewHandler(purchaseOrderService)
 	healthHandler := handler.NewHealthHandler(dbService)
 
 	// Initialize middleware
@@ -118,6 +121,7 @@ func main() {
 	inventoryHandler.RegisterRoutes(protected)
 	supplierHandler.RegisterRoutes(protected)
 	customerHandler.RegisterRoutes(protected)
+	purchaseOrderHandler.RegisterRoutes(protected)
 
 	// Start server
 	quit := make(chan os.Signal, 1)

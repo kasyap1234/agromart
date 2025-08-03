@@ -1,8 +1,10 @@
-# Build stage
 FROM golang:1.24.5-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
+
+# Install migrate tool
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 # Set working directory
 WORKDIR /app
@@ -33,6 +35,7 @@ WORKDIR /root/
 
 # Copy the binary from builder stage
 COPY --from=builder /app/main .
+COPY --from=builder /go/bin/migrate /usr/local/bin/migrate
 
 # Copy migration files
 COPY --from=builder /app/apps/server/sql/schema ./sql/schema
