@@ -1,50 +1,57 @@
-# Go
-# Binaries for programs and plugins
+# Node/Next.js
+node_modules/
+.next/
+.nextcache/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+
+# Go build
+bin/
+build/
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
 *.test
-
-# Code coverage profiles and other test artifacts
 *.out
-coverage.*
-*.coverprofile
-profile.cov
 
-# Dependency directories
-# vendor/
+# Database / Docker
+postgres-data/
+db_data/
+.docker/
+.dockerignore
+Dockerfile.*.local
 
-# Go workspace file
-go.work
-go.work.sum
-
-# Compiled binaries
-/bin
-
-# Next.js / Node.js
-/apps/client/node_modules
-/apps/client/.next/
-/apps/client/.env.local
-/apps/client/npm-debug.log*
-/apps/client/yarn-error.log
-
-# Environment variables
-.env
-.env.local
-.env.production
-.env.development
-
-# Editor/IDE
+# Editor/OS
+.DS_Store
+Thumbs.db
 .idea/
 .vscode/
+*.swp
+*.swo
 
-# OS-specific
-.DS_Store
+# Keep env files tracked (do NOT ignore):
+!.env
+!apps/server/.env
+!apps/client/.env.local
 
-# Log files
-*.log
-*.pem 
+# Build caches
+.eslintcache
+.cache/
+.vercel/
+
+# sqlc local cache directories (if any), but keep generated Go files tracked
+.sqlc/*
+!db/*.go
+
+# Test output
+junit.xml
+
+# Misc
+*.pid
+*.seed

@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   db:
@@ -35,6 +34,7 @@ services:
       APP_DB_NAME: inventory
       APP_APPPORT: 8080
       JWT_SECRET: your-secret-key-change-in-production
+      DATABASE_URL: postgres://postgres:secret@db:5432/inventory?sslmode=disable
     volumes:
       - ./apps/server/sql/schema:/app/sql/schema
     command: >

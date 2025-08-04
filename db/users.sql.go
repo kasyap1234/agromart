@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -14,29 +15,42 @@ import (
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (name, email, password, phone, tenant_id, role)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, email, password, phone, tenant_id, role, email_verified, is_active, created_at
+VALUES ($1, $2, $3, $4, $5, $6::text)
+RETURNING id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at
 `
 
 type CreateUserParams struct {
-	Name     string      `json:"name"`
-	Email    string      `json:"email"`
-	Password string      `json:"password"`
-	Phone    string      `json:"phone"`
-	TenantID uuid.UUID   `json:"tenant_id"`
-	Role     interface{} `json:"role"`
+	Name     string    `json:"name"`
+	Email    string    `json:"email"`
+	Password string    `json:"password"`
+	Phone    string    `json:"phone"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	Column6  string    `json:"column_6"`
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+type CreateUserRow struct {
+	ID            uuid.UUID   `json:"id"`
+	Name          string      `json:"name"`
+	Email         string      `json:"email"`
+	Password      string      `json:"password"`
+	Phone         string      `json:"phone"`
+	TenantID      uuid.UUID   `json:"tenant_id"`
+	Role          string      `json:"role"`
+	EmailVerified pgtype.Bool `json:"email_verified"`
+	IsActive      pgtype.Bool `json:"is_active"`
+	CreatedAt     time.Time   `json:"created_at"`
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
 	row := q.db.QueryRow(ctx, createUser,
 		arg.Name,
 		arg.Email,
 		arg.Password,
 		arg.Phone,
 		arg.TenantID,
-		arg.Role,
+		arg.Column6,
 	)
-	var i User
+	var i CreateUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -53,7 +67,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, password, phone, tenant_id, role, email_verified, is_active, created_at FROM users
+SELECT id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at FROM users
 WHERE email = $1 AND tenant_id = $2
 `
 
@@ -62,9 +76,22 @@ type GetUserByEmailParams struct {
 	TenantID uuid.UUID `json:"tenant_id"`
 }
 
-func (q *Queries) GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (User, error) {
+type GetUserByEmailRow struct {
+	ID            uuid.UUID   `json:"id"`
+	Name          string      `json:"name"`
+	Email         string      `json:"email"`
+	Password      string      `json:"password"`
+	Phone         string      `json:"phone"`
+	TenantID      uuid.UUID   `json:"tenant_id"`
+	Role          string      `json:"role"`
+	EmailVerified pgtype.Bool `json:"email_verified"`
+	IsActive      pgtype.Bool `json:"is_active"`
+	CreatedAt     time.Time   `json:"created_at"`
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error) {
 	row := q.db.QueryRow(ctx, getUserByEmail, arg.Email, arg.TenantID)
-	var i User
+	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -81,13 +108,26 @@ func (q *Queries) GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) 
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, name, email, password, phone, tenant_id, role, email_verified, is_active, created_at FROM users
+SELECT id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at FROM users
 WHERE id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+type GetUserByIDRow struct {
+	ID            uuid.UUID   `json:"id"`
+	Name          string      `json:"name"`
+	Email         string      `json:"email"`
+	Password      string      `json:"password"`
+	Phone         string      `json:"phone"`
+	TenantID      uuid.UUID   `json:"tenant_id"`
+	Role          string      `json:"role"`
+	EmailVerified pgtype.Bool `json:"email_verified"`
+	IsActive      pgtype.Bool `json:"is_active"`
+	CreatedAt     time.Time   `json:"created_at"`
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
-	var i User
+	var i GetUserByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -104,23 +144,36 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 }
 
 const listUsersByRole = `-- name: ListUsersByRole :many
-SELECT id, name, email, password, phone, tenant_id, role, email_verified, is_active, created_at FROM users
-WHERE tenant_id = $1 AND role = $2
+SELECT id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at FROM users
+WHERE tenant_id = $1 AND role = $2::text
 ORDER BY name
 LIMIT $3 OFFSET $4
 `
 
 type ListUsersByRoleParams struct {
-	TenantID uuid.UUID   `json:"tenant_id"`
-	Role     interface{} `json:"role"`
-	Limit    int32       `json:"limit"`
-	Offset   int32       `json:"offset"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	Column2  string    `json:"column_2"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
 }
 
-func (q *Queries) ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams) ([]User, error) {
+type ListUsersByRoleRow struct {
+	ID            uuid.UUID   `json:"id"`
+	Name          string      `json:"name"`
+	Email         string      `json:"email"`
+	Password      string      `json:"password"`
+	Phone         string      `json:"phone"`
+	TenantID      uuid.UUID   `json:"tenant_id"`
+	Role          string      `json:"role"`
+	EmailVerified pgtype.Bool `json:"email_verified"`
+	IsActive      pgtype.Bool `json:"is_active"`
+	CreatedAt     time.Time   `json:"created_at"`
+}
+
+func (q *Queries) ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams) ([]ListUsersByRoleRow, error) {
 	rows, err := q.db.Query(ctx, listUsersByRole,
 		arg.TenantID,
-		arg.Role,
+		arg.Column2,
 		arg.Limit,
 		arg.Offset,
 	)
@@ -128,9 +181,9 @@ func (q *Queries) ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams
 		return nil, err
 	}
 	defer rows.Close()
-	items := []User{}
+	items := []ListUsersByRoleRow{}
 	for rows.Next() {
-		var i User
+		var i ListUsersByRoleRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -155,9 +208,9 @@ func (q *Queries) ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams
 
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
-SET name = $2, email = $3, phone = $4, role = $5, email_verified = $6
+SET name = $2, email = $3, phone = $4, role = $5::text, email_verified = $6
 WHERE id = $1 AND tenant_id = $7
-RETURNING id, name, email, password, phone, tenant_id, role, email_verified, is_active, created_at
+RETURNING id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at
 `
 
 type UpdateUserParams struct {
@@ -165,22 +218,35 @@ type UpdateUserParams struct {
 	Name          string      `json:"name"`
 	Email         string      `json:"email"`
 	Phone         string      `json:"phone"`
-	Role          interface{} `json:"role"`
+	Column5       string      `json:"column_5"`
 	EmailVerified pgtype.Bool `json:"email_verified"`
 	TenantID      uuid.UUID   `json:"tenant_id"`
 }
 
-func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+type UpdateUserRow struct {
+	ID            uuid.UUID   `json:"id"`
+	Name          string      `json:"name"`
+	Email         string      `json:"email"`
+	Password      string      `json:"password"`
+	Phone         string      `json:"phone"`
+	TenantID      uuid.UUID   `json:"tenant_id"`
+	Role          string      `json:"role"`
+	EmailVerified pgtype.Bool `json:"email_verified"`
+	IsActive      pgtype.Bool `json:"is_active"`
+	CreatedAt     time.Time   `json:"created_at"`
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserRow, error) {
 	row := q.db.QueryRow(ctx, updateUser,
 		arg.ID,
 		arg.Name,
 		arg.Email,
 		arg.Phone,
-		arg.Role,
+		arg.Column5,
 		arg.EmailVerified,
 		arg.TenantID,
 	)
-	var i User
+	var i UpdateUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,

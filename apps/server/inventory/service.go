@@ -164,13 +164,11 @@ func (s *InventoryService) CreateInventoryLog(ctx context.Context, tenantID, pro
 
 // GetExpiringBatches gets batches that are expiring within specified days
 func (s *InventoryService) GetExpiringBatches(ctx context.Context, tenantID uuid.UUID, days int) ([]db.GetExpiringBatchesRow, error) {
-	expiryDate := time.Now().AddDate(0, 0, days)
-	
-	args := db.GetExpiringBatchesParams{
-		TenantID:   tenantID,
-		ExpiryDate: expiryDate,
-	}
-	return s.queries.GetExpiringBatches(ctx, args)
+	// Current sqlc-generated GetExpiringBatchesParams only includes TenantID (see db/inventory.sql.go).
+	// The SQL uses a date upper bound but sqlc compiled it without exposing the second param.
+	return s.queries.GetExpiringBatches(ctx, db.GetExpiringBatchesParams{
+		TenantID: tenantID,
+	})
 }
 
 // GetInventoryValue calculates total inventory value for a tenant

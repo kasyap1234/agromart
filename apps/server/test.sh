@@ -1,50 +1,48 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Test registration endpoint
-echo "Testing registration..."
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "testuser",
-    "email": "test@example.com",
-    "password": "password123",
-    "role": "buyer",
-    "company": "Test Company"
-  }'
+BASE=${BASE_URL:-http://localhost:8080}
 
-# Test login endpoint
-echo -e "\n\nTesting login..."
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "test@example.com",
-    "password": "password123",
-    "role": "buyer"
-  }'
+echo "# Health"
+curl -i -sS "$BASE/health" | sed -n "1,20p"
+echo
 
-# Test refresh token endpoint
-echo -e "\n\nTesting token refresh..."
-curl -X POST http://localhost:8080/api/auth/refresh \
-  -H "Content-Type: application/json" \
-  -d '{
-    "refresh_token": "mock-refresh-token"
-  }'
+echo "# Register (may 409)"
+curl -i -sS -X POST "$BASE/api/auth/register" -H "Content-Type: application/json" \
+  -d "{\"name\":\"Test User\",\"email\":\"test@example.com\",\"password\":\"password123\",\"phone\":\"+10000000000\",\"company\":\"Test Company\"}" \
+  | sed -n "1,40p"
+echo
 
-# Test logout endpoint
-echo -e "\n\nTesting logout..."
-curl -X POST http://localhost:8080/api/auth/logout
+echo "# Login"
+LOGIN_JSON=$(curl -sS -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" \
+  -d "{\"email\":\"test@example.com\",\"password\":\"password123\"}")
+echo "$LOGIN_JSON" | sed -n "1,30p"
+TOKEN=$(echo "$LOGIN_JSON" | sed -n "s/.*\"token\"\\s*:\\s*\"\\([^\"]*\\)\".*/\\1/p" | head -n1)
+if [ -z "$TOKEN" ]; then
+  echo "ERROR: Failed to extract token from login response" >&2
+  exit 1
+fi
+echo
 
-# Test me endpoint (requires auth token)
-echo -e "\n\nTesting me endpoint..."
-curl -X GET http://localhost:8080/api/auth/me \
-  -H "Authorization: Bearer mock-access-token"
+auth() { curl -i -sS -H "Authorization: Bearer $TOKEN" "$@"; }
 
-# Test password update endpoint (requires auth token)
-echo -e "\n\nTesting password update..."
-curl -X PUT http://localhost:8080/api/auth/password \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer mock-access-token" \
-  -d '{
-    "current_password": "password123",
-    "new_password": "newpassword123"
-  }'
+echo "# Me (protected)"
+auth "$BASE/api/auth/me" | sed -n "1,60p"
+echo
+
+echo "# Reports dashboard-stats"
+auth "$BASE/api/reports/dashboard-stats" | sed -n "1,80p"
+echo
+
+echo "# Reports expiring-batches?days=30"
+auth "$BASE/api/reports/expiring-batches?days=30" | sed -n "1,80p"
+echo
+
+echo "# Reports low-stock?threshold=10"
+auth "$BASE/api/reports/low-stock?threshold=10" | sed -n "1,80p"
+echo
+
+echo "# Reports inventory-value"
+auth "$BASE/api/reports/inventory-value" | sed -n "1,80p"
+echo
+

@@ -88,13 +88,14 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 	}
 
 	// Create user
-	user, err := qtx.CreateUser(ctx, db.CreateUserParams{
+	created, err := qtx.CreateUser(ctx, db.CreateUserParams{
 		Name:     fmt.Sprintf("%s %s", req.FirstName, req.LastName),
 		Email:    req.Email,
 		Password: string(hashedPassword),
 		Phone:    req.Phone,
 		TenantID: tenant.ID,
-		Role:     role,
+		// sqlc generated param name for $6::text is Column6
+		Column6:  role,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
@@ -105,8 +106,22 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	// Map CreateUserRow to db.User for response consistency
+	user := db.User{
+		ID:            created.ID,
+		Name:          created.Name,
+		Email:         created.Email,
+		Password:      created.Password,
+		Phone:         created.Phone,
+		TenantID:      created.TenantID,
+		Role:          created.Role,
+		EmailVerified: created.EmailVerified,
+		IsActive:      created.IsActive,
+		CreatedAt:     created.CreatedAt,
+	}
+
 	// Generate tokens
-	token, err := s.jwt.GenerateToken(user.ID.String(), user.TenantID.String(), user.Email, role)
+	token, err := s.jwt.GenerateToken(user.ID.String(), user.TenantID.String(), user.Email, created.Role)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -143,7 +158,15 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*AuthRespons
 	}
 
 	// Generate tokens
-	token, err := s.jwt.GenerateToken(user.ID.String(), user.TenantID.String(), user.Email, user.Role.(string))
+	roleStr := ""
+	switch v := user.Role.(type) {
+	case string:
+		roleStr = v
+	default:
+		// Fallback: fmt.Sprint handles pgtype.Text or other underlying types gracefully
+		roleStr = fmt.Sprint(v)
+	}
+	token, err := s.jwt.GenerateToken(user.ID.String(), user.TenantID.String(), user.Email, roleStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -162,21 +185,46 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*AuthRespons
 
 // GetUserByID retrieves a user by ID
 func (s *AuthService) GetUserByID(ctx context.Context, userID uuid.UUID) (*db.User, error) {
-	user, err := s.queries.GetUserByID(ctx, userID)
+	row, err := s.queries.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
+	}
+	user := db.User{
+		ID:            row.ID,
+		Name:          row.Name,
+		Email:         row.Email,
+		Password:      row.Password,
+		Phone:         row.Phone,
+		TenantID:      row.TenantID,
+		Role:          row.Role,
+		EmailVerified: row.EmailVerified,
+		IsActive:      row.IsActive,
+		CreatedAt:     row.CreatedAt,
 	}
 	return &user, nil
 }
 
 // GetUserWithTenant retrieves user with tenant information
 func (s *AuthService) GetUserWithTenant(ctx context.Context, userID uuid.UUID) (*UserWithTenant, error) {
-	user, err := s.queries.GetUserByID(ctx, userID)
+	row, err := s.queries.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
 	}
 
-	tenant, err := s.queries.GetTenantByID(ctx, user.TenantID)
+	user := db.User{
+		ID:            row.ID,
+		Name:          row.Name,
+		Email:         row.Email,
+		Password:      row.Password,
+		Phone:         row.Phone,
+		TenantID:      row.TenantID,
+		Role:          row.Role,
+		EmailVerified: row.EmailVerified,
+		IsActive:      row.IsActive,
+		CreatedAt:     row.CreatedAt,
+	}
+
+	tenant, err := s.queries.GetTenantByID(ctx, row.TenantID)
 	if err != nil {
 		return nil, fmt.Errorf("tenant not found: %w", err)
 	}
@@ -210,7 +258,14 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*A
 	}
 
 	// Generate new tokens
-	token, err := s.jwt.GenerateToken(user.ID.String(), user.TenantID.String(), user.Email, user.Role.(string))
+	roleStr := ""
+	switch v := user.Role.(type) {
+	case string:
+		roleStr = v
+	default:
+		roleStr = fmt.Sprint(v)
+	}
+	token, err := s.jwt.GenerateToken(user.ID.String(), user.TenantID.String(), user.Email, roleStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -248,31 +303,60 @@ func (s *AuthService) UpdatePassword(ctx context.Context, userID, tenantID uuid.
 
 // ListUsers lists users for a tenant
 func (s *AuthService) ListUsers(ctx context.Context, tenantID uuid.UUID, role string, limit, offset int32) ([]db.User, error) {
-	users, err := s.queries.ListUsersByRole(ctx, db.ListUsersByRoleParams{
+	rows, err := s.queries.ListUsersByRole(ctx, db.ListUsersByRoleParams{
 		TenantID: tenantID,
-		Role:     role,
-		Limit:    limit,
-		Offset:   offset,
+		// sqlc named this Column2 for role param
+		Column2: role,
+		Limit:   limit,
+		Offset:  offset,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list users: %w", err)
 	}
-	return users, nil
+	out := make([]db.User, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, db.User{
+			ID:            r.ID,
+			Name:          r.Name,
+			Email:         r.Email,
+			Password:      r.Password,
+			Phone:         r.Phone,
+			TenantID:      r.TenantID,
+			Role:          r.Role,
+			EmailVerified: r.EmailVerified,
+			IsActive:      r.IsActive,
+			CreatedAt:     r.CreatedAt,
+		})
+	}
+	return out, nil
 }
 
 // UpdateUser updates user information
 func (s *AuthService) UpdateUser(ctx context.Context, userID, tenantID uuid.UUID, name, email, phone, role string, emailVerified bool) (*db.User, error) {
-	user, err := s.queries.UpdateUser(ctx, db.UpdateUserParams{
+	row, err := s.queries.UpdateUser(ctx, db.UpdateUserParams{
 		ID:            userID,
 		Name:          name,
 		Email:         email,
 		Phone:         phone,
-		Role:          role,
+		// sqlc named this Column5 for role param
+		Column5:       role,
 		EmailVerified: utils.P.Bool(emailVerified),
 		TenantID:      tenantID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to update user: %w", err)
+	}
+	user := db.User{
+		ID:            row.ID,
+		Name:          row.Name,
+		Email:         row.Email,
+		Password:      row.Password,
+		Phone:         row.Phone,
+		TenantID:      row.TenantID,
+		Role:          row.Role,
+		EmailVerified: row.EmailVerified,
+		IsActive:      row.IsActive,
+		CreatedAt:     row.CreatedAt,
 	}
 	return &user, nil
 }

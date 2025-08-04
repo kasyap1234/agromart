@@ -1,4 +1,6 @@
-# AgroMart Deployment Guide
+# Documentation moved
+
+Deployment notes have been consolidated into README.md Quick Start for local development. For production, use docker-compose.prod.yml and the Dockerfiles under docker/. Keep environment variables in sync with README.
 
 This guide covers the complete deployment process for the AgroMart agricultural management system.
 

@@ -18,8 +18,9 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./apps/server/cmd/api
+# Build the application (compile the current server main package)
+# Ensure we build from apps/server where main.go resides
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./apps/server
 
 # Final stage
 FROM alpine:latest

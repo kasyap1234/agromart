@@ -7,6 +7,13 @@ import { MeResponse } from '@/types/auth';
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
+// Debug: surface base URL and token presence to console for diagnostics
+if (typeof window !== 'undefined') {
+  const t = Cookies.get('auth_token');
+  // eslint-disable-next-line no-console
+  console.debug('[API] Base URL:', API_BASE_URL, 'Token present:', !!t);
+}
+
 // Create axios instance
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -22,10 +29,21 @@ api.interceptors.request.use(
     const token = Cookies.get('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      // Debug header marker for tracing through proxies
+      (config.headers as any)['X-Debug-Client'] = 'agromart-web';
+    } else {
+      (config.headers as any)['X-Debug-Client'] = 'agromart-web-no-token';
     }
+    // eslint-disable-next-line no-console
+    console.debug('[API][REQ]', config.method?.toUpperCase(), config.baseURL + config.url, {
+      hasToken: !!token,
+      params: config.params,
+    });
     return config;
   },
   (error) => {
+    // eslint-disable-next-line no-console
+    console.error('[API][REQ][ERR]', error);
     return Promise.reject(error);
   }
 );
@@ -33,9 +51,18 @@ api.interceptors.request.use(
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response: AxiosResponse) => {
+    // eslint-disable-next-line no-console
+    console.debug('[API][RES]', response.config.url, response.status);
     return response;
   },
   (error: AxiosError) => {
+    // eslint-disable-next-line no-console
+    console.error('[API][RES][ERR]', {
+      url: error.config?.url,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+
     // Handle common errors
     if (error.response) {
       const { status, data } = error.response;
@@ -60,7 +87,7 @@ api.interceptors.response.use(
           break;
         default:
           if (data && typeof data === 'object' && 'message' in data) {
-            toast.error(data.message as string);
+            toast.error((data as any).message as string);
           } else {
             toast.error('An unexpected error occurred.');
           }
