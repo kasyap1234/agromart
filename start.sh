@@ -15,34 +15,35 @@ docker compose version >/dev/null || { echo "docker compose not found"; exit 1; 
 echo "[start] Building images"
 docker compose build
 
-# DB up and wait
+# DB up and wait (use compose health)
 echo "[start] Up db"
 docker compose up -d db
 for i in $(seq 1 60); do
-  status=$(docker inspect --format={{json .State.Health.Status}} agromart-db 2>/dev/null || true)
-  echo "[start] db health status: $status"
-  echo "$status" | grep -q healthy && break || true
+  status=$(docker inspect --format='{{.State.Health.Status}}' agromart-db 2>/dev/null || true)
+  echo "[start] db health status: ${status:-unknown}"
+  [ "${status:-starting}" = "healthy" ] && break || true
   sleep 2
 done
+[ "${status:-}" = "healthy" ] || { echo "[start] db not healthy"; docker compose logs db --tail=200 || true; exit 1; }
 
 # Backend up and wait
-PORT=${APP_PORT:-8080}
+PORT=${APP_APPPORT:-8080}
 echo "[start] Up backend"
 docker compose up -d backend
 for i in $(seq 1 60); do
-  code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${PORT}/health || true)
+  code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${PORT}/health" || true)
   [ "$code" = "200" ] && break || true
   sleep 2
 done
-[ "${code:-000}" = "200" ] || { echo "[start] backend not healthy"; docker compose logs backend --tail=200; exit 1; }
+[ "${code:-000}" = "200" ] || { echo "[start] backend not healthy"; docker compose logs backend --tail=200 || true; exit 1; }
 
 # Frontend up and quick probe
 echo "[start] Up frontend"
 docker compose up -d frontend || true
 for i in $(seq 1 30); do
-  c=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 || true)
+  c=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000" || true)
   [ "$c" = "200" ] && break || true
   sleep 2
 done
 
-echo "[start] URLs:\n - Backend:  http://localhost:${PORT}\n - Health:   http://localhost:${PORT}/health\n - Frontend: http://localhost:3000"
+printf "%s\n" "[start] URLs:" " - Backend:  http://localhost:${PORT}" " - Health:   http://localhost:${PORT}/health" " - Frontend: http://localhost:3000"
