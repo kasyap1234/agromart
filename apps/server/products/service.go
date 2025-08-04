@@ -5,9 +5,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kasyap1234/agromart/db"
-	"github.com/kasyap1234/agromart/internal/database"
-	"github.com/kasyap1234/agromart/internal/utils"
+	"agromart2/db"
+	"agromart2/internal/database"
+	"agromart2/internal/utils"
 	"github.com/rs/zerolog/log"
 )
 
@@ -34,6 +34,19 @@ type ProductInputRequest struct {
 	GstPercent   *int       `json:"gst_percent,omitempty"`
 }
 
+type CreateProductParams struct {
+	TenantID     uuid.UUID
+	SKU          string
+	Name         string
+	Price        int
+	Description  string
+	ImageURL     string
+	Brand        string
+	UnitID       uuid.UUID
+	PricePerUnit int
+	GSTPercent   int
+}
+
 func (s *ProductService) CheckProductExists(ctx context.Context, productID uuid.UUID, tenantID uuid.UUID) (bool, error) {
 	args := db.CheckProductExistsParams{
 		ID:       productID,
@@ -55,18 +68,18 @@ func (s *ProductService) CountProducts(ctx context.Context, tenantID uuid.UUID) 
 	return count, nil
 }
 
-func (s *ProductService) CreateProduct(ctx context.Context, tenantID uuid.UUID, sku string, name string, price int, description string, imageUrl string, brand string, unitID uuid.UUID, pricePerUnit int, GstPercent int) (db.Product, error) {
+func (s *ProductService) CreateProduct(ctx context.Context, params CreateProductParams) (db.Product, error) {
 	args := db.CreateProductParams{
-		TenantID:     tenantID,
-		Sku:          sku,
-		Name:         name,
-		Price:        utils.P.Numeric(price),
-		Description:  utils.P.Text(description),
-		ImageUrl:     utils.P.Text(imageUrl),
-		Brand:        utils.P.Text(brand),
-		UnitID:       unitID,
-		PricePerUnit: utils.P.Numeric(pricePerUnit),
-		GstPercent:   utils.P.Numeric(GstPercent),
+		TenantID:     params.TenantID,
+		Sku:          params.SKU,
+		Name:         params.Name,
+		Price:        utils.P.Numeric(params.Price),
+		Description:  utils.P.Text(params.Description),
+		ImageUrl:     utils.P.Text(params.ImageURL),
+		Brand:        utils.P.Text(params.Brand),
+		UnitID:       params.UnitID,
+		PricePerUnit: utils.P.Numeric(params.PricePerUnit),
+		GstPercent:   utils.P.Numeric(params.GSTPercent),
 	}
 
 	product, err := s.q.CreateProduct(ctx, args)
@@ -75,6 +88,22 @@ func (s *ProductService) CreateProduct(ctx context.Context, tenantID uuid.UUID, 
 		return db.Product{}, err
 	}
 	return product, nil
+}
+
+// Legacy method for backward compatibility
+func (s *ProductService) CreateProductLegacy(ctx context.Context, tenantID uuid.UUID, sku string, name string, price int, description string, imageUrl string, brand string, unitID uuid.UUID, pricePerUnit int, GstPercent int) (db.Product, error) {
+	return s.CreateProduct(ctx, CreateProductParams{
+		TenantID:     tenantID,
+		SKU:          sku,
+		Name:         name,
+		Price:        price,
+		Description:  description,
+		ImageURL:     imageUrl,
+		Brand:        brand,
+		UnitID:       unitID,
+		PricePerUnit: pricePerUnit,
+		GSTPercent:   GstPercent,
+	})
 }
 
 func (s *ProductService) CreateUnit(ctx context.Context, ID uuid.UUID, tenantID uuid.UUID, name string, abbreviation string) (db.Unit, error) {

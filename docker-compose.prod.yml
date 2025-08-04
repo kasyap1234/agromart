@@ -1,0 +1,157 @@
+version: '3.8'
+
+services:
+  # Database
+  db:
+    image: postgres:17.5-bookworm
+    container_name: agromart_postgres_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${APP_DB_USER}
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD}
+      POSTGRES_DB: ${APP_DB_NAME}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${APP_DB_USER}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agromart-network
+    # Don't expose ports in production - only internal access
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: agromart_backend_prod
+    restart: unless-stopped
+    environment:
+      APP_DB_HOST: db
+      APP_DB_PORT: 5432
+      APP_DB_USER: ${APP_DB_USER}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      APP_DB_NAME: ${APP_DB_NAME}
+      APP_APPPORT: 8080
+      MAX_CONNS: ${MAX_CONNS:-50}
+      MIN_CONNS: ${MIN_CONNS:-10}
+      MAX_CONN_LIFE_TIME: ${MAX_CONN_LIFE_TIME:-2h}
+      MAX_CONN_IDLE_TIME: ${MAX_CONN_IDLE_TIME:-1h}
+      HEALTH_CHECK_PERIOD: ${HEALTH_CHECK_PERIOD:-30s}
+      JWT_SECRET: ${JWT_SECRET}
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - agromart-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+      replicas: 2
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: agromart_frontend_prod
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+      NEXT_PUBLIC_APP_VERSION: ${NEXT_PUBLIC_APP_VERSION}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - agromart-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: agromart_redis_prod
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agromart-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.1'
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: agromart_nginx_prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agromart-network
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.1'
+
+volumes:
+  postgres_data_prod:
+    driver: local
+  redis_data_prod:
+    driver: local
+  nginx_logs:
+    driver: local
+
+networks:
+  agromart-network:
+    driver: bridge

@@ -85,3 +85,31 @@ SELECT * FROM inventory_log
 WHERE tenant_id = $1 AND batch_id = $2
 ORDER BY transaction_date DESC
 LIMIT $3 OFFSET $4;
+
+-- name: GetExpiringBatches :many
+SELECT
+    b.id as batch_id,
+    b.batch_number,
+    b.expiry_date,
+    p.id as product_id,
+    p.name as product_name,
+    p.sku as product_sku,
+    i.quantity,
+    EXTRACT(DAY FROM (b.expiry_date - CURRENT_DATE)) as days_until_expiry
+FROM batches b
+JOIN products p ON b.product_id = p.id
+JOIN inventory i ON b.id = i.batch_id
+WHERE b.tenant_id = $1
+    AND b.expiry_date <= $2
+    AND i.quantity > 0
+ORDER BY b.expiry_date ASC;
+
+-- name: GetInventoryValue :one
+SELECT COALESCE(SUM(i.quantity * b.cost), 0) as total_value
+FROM inventory i
+JOIN batches b ON i.batch_id = b.id
+WHERE i.tenant_id = $1;
+
+-- name: CountProductsByTenant :one
+SELECT COUNT(*) FROM products
+WHERE tenant_id = $1;

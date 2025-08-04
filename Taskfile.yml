@@ -55,6 +55,75 @@ tasks:
           GOARCH: arm64
           OUTPUT: api-linux-arm64
 
+  build:all:
+    desc: "Build entire application locally (frontend + backend)"
+    cmds:
+      - echo "🏗️  Building Agromart Application..."
+      - echo "📦 Installing frontend dependencies..."
+      - cd apps/client && npm install
+      - echo "🎨 Installing Tailwind CSS plugins..."
+      - cd apps/client && npm install @tailwindcss/forms @tailwindcss/typography @tailwindcss/aspect-ratio --silent
+      - echo "🔨 Building frontend..."
+      - cd apps/client && npm run build
+      - echo "🔧 Building backend..."
+      - task: build
+        vars:
+          OUTPUT: agromart
+      - echo "✅ Build complete! Frontend built in apps/client/.next and backend binary in bin/agromart"
+
+  # 🚀 Development Tasks
+  dev:preview:
+    desc: "Run development preview of entire application (frontend + backend)"
+    deps: [run:db-dev]
+    cmds:
+      - echo "🚀 Starting Agromart Development Preview..."
+      - echo "📦 Installing frontend dependencies..."
+      - cd apps/client && npm install
+      - echo "🎨 Installing Tailwind CSS plugins..."
+      - cd apps/client && npm install @tailwindcss/forms @tailwindcss/typography @tailwindcss/aspect-ratio --silent
+      - echo "🔄 Generating SQL code..."
+      - task: sqlc-generate
+      - echo "🗄️  Running database migrations..."
+      - task: migrate:up
+      - echo "🎯 Starting backend server (port 8080)..."
+      - cd apps/server && nohup go run {{.BACKEND_PATH}} > /tmp/agromart_backend.log 2>&1 & echo $! > /tmp/agromart_backend.pid
+      - sleep 3
+      - echo "🌐 Starting frontend development server (port 3000)..."
+      - echo "✅ Application running at:"
+      - echo "  Frontend - http://localhost:3000"
+      - echo "  Backend  - http://localhost:8080"
+      - echo "  Database - localhost:5432"
+      - echo ""
+      - echo "💡 Backend logs - tail -f /tmp/agromart_backend.log"
+      - echo "🛑 To stop - task dev:stop"
+      - echo ""
+      - echo "Press Ctrl+C to stop frontend (backend will keep running)"
+      - cd apps/client && npm run dev
+
+  dev:stop:
+    desc: "Stop development preview services"
+    cmds:
+      - echo "🛑 Stopping development services..."
+      - |
+        if [ -f /tmp/agromart_backend.pid ]; then
+          PID=$(cat /tmp/agromart_backend.pid)
+          if kill -0 $PID 2>/dev/null; then
+            echo "Stopping backend server (PID: $PID)..."
+            kill $PID 2>/dev/null || true
+            sleep 2
+            kill -9 $PID 2>/dev/null || true
+          fi
+          rm -f /tmp/agromart_backend.pid
+        fi
+      - |
+        echo "Stopping frontend development server..."
+        pkill -f "next dev" 2>/dev/null || true
+      - task: stop:db-dev
+      - |
+        echo "Cleaning up log files..."
+        rm -f /tmp/agromart_backend.log
+      - echo "✅ All services stopped"
+
   # 🧱 Database Migrations
   migrate:up:
     desc: Run all up migrations
@@ -89,6 +158,7 @@ tasks:
     desc: Generate SQL code using sqlc
     cmds:
       - sqlc generate
+
   stop:db-dev:
     desc: Stop the Postgres container
     cmds:

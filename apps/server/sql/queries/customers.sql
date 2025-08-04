@@ -1,6 +1,6 @@
 -- name: CreateCustomer :one
-INSERT INTO customers (tenant_id, name, contact_person, email, phone, address, payment_mode, is_active)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO customers (tenant_id, name, contact_person, email, phone, address, payment_mode)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetCustomerByID :one
@@ -15,6 +15,37 @@ RETURNING *;
 
 -- name: ListCustomers :many
 SELECT * FROM customers
-WHERE tenant_id = $1 AND is_active = $2
+WHERE tenant_id = $1
+ORDER BY name
+LIMIT $2 OFFSET $3;
+
+-- name: ListActiveCustomers :many
+SELECT * FROM customers
+WHERE tenant_id = $1 AND (is_active IS NULL OR is_active = true)
+ORDER BY name
+LIMIT $2 OFFSET $3;
+
+-- name: SearchCustomers :many
+SELECT * FROM customers
+WHERE tenant_id = $1 AND name ILIKE $2
 ORDER BY name
 LIMIT $3 OFFSET $4;
+
+-- name: CountCustomers :one
+SELECT COUNT(*) FROM customers
+WHERE tenant_id = $1;
+
+-- name: CheckCustomerExists :one
+SELECT EXISTS(
+    SELECT 1 FROM customers
+    WHERE id = $1 AND tenant_id = $2
+);
+
+-- name: DeactivateCustomer :exec
+UPDATE customers
+SET is_active = false, updated_at = NOW()
+WHERE id = $1 AND tenant_id = $2;
+
+-- name: GetCustomerByName :one
+SELECT * FROM customers
+WHERE tenant_id = $1 AND name = $2;

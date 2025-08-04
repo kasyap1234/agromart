@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kasyap1234/agromart/db"
+	"agromart2/db"
 	"github.com/rs/zerolog/log"
 )
 
