@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Load env
+# Resolve repo root even when invoked from anywhere
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
+# Load env from repo root
 if [ -f .env ]; then
   echo "[start] Loading .env"
   set -o allexport; source .env; set +o allexport

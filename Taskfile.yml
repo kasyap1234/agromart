@@ -1,170 +1,101 @@
-version: "3"
-
-# Load env variables from .env file
-dotenv: [".env"]
+version: '3'
 
 vars:
-  OUTPUT_DIR: bin
-  BACKEND_PATH: ./cmd/api
-  MIGRATIONS_DIR: apps/server/sql/schema
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
 
-  # These come from .env and will be available as vars
-  DATABASE_URL: "postgres://{{.APP_DB_USER}}:{{.APP_DB_PASSWORD}}@{{.APP_DB_HOST}}:{{.APP_DB_PORT}}/{{.APP_DB_NAME}}?sslmode=disable"
+env:
+  DOCKER_BUILDKIT: "{{.DOCKER_BUILDKIT}}"
+  COMPOSE_DOCKER_CLI_BUILD: "{{.COMPOSE_DOCKER_CLI_BUILD}}"
 
 tasks:
-  default:
+  dev:build:
+    desc: Start dev stack; build only if images are missing. Always prints ps snapshot.
     cmds:
-      - echo "Hello Agromart"
-    silent: true
-
-  # 🛠️ Build Tasks
-  build:
-    internal: true
-    vars:
-      GOOS: '{{.GOOS | default "linux"}}'
-      GOARCH: '{{.GOARCH | default "amd64"}}'
-      OUTPUT: '{{.OUTPUT | default "api"}}'
-    cmds:
-      - mkdir -p {{.OUTPUT_DIR}}
-      - cd apps/server && GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o ../../{{.OUTPUT_DIR}}/{{.OUTPUT}} {{.BACKEND_PATH}}
-
-  build:mac:
-    desc: "Build for macOS (Apple Silicon)"
-    cmds:
-      - task: build
-        vars:
-          GOOS: darwin
-          GOARCH: arm64
-          OUTPUT: api-mac-arm64
-
-  build:linux:
-    desc: "Build for Linux (x86_64)"
-    cmds:
-      - task: build
-        vars:
-          GOOS: linux
-          GOARCH: amd64
-          OUTPUT: api-linux-amd64
-
-  build:graviton:
-    desc: "Build for AWS Graviton (Linux ARM64)"
-    cmds:
-      - task: build
-        vars:
-          GOOS: linux
-          GOARCH: arm64
-          OUTPUT: api-linux-arm64
-
-  build:all:
-    desc: "Build entire application locally (frontend + backend)"
-    cmds:
-      - echo "🏗️  Building Agromart Application..."
-      - echo "📦 Installing frontend dependencies..."
-      - cd apps/client && npm install
-      - echo "🎨 Installing Tailwind CSS plugins..."
-      - cd apps/client && npm install @tailwindcss/forms @tailwindcss/typography @tailwindcss/aspect-ratio --silent
-      - echo "🔨 Building frontend..."
-      - cd apps/client && npm run build
-      - echo "🔧 Building backend..."
-      - task: build
-        vars:
-          OUTPUT: agromart
-      - echo "✅ Build complete! Frontend built in apps/client/.next and backend binary in bin/agromart"
-
-  # 🚀 Development Tasks
-  dev:preview:
-    desc: "Run development preview of entire application (frontend + backend)"
-    deps: [run:db-dev]
-    cmds:
-      - echo "🚀 Starting Agromart Development Preview..."
-      - echo "📦 Installing frontend dependencies..."
-      - cd apps/client && npm install
-      - echo "🎨 Installing Tailwind CSS plugins..."
-      - cd apps/client && npm install @tailwindcss/forms @tailwindcss/typography @tailwindcss/aspect-ratio --silent
-      - echo "🔄 Generating SQL code..."
-      - task: sqlc-generate
-      - echo "🗄️  Running database migrations..."
-      - task: migrate:up
-      - echo "🎯 Starting backend server (port 8080)..."
-      - cd apps/server && nohup go run {{.BACKEND_PATH}} > /tmp/agromart_backend.log 2>&1 & echo $! > /tmp/agromart_backend.pid
-      - sleep 3
-      - echo "🌐 Starting frontend development server (port 3000)..."
-      - echo "✅ Application running at:"
-      - echo "  Frontend - http://localhost:3000"
-      - echo "  Backend  - http://localhost:8080"
-      - echo "  Database - localhost:5432"
-      - echo ""
-      - echo "💡 Backend logs - tail -f /tmp/agromart_backend.log"
-      - echo "🛑 To stop - task dev:stop"
-      - echo ""
-      - echo "Press Ctrl+C to stop frontend (backend will keep running)"
-      - cd apps/client && npm run dev
-
-  dev:stop:
-    desc: "Stop development preview services"
-    cmds:
-      - echo "🛑 Stopping development services..."
-      - |
-        if [ -f /tmp/agromart_backend.pid ]; then
-          PID=$(cat /tmp/agromart_backend.pid)
-          if kill -0 $PID 2>/dev/null; then
-            echo "Stopping backend server (PID: $PID)..."
-            kill $PID 2>/dev/null || true
-            sleep 2
-            kill -9 $PID 2>/dev/null || true
+      - bash -lc |
+          set -euo pipefail
+          echo "--- Check if images exist (backend, frontend) ---"
+          NEED_BUILD=0
+          if ! docker compose images --quiet | grep -q "[a-zA-Z0-9]"; then
+            NEED_BUILD=1
           fi
-          rm -f /tmp/agromart_backend.pid
-        fi
-      - |
-        echo "Stopping frontend development server..."
-        pkill -f "next dev" 2>/dev/null || true
-      - task: stop:db-dev
-      - |
-        echo "Cleaning up log files..."
-        rm -f /tmp/agromart_backend.log
-      - echo "✅ All services stopped"
+          if [ "$NEED_BUILD" -eq 1 ]; then
+            echo "--- Images missing -> Build (pull + plain progress, 15m timeout) ---"
+            timeout 15m docker compose build --pull --progress=plain
+          else
+            echo "--- Images already present -> Skipping build ---"
+          fi
+          echo "--- Up (detached) ---"
+          docker compose up -d --remove-orphans
+          echo "--- DEV ps ---"
+          docker compose ps
+    silent: false
 
-  # 🧱 Database Migrations
-  migrate:up:
-    desc: Run all up migrations
-    env:
-      DATABASE_URL: "{{.DATABASE_URL}}"
+  dev:rebuild:
+    desc: Force rebuild without cache (plain progress, 15m timeout) and restart dev stack
     cmds:
-      - migrate -path {{.MIGRATIONS_DIR}} -database "$DATABASE_URL" up
+      - bash -lc 'set -euo pipefail; echo "--- Build (no-cache + plain progress, 15m timeout) ---"; timeout 15m docker compose build --no-cache --progress=plain'
+      - bash -lc 'echo "--- Up (detached) ---"; docker compose up -d --remove-orphans'
+      - bash -lc 'echo "--- DEV ps ---"; docker compose ps'
 
-  migrate:down:
-    desc: Roll back latest migration
-    env:
-      DATABASE_URL: "{{.DATABASE_URL}}"
+  dev:up:
+    desc: Start dev stack (db, backend, frontend) in background (no build)
     cmds:
-      - migrate -path {{.MIGRATIONS_DIR}} -database "$DATABASE_URL" down 1
+      - bash -lc 'set -euo pipefail; docker compose up -d --remove-orphans && docker compose ps'
 
-  migrate:create:
-    desc: Create a new migration (e.g. task migrate:create NAME=create_inventory_tables)
-    requires:
-      vars: ["NAME"]
+  dev:down:
+    desc: Stop and remove dev stack with volumes
     cmds:
-      - mkdir -p {{.MIGRATIONS_DIR}}
-      - migrate create -ext sql -seq -dir {{.MIGRATIONS_DIR}} {{.NAME}}
+      - bash -lc 'set -euo pipefail; docker compose down -v --remove-orphans'
 
-  # 🐳 Dev Database
-  run:db-dev:
-    desc: Start Postgres container
+  dev:logs:
+    desc: Tail backend logs for development
     cmds:
-      - docker compose -f docker-compose.db.yml up -d
+      - bash -lc 'set -euo pipefail; docker compose logs -f backend'
 
-  # 📦 SQLC
-  sqlc-generate:
-    desc: Generate SQL code using sqlc
+  dev:health:
+    desc: Probe dev backend and frontend health
     cmds:
-      - sqlc generate
+      - bash -lc 'set -e; echo "# backend"; (curl -i -sS http://localhost:8080/health | sed -n "1,40p") || true; echo; echo "# frontend"; (curl -i -sS http://localhost:3000 | sed -n "1,40p") || true'
 
-  stop:db-dev:
-    desc: Stop the Postgres container
+  prod:build:
+    desc: Build AND start production stack (build images, then up) using docker-compose.prod.yml
     cmds:
-      - docker compose -f docker-compose.db.yml stop db
+      - bash -lc 'set -euo pipefail; DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build --target runtime -t agromart-backend:prod -f Dockerfile .'
+      - bash -lc 'set -euo pipefail; DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build -t agromart-frontend:prod -f docker/frontend.Dockerfile .'
+      - bash -lc 'set -euo pipefail; docker compose -f docker-compose.prod.yml up -d --remove-orphans'
+      - bash -lc 'echo "--- PROD ps ---"; docker compose -f docker-compose.prod.yml ps'
 
-  rm:db-dev:
-    desc: Stop and remove Postgres container and volume
+  prod:rebuild:
+    desc: Force rebuild images without cache and restart production stack
     cmds:
-      - docker compose -f docker-compose.db.yml down -v
+      - bash -lc 'set -euo pipefail; DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build --no-cache --target runtime -t agromart-backend:prod -f Dockerfile .'
+      - bash -lc 'set -euo pipefail; DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build --no-cache -t agromart-frontend:prod -f docker/frontend.Dockerfile .'
+      - bash -lc 'set -euo pipefail; docker compose -f docker-compose.prod.yml up -d --remove-orphans'
+      - bash -lc 'echo "--- PROD ps ---"; docker compose -f docker-compose.prod.yml ps'
+
+  prod:up:
+    desc: Start production stack (db, backend, nginx) using docker-compose.prod.yml
+    cmds:
+      - bash -lc 'set -euo pipefail; docker compose -f docker-compose.prod.yml up -d --remove-orphans && docker compose -f docker-compose.prod.yml ps'
+
+  prod:down:
+    desc: Stop and remove production stack with volumes
+    cmds:
+      - bash -lc 'set -euo pipefail; docker compose -f docker-compose.prod.yml down -v --remove-orphans'
+
+  prod:logs:
+    desc: Tail nginx logs for production
+    cmds:
+      - bash -lc 'set -euo pipefail; docker compose -f docker-compose.prod.yml logs -f nginx'
+
+  prod:health:
+    desc: Probe production Nginx and backend health
+    cmds:
+      - bash -lc 'set -e; echo "# nginx root"; (curl -i -sS http://localhost/ | sed -n "1,40p") || true; echo; echo "# nginx /api/health"; (curl -i -sS http://localhost/api/health | sed -n "1,60p") || true; echo; echo "# backend direct :8080/health"; (curl -i -sS http://localhost:8080/health | sed -n "1,60p") || true'
+
+  ci:prod:push:
+    desc: Build and push production images via GH Actions workflow (requires repo secrets)
+    cmds:
+      - echo "This task is a placeholder; CI is handled by .github/workflows/docker-prod.yml"
+
