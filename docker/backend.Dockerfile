@@ -18,9 +18,15 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application (compile the current server main package)
-# Ensure we build from apps/server where main.go resides
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./apps/server
+# Build the application (compile selected server main package)
+# BUILD_TARGET options:
+# - app (default): builds ./apps/server (production entrypoint)
+# - cmdapi: builds ./apps/server/cmd/api (dev entrypoint with SEED_DEV, Swagger)
+ARG BUILD_TARGET=app
+RUN case "$BUILD_TARGET" in \
+      cmdapi) echo "Building cmd/api entrypoint"; CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./apps/server/cmd/api ;; \
+      app|*)  echo "Building apps/server entrypoint"; CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./apps/server ;; \
+    esac
 
 # Final stage
 FROM alpine:latest

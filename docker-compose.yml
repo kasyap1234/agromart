@@ -24,7 +24,9 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/backend.Dockerfile
+      args:
+        BUILD_TARGET: cmdapi
     image: agromart-backend:latest
     container_name: agromart-backend
     depends_on:
@@ -48,14 +50,17 @@ services:
       JWT_SECRET: ${JWT_SECRET:-supersecretjwt}
       # Migrations
       MIGRATIONS_PATH: ${MIGRATIONS_PATH:-/root/sql/schema}
+      # Dev seed
+      SEED_DEV: "true"
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      # cmd/api also serves /health via HealthHandler and /api/health, keep legacy path
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || wget -qO- http://localhost:8080/api/health || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 30
-    command: ["/bin/sh", "-lc", "set -e; echo \"[ENTRY] Waiting db healthy and running migrations\"; migrate -path ${MIGRATIONS_PATH} -database postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable up || echo \"[ENTRY] migrate up returned non-zero (possibly already applied). Continuing\"; echo \"[ENTRY] Starting API\"; ./main"]
+    command: ["/bin/sh", "-lc", "set -e; echo \"[ENTRY] Waiting db healthy and running migrations\"; migrate -path ${MIGRATIONS_PATH} -database postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable up || echo \"[ENTRY] migrate up returned non-zero (possibly already applied). Continuing\"; echo \"[ENTRY] Starting API (cmd/api with SEED_DEV=${SEED_DEV})\"; ./main"]
 
   frontend:
     build:
