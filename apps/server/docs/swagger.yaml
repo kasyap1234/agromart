@@ -1,0 +1,1074 @@
+basePath: /api
+definitions:
+  agromart2_internal_auth.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  apps_server_handler.ForgotPasswordRequestDTO:
+    properties:
+      email:
+        type: string
+    type: object
+  apps_server_handler.RefreshTokenRequestDTO:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  apps_server_handler.RegisterRequestDTO:
+    properties:
+      company:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+    type: object
+  apps_server_handler.ResetPasswordRequestDTO:
+    properties:
+      new_password:
+        type: string
+      token:
+        type: string
+    type: object
+  apps_server_handler.UpdatePasswordRequestDTO:
+    properties:
+      current_password:
+        type: string
+      new_password:
+        type: string
+    type: object
+  apps_server_products.CreateProductRequest:
+    properties:
+      brand:
+        type: string
+      description:
+        type: string
+      gst_percent:
+        type: integer
+      image_url:
+        type: string
+      name:
+        type: string
+      price:
+        type: integer
+      price_per_unit:
+        type: integer
+      sku:
+        type: string
+      unit_id:
+        type: string
+    required:
+    - name
+    - price
+    - sku
+    type: object
+  apps_server_products.ProductInputRequest:
+    properties:
+      brand:
+        type: string
+      description:
+        type: string
+      gst_percent:
+        type: integer
+      image_url:
+        type: string
+      name:
+        type: string
+      price:
+        type: integer
+      price_per_unit:
+        type: integer
+      unit_id:
+        type: string
+    type: object
+  apps_server_suppliers.CreateSupplierRequest:
+    properties:
+      address:
+        type: string
+      contact_person:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      payment_mode:
+        type: string
+      phone:
+        type: string
+      tax_id:
+        type: string
+    required:
+    - name
+    type: object
+  apps_server_suppliers.UpdateSupplierRequest:
+    properties:
+      address:
+        type: string
+      contact_person:
+        type: string
+      email:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      payment_mode:
+        type: string
+      phone:
+        type: string
+      tax_id:
+        type: string
+    required:
+    - name
+    type: object
+info:
+  contact: {}
+  description: API documentation for AgroMart backend services.
+  title: AgroMart API
+  version: "1.0"
+paths:
+  /analytics/inventory:
+    get:
+      description: Returns a placeholder inventory snapshot series
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: snapshot series
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Inventory snapshot
+      tags:
+      - analytics
+  /analytics/kpis:
+    get:
+      description: Returns KPI metrics for dashboard
+      parameters:
+      - description: From date (YYYY-MM-DD or RFC3339)
+        in: query
+        name: from_date
+        type: string
+      - description: To date (YYYY-MM-DD or RFC3339)
+        in: query
+        name: to_date
+        type: string
+      - description: Low stock threshold
+        in: query
+        minimum: 0
+        name: threshold
+        type: integer
+      - description: Top N selling products
+        in: query
+        minimum: 0
+        name: top
+        type: integer
+      - description: Forward window days for inventory projection
+        in: query
+        minimum: 0
+        name: window_days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: KPIs payload
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Get KPI bundle
+      tags:
+      - analytics
+  /analytics/purchases:
+    get:
+      description: Returns purchases cost time series
+      parameters:
+      - description: From date (YYYY-MM-DD or RFC3339)
+        in: query
+        name: from_date
+        type: string
+      - description: To date (YYYY-MM-DD or RFC3339)
+        in: query
+        name: to_date
+        type: string
+      - description: 'Group by: day or month'
+        enum:
+        - day
+        - month
+        in: query
+        name: group
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: time series points
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Purchases cost series
+      tags:
+      - analytics
+  /analytics/sales:
+    get:
+      description: Returns sales revenue time series
+      parameters:
+      - description: From date (YYYY-MM-DD or RFC3339)
+        in: query
+        name: from_date
+        type: string
+      - description: To date (YYYY-MM-DD or RFC3339)
+        in: query
+        name: to_date
+        type: string
+      - description: 'Group by: day or month'
+        enum:
+        - day
+        - month
+        in: query
+        name: group
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: time series points
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Sales revenue series
+      tags:
+      - analytics
+  /auth:
+    get:
+      responses: {}
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user and returns access and refresh tokens
+      parameters:
+      - description: Login payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/agromart2_internal_auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user, token, refresh_token
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid request body
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid credentials
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Stateless logout (client removes token)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success message
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Logout
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Returns the authenticated user and tenant information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user (+ tenant if available)
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: missing/invalid auth
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Get current user
+      tags:
+      - auth
+  /auth/password/forgot:
+    post:
+      consumes:
+      - application/json
+      description: Always returns 200 to prevent user enumeration. In development/local,
+        returns a reset_token for testing.
+      parameters:
+      - description: Forgot password payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/apps_server_handler.ForgotPasswordRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success message; in dev includes reset_token
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Initiate password reset
+      tags:
+      - auth
+  /auth/password/reset:
+    post:
+      consumes:
+      - application/json
+      description: Resets password using a stateless reset token containing the email
+        claim
+      parameters:
+      - description: Reset password payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/apps_server_handler.ResetPasswordRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success message
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid or expired token / invalid payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Complete password reset
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Generates a new access token using a valid refresh token
+      parameters:
+      - description: Refresh token payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/apps_server_handler.RefreshTokenRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user, token, refresh_token
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid request body
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid/expired refresh token
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new tenant and the first user (admin) within that tenant
+      parameters:
+      - description: Registration payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/apps_server_handler.RegisterRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: user, token, refresh_token
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: missing or invalid fields
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: email already exists
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Register a new user and tenant
+      tags:
+      - auth
+  /password:
+    put:
+      consumes:
+      - application/json
+      description: Updates the authenticated user's password
+      parameters:
+      - description: Update password payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/apps_server_handler.UpdatePasswordRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success message
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid request body
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: missing/invalid auth
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: user not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Update password
+      tags:
+      - auth
+  /products:
+    get:
+      description: Lists products with pagination
+      parameters:
+      - description: Page number
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: Items per page (1-100)
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: items and pagination
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: List products
+      tags:
+      - products
+    post:
+      consumes:
+      - application/json
+      description: Creates a new product in the current tenant
+      parameters:
+      - description: Create product payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/apps_server_products.CreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created product
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid body
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Create product
+      tags:
+      - products
+  /products/{id}:
+    get:
+      description: Returns a product by ID
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: product
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid id
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Get product
+      tags:
+      - products
+    patch:
+      consumes:
+      - application/json
+      description: Applies partial update to a product
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Patch payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/apps_server_products.ProductInputRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid id/body
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Update product
+      tags:
+      - products
+  /products/search:
+    get:
+      description: Searches products by name or SKU
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: Items per page (1-100)
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: items and query
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: missing query
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Search products
+      tags:
+      - products
+  /sales/orders.csv:
+    get:
+      description: Streams CSV of aggregated sales orders within an optional date
+        range. Requires admin/manager.
+      parameters:
+      - description: From date (YYYY-MM-DD)
+        in: query
+        name: from
+        type: string
+      - description: To date (YYYY-MM-DD)
+        in: query
+        name: to
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV file
+          schema:
+            type: file
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: insufficient permissions
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Export sales orders CSV
+      tags:
+      - sales
+  /suppliers:
+    get:
+      description: Lists suppliers with pagination. Use active=true to only include
+        active suppliers.
+      parameters:
+      - description: Page number
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: Items per page (1-100)
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      - description: Only active suppliers
+        in: query
+        name: active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: items and pagination
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: List suppliers
+      tags:
+      - suppliers
+    post:
+      consumes:
+      - application/json
+      description: Creates a new supplier in the current tenant
+      parameters:
+      - description: Create supplier payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/apps_server_suppliers.CreateSupplierRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created supplier
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid body
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Create supplier
+      tags:
+      - suppliers
+  /suppliers/{id}:
+    delete:
+      description: Soft deletes (deactivates) a supplier by ID
+      parameters:
+      - description: Supplier ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid id
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Deactivate supplier
+      tags:
+      - suppliers
+    get:
+      description: Retrieves a supplier by ID
+      parameters:
+      - description: Supplier ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: supplier
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid id
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Get supplier
+      tags:
+      - suppliers
+    put:
+      consumes:
+      - application/json
+      description: Updates a supplier by ID
+      parameters:
+      - description: Supplier ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update supplier payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/apps_server_suppliers.UpdateSupplierRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated supplier
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid id/body
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Update supplier
+      tags:
+      - suppliers
+  /suppliers/search:
+    get:
+      description: Searches suppliers by name
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: Items per page (1-100)
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: items and query
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: missing query
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Search suppliers
+      tags:
+      - suppliers
+  /units:
+    get:
+      description: Lists units with pagination
+      parameters:
+      - description: Page number
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: Items per page (1-100)
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: units
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: List units
+      tags:
+      - products
+swagger: "2.0"

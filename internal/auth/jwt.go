@@ -22,6 +22,12 @@ type RefreshClaims struct {
 	jwt.RegisteredClaims
 }
 
+// ResetClaims are short-lived claims for password reset (stateless).
+type ResetClaims struct {
+	Email string `json:"email"`
+	jwt.RegisteredClaims
+}
+
 type JWTService struct {
 	secretKey []byte
 }
@@ -83,6 +89,41 @@ func (j *JWTService) ValidateToken(tokenStr string) (*Claims, error) {
 		return nil, fmt.Errorf("invalid token")
 	}
 
+	return claims, nil
+}
+
+// GenerateResetToken creates a short-lived JWT carrying the email for reset.
+func (j *JWTService) GenerateResetToken(email string, ttl time.Duration) (string, error) {
+	if ttl <= 0 {
+		ttl = 15 * time.Minute
+	}
+	claims := &ResetClaims{
+		Email: email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(j.secretKey)
+}
+
+// ValidateResetToken validates a reset token and returns its claims.
+func (j *JWTService) ValidateResetToken(tokenStr string) (*ResetClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &ResetClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return j.secretKey, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse reset token: %w", err)
+	}
+	claims, ok := token.Claims.(*ResetClaims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid reset token")
+	}
 	return claims, nil
 }
 

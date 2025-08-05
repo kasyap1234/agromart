@@ -326,9 +326,13 @@ func (h *Handler) RegisterRoutes(g *echo.Group) {
 	g.GET("/purchase-orders/:id", h.GetPurchaseOrder)
 	g.PUT("/purchase-orders/:id/status", h.UpdatePurchaseOrderStatus)
 	g.POST("/purchase-orders/:id/receive", h.ReceivePurchaseOrder)
-	
+
+	// Reports JSON
 	g.GET("/reports/product-movement", h.GetProductMovementReport)
 	g.GET("/reports/supplier-purchase-summary", h.GetSupplierPurchaseSummary)
+
+	// CSV Export endpoints
+	h.RegisterExportRoutes(g)
 }
 
 // Request/Response types

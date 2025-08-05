@@ -20,6 +20,7 @@ import (
 	"agromart2/apps/server/products"
 	"agromart2/apps/server/inventory"
 	"agromart2/apps/server/handler"
+	"agromart2/apps/server/analytics"
 )
 
 func main() {
@@ -77,11 +78,13 @@ func main() {
 	authService := auth.NewAuthService(pool, queries, jwtService)
 	productService := products.NewProductService(pool, queries)
 	inventoryService := inventory.NewService(pool, queries)
+	analyticsService := analytics.NewService(pool, queries)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
 	productHandler := products.NewProductHandler(productService)
 	inventoryHandler := inventory.NewHandler(inventoryService)
+	analyticsHandler := analytics.NewHandler(analyticsService)
 
 	// Initialize Echo
 	e := echo.New()
@@ -95,13 +98,9 @@ func main() {
 	e.HTTPErrorHandler = middleware.HTTPErrorHandler
 	e.Use(echoMiddleware.CORS())
 
-	// Health check
-	e.GET("/health", func(c echo.Context) error {
-		return c.JSON(200, map[string]string{
-			"status":  "ok",
-			"service": "agromart-api",
-		})
-	})
+	// Health check - switch to comprehensive health handler
+	healthHandler := handler.NewHealthHandler(database.New(pool))
+	healthHandler.RegisterRoutes(e)
 
 	// API routes
 	api := e.Group("/api")
@@ -114,6 +113,9 @@ func main() {
 	authGroup.POST("/login", authHandler.Login)
 	authGroup.POST("/logout", authHandler.Logout)
 	authGroup.POST("/refresh", authHandler.RefreshToken)
+	// Password reset basics
+	authGroup.POST("/password/forgot", func(c echo.Context) error { return handler.PasswordForgot(authService, c) })
+	authGroup.POST("/password/reset", func(c echo.Context) error { return handler.PasswordReset(authService, c) })
 	// Me endpoint should be protected; wrap the handler invocation in RequireAuth
 	authGroup.GET("/me", authMiddleware.RequireAuth(func(c echo.Context) error {
 		return authHandler.Me(c)
@@ -129,11 +131,23 @@ func main() {
 
 	// Product routes
 	productGroup := protected.Group("/products")
-	productHandler.RegisterRoutes(productGroup)
+	// Write operations (admin/manager)
+	productGroup.POST("", authMiddleware.RequireRole("admin", "manager")(productHandler.CreateProduct))
+	productGroup.PATCH("/:id", authMiddleware.RequireRole("admin", "manager")(productHandler.PatchProduct))
+	// Read operations (all authenticated roles)
+	productGroup.GET("", productHandler.ListProducts)
+	productGroup.GET("/search", productHandler.SearchProducts)
+	productGroup.GET("/:id", productHandler.GetProduct)
+	// Units listing (read)
+	productGroup.GET("/units", productHandler.ListUnits)
 
-	// Inventory routes
+	// Inventory routes (keep existing registration; assumed internal handlers enforce tenant/user)
 	inventoryGroup := protected.Group("")
 	inventoryHandler.RegisterRoutes(inventoryGroup)
+
+	// Analytics routes under /api/analytics
+	analyticsHandler.RegisterRoutes(protected)
+	// RBAC for CSV exports already enforced in handlers via CanExport
 
 	// Reports routes
 	reportsGroup := protected.Group("/reports")

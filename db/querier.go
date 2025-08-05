@@ -16,6 +16,10 @@ type Querier interface {
 	CheckProductExists(ctx context.Context, arg CheckProductExistsParams) (bool, error)
 	CheckSupplierExists(ctx context.Context, arg CheckSupplierExistsParams) (bool, error)
 	CountCustomers(ctx context.Context, tenantID uuid.UUID) (int64, error)
+	// Pass an upper bound date (e.g., CURRENT_DATE + interval '30 days') from Go layer.
+	CountExpiringBatchesWithinDays(ctx context.Context, arg CountExpiringBatchesWithinDaysParams) (interface{}, error)
+	CountOpenPurchaseOrders(ctx context.Context, arg CountOpenPurchaseOrdersParams) (int64, error)
+	CountOpenSalesOrders(ctx context.Context, arg CountOpenSalesOrdersParams) (int64, error)
 	CountProducts(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	CountProductsByTenant(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	CountSuppliers(ctx context.Context, tenantID uuid.UUID) (int64, error)
@@ -44,6 +48,11 @@ type Querier interface {
 	GetInventoryLogByBatch(ctx context.Context, arg GetInventoryLogByBatchParams) ([]InventoryLog, error)
 	GetInventoryLogByProduct(ctx context.Context, arg GetInventoryLogByProductParams) ([]InventoryLog, error)
 	GetInventoryValue(ctx context.Context, tenantID uuid.UUID) (interface{}, error)
+	// Analytics and Reporting SQLC queries
+	// NOTE: Do NOT duplicate existing query names from other files.
+	// Inventory value already exists in inventory.sql as GetInventoryValue.
+	// Using a different name here for completeness if needed elsewhere.
+	GetInventoryValueAnalytics(ctx context.Context, tenantID uuid.UUID) (interface{}, error)
 	GetLocationByID(ctx context.Context, arg GetLocationByIDParams) (Location, error)
 	GetLowStockReport(ctx context.Context, arg GetLowStockReportParams) ([]GetLowStockReportRow, error)
 	GetProductByID(ctx context.Context, arg GetProductByIDParams) (Product, error)
@@ -54,14 +63,20 @@ type Querier interface {
 	GetPurchaseOrder(ctx context.Context, arg GetPurchaseOrderParams) (PurchaseOrder, error)
 	GetPurchaseOrderItemByID(ctx context.Context, arg GetPurchaseOrderItemByIDParams) (PurchaseOrderItem, error)
 	GetPurchaseOrderItems(ctx context.Context, arg GetPurchaseOrderItemsParams) ([]PurchaseOrderItem, error)
+	GetPurchasesTimeSeries(ctx context.Context, arg GetPurchasesTimeSeriesParams) ([]GetPurchasesTimeSeriesRow, error)
+	GetRevenueInPeriod(ctx context.Context, arg GetRevenueInPeriodParams) (interface{}, error)
 	GetSalesOrder(ctx context.Context, arg GetSalesOrderParams) (SalesOrder, error)
 	GetSalesOrderItemByID(ctx context.Context, arg GetSalesOrderItemByIDParams) (SalesOrderItem, error)
 	GetSalesOrderItems(ctx context.Context, arg GetSalesOrderItemsParams) ([]SalesOrderItem, error)
 	GetSalesReportByDate(ctx context.Context, arg GetSalesReportByDateParams) ([]GetSalesReportByDateRow, error)
+	// grp is 'day' or 'month'
+	GetSalesTimeSeries(ctx context.Context, arg GetSalesTimeSeriesParams) ([]GetSalesTimeSeriesRow, error)
+	GetStockoutRiskCount(ctx context.Context, arg GetStockoutRiskCountParams) (interface{}, error)
 	GetSupplierByID(ctx context.Context, arg GetSupplierByIDParams) (Supplier, error)
 	GetSupplierByName(ctx context.Context, arg GetSupplierByNameParams) (Supplier, error)
 	GetSupplierPurchaseSummary(ctx context.Context, tenantID uuid.UUID) ([]GetSupplierPurchaseSummaryRow, error)
 	GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error)
+	GetTopProductsByRevenue(ctx context.Context, arg GetTopProductsByRevenueParams) ([]GetTopProductsByRevenueRow, error)
 	GetUnitByID(ctx context.Context, arg GetUnitByIDParams) (Unit, error)
 	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)

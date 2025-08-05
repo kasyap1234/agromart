@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"agromart2/db"
 	"agromart2/internal/utils"
@@ -299,6 +300,23 @@ func (s *AuthService) UpdatePassword(ctx context.Context, userID, tenantID uuid.
 	}
 
 	return nil
+}
+
+// Expose helpers for password reset flow
+
+// GenerateResetToken creates a short-lived token carrying the email
+func (s *AuthService) GenerateResetToken(email string, ttl time.Duration) (string, error) {
+	return s.jwt.GenerateResetToken(email, ttl)
+}
+
+// ValidateResetToken validates reset token and returns claims
+func (s *AuthService) ValidateResetToken(token string) (*ResetClaims, error) {
+	return s.jwt.ValidateResetToken(token)
+}
+
+// GetUserByEmail is an exported helper that finds an active user by email across tenants
+func (s *AuthService) GetUserByEmail(ctx context.Context, email string) (*db.User, error) {
+	return s.getUserByEmailAcrossTenants(ctx, email)
 }
 
 // ListUsers lists users for a tenant

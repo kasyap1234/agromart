@@ -16,16 +16,50 @@ func NewHandler(service *SupplierService) *Handler {
 	return &Handler{service: service}
 }
 
-// CreateSupplier creates a new supplier
+// CreateSupplier godoc
+// @Summary Create supplier
+// @Description Creates a new supplier in the current tenant
+// @Tags suppliers
+// @Security Bearer
+// @Accept json
+// @Produce json
+// @Param payload body CreateSupplierRequest true "Create supplier payload"
+// @Success 201 {object} map[string]interface{} "created supplier"
+// @Failure 400 {object} map[string]interface{} "invalid body"
+// @Failure 401 {object} map[string]interface{} "invalid tenant/auth"
+// @Failure 500 {object} map[string]interface{} "internal error"
+// @Router /suppliers [post]
 func (h *Handler) CreateSupplier(c echo.Context) error {
 	var req CreateSupplierRequest
 	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "invalid request body",
+			},
+		})
+	}
+	if req.Name == "" {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "name is required",
+			},
+		})
 	}
 
-	tenantID, err := uuid.Parse(c.Get("tenant_id").(string))
-	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "invalid tenant")
+	tenantStr, _ := c.Get("tenant_id").(string)
+	tenantID, err := uuid.Parse(tenantStr)
+	if err != nil || tenantStr == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusUnauthorized,
+				"message": "invalid tenant",
+			},
+		})
 	}
 
 	supplier, err := h.service.CreateSupplier(c.Request().Context(), CreateSupplierParams{
@@ -39,7 +73,13 @@ func (h *Handler) CreateSupplier(c echo.Context) error {
 		PaymentMode:   req.PaymentMode,
 	})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusInternalServerError,
+				"message": err.Error(),
+			},
+		})
 	}
 
 	return c.JSON(http.StatusCreated, map[string]interface{}{
@@ -49,21 +89,51 @@ func (h *Handler) CreateSupplier(c echo.Context) error {
 	})
 }
 
-// GetSupplier retrieves a supplier by ID
+// GetSupplier godoc
+// @Summary Get supplier
+// @Description Retrieves a supplier by ID
+// @Tags suppliers
+// @Security Bearer
+// @Produce json
+// @Param id path string true "Supplier ID (UUID)"
+// @Success 200 {object} map[string]interface{} "supplier"
+// @Failure 400 {object} map[string]interface{} "invalid id"
+// @Failure 401 {object} map[string]interface{} "invalid tenant/auth"
+// @Failure 404 {object} map[string]interface{} "not found"
+// @Router /suppliers/{id} [get]
 func (h *Handler) GetSupplier(c echo.Context) error {
 	supplierID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid supplier ID")
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "invalid supplier ID",
+			},
+		})
 	}
 
-	tenantID, err := uuid.Parse(c.Get("tenant_id").(string))
-	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "invalid tenant")
+	tenantStr, _ := c.Get("tenant_id").(string)
+	tenantID, err := uuid.Parse(tenantStr)
+	if err != nil || tenantStr == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusUnauthorized,
+				"message": "invalid tenant",
+			},
+		})
 	}
 
 	supplier, err := h.service.GetSupplierByID(c.Request().Context(), supplierID, tenantID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, "supplier not found")
+		return c.JSON(http.StatusNotFound, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusNotFound,
+				"message": "supplier not found",
+			},
+		})
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
@@ -72,11 +142,30 @@ func (h *Handler) GetSupplier(c echo.Context) error {
 	})
 }
 
-// ListSuppliers lists all suppliers with pagination
+// ListSuppliers godoc
+// @Summary List suppliers
+// @Description Lists suppliers with pagination. Use active=true to only include active suppliers.
+// @Tags suppliers
+// @Security Bearer
+// @Produce json
+// @Param page query int false "Page number" minimum(1)
+// @Param limit query int false "Items per page (1-100)" minimum(1) maximum(100)
+// @Param active query bool false "Only active suppliers"
+// @Success 200 {object} map[string]interface{} "items and pagination"
+// @Failure 401 {object} map[string]interface{} "invalid tenant/auth"
+// @Failure 500 {object} map[string]interface{} "internal error"
+// @Router /suppliers [get]
 func (h *Handler) ListSuppliers(c echo.Context) error {
-	tenantID, err := uuid.Parse(c.Get("tenant_id").(string))
-	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "invalid tenant")
+	tenantStr, _ := c.Get("tenant_id").(string)
+	tenantID, err := uuid.Parse(tenantStr)
+	if err != nil || tenantStr == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusUnauthorized,
+				"message": "invalid tenant",
+			},
+		})
 	}
 
 	// Parse pagination parameters
@@ -100,7 +189,13 @@ func (h *Handler) ListSuppliers(c echo.Context) error {
 	if activeOnly {
 		activeSuppliers, err := h.service.ListActiveSuppliers(c.Request().Context(), tenantID, int32(limit), offset)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"success": false,
+				"error": map[string]interface{}{
+					"code":    http.StatusInternalServerError,
+					"message": err.Error(),
+				},
+			})
 		}
 		for _, s := range activeSuppliers {
 			suppliers = append(suppliers, s)
@@ -108,7 +203,13 @@ func (h *Handler) ListSuppliers(c echo.Context) error {
 	} else {
 		allSuppliers, err := h.service.ListSuppliers(c.Request().Context(), tenantID, int32(limit), offset)
 		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"success": false,
+				"error": map[string]interface{}{
+					"code":    http.StatusInternalServerError,
+					"message": err.Error(),
+				},
+			})
 		}
 		for _, s := range allSuppliers {
 			suppliers = append(suppliers, s)
@@ -118,7 +219,13 @@ func (h *Handler) ListSuppliers(c echo.Context) error {
 	// Get total count
 	total, err := h.service.CountSuppliers(c.Request().Context(), tenantID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusInternalServerError,
+				"message": err.Error(),
+			},
+		})
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
@@ -133,7 +240,20 @@ func (h *Handler) ListSuppliers(c echo.Context) error {
 	})
 }
 
-// SearchSuppliers searches suppliers by name
+// SearchSuppliers godoc
+// @Summary Search suppliers
+// @Description Searches suppliers by name
+// @Tags suppliers
+// @Security Bearer
+// @Produce json
+// @Param q query string true "Search query"
+// @Param page query int false "Page number" minimum(1)
+// @Param limit query int false "Items per page (1-100)" minimum(1) maximum(100)
+// @Success 200 {object} map[string]interface{} "items and query"
+// @Failure 400 {object} map[string]interface{} "missing query"
+// @Failure 401 {object} map[string]interface{} "invalid tenant/auth"
+// @Failure 500 {object} map[string]interface{} "internal error"
+// @Router /suppliers/search [get]
 func (h *Handler) SearchSuppliers(c echo.Context) error {
 	tenantID, err := uuid.Parse(c.Get("tenant_id").(string))
 	if err != nil {
@@ -169,21 +289,62 @@ func (h *Handler) SearchSuppliers(c echo.Context) error {
 	})
 }
 
-// UpdateSupplier updates a supplier
+// UpdateSupplier godoc
+// @Summary Update supplier
+// @Description Updates a supplier by ID
+// @Tags suppliers
+// @Security Bearer
+// @Accept json
+// @Produce json
+// @Param id path string true "Supplier ID (UUID)"
+// @Param payload body UpdateSupplierRequest true "Update supplier payload"
+// @Success 200 {object} map[string]interface{} "updated supplier"
+// @Failure 400 {object} map[string]interface{} "invalid id/body"
+// @Failure 401 {object} map[string]interface{} "invalid tenant/auth"
+// @Failure 500 {object} map[string]interface{} "internal error"
+// @Router /suppliers/{id} [put]
 func (h *Handler) UpdateSupplier(c echo.Context) error {
 	supplierID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid supplier ID")
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "invalid supplier ID",
+			},
+		})
 	}
 
-	tenantID, err := uuid.Parse(c.Get("tenant_id").(string))
-	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "invalid tenant")
+	tenantStr, _ := c.Get("tenant_id").(string)
+	tenantID, err := uuid.Parse(tenantStr)
+	if err != nil || tenantStr == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusUnauthorized,
+				"message": "invalid tenant",
+			},
+		})
 	}
 
 	var req UpdateSupplierRequest
 	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "invalid request body",
+			},
+		})
+	}
+	if req.Name == "" {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "name is required",
+			},
+		})
 	}
 
 	supplier, err := h.service.UpdateSupplier(c.Request().Context(), UpdateSupplierParams{
@@ -199,7 +360,13 @@ func (h *Handler) UpdateSupplier(c echo.Context) error {
 		IsActive:      req.IsActive,
 	})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusInternalServerError,
+				"message": err.Error(),
+			},
+		})
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
@@ -209,21 +376,51 @@ func (h *Handler) UpdateSupplier(c echo.Context) error {
 	})
 }
 
-// DeleteSupplier soft deletes a supplier
+// DeleteSupplier godoc
+// @Summary Deactivate supplier
+// @Description Soft deletes (deactivates) a supplier by ID
+// @Tags suppliers
+// @Security Bearer
+// @Produce json
+// @Param id path string true "Supplier ID (UUID)"
+// @Success 200 {object} map[string]interface{} "success"
+// @Failure 400 {object} map[string]interface{} "invalid id"
+// @Failure 401 {object} map[string]interface{} "invalid tenant/auth"
+// @Failure 500 {object} map[string]interface{} "internal error"
+// @Router /suppliers/{id} [delete]
 func (h *Handler) DeleteSupplier(c echo.Context) error {
 	supplierID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid supplier ID")
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "invalid supplier ID",
+			},
+		})
 	}
 
-	tenantID, err := uuid.Parse(c.Get("tenant_id").(string))
-	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "invalid tenant")
+	tenantStr, _ := c.Get("tenant_id").(string)
+	tenantID, err := uuid.Parse(tenantStr)
+	if err != nil || tenantStr == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusUnauthorized,
+				"message": "invalid tenant",
+			},
+		})
 	}
 
 	err = h.service.DeleteSupplier(c.Request().Context(), supplierID, tenantID)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusInternalServerError,
+				"message": err.Error(),
+			},
+		})
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
@@ -233,6 +430,8 @@ func (h *Handler) DeleteSupplier(c echo.Context) error {
 }
 
 // RegisterRoutes registers all supplier routes
+// @Tags suppliers
+// @Security Bearer
 func (h *Handler) RegisterRoutes(g *echo.Group) {
 	g.POST("/suppliers", h.CreateSupplier)
 	g.GET("/suppliers", h.ListSuppliers)

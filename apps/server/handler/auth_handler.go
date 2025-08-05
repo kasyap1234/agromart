@@ -2,6 +2,8 @@ package handler
 
 import (
 	"net/http"
+	"os"
+	"time"
 
 	internalauth "agromart2/internal/auth"
 	"github.com/golang-jwt/jwt/v5"
@@ -29,7 +31,18 @@ func NewAuthHandler(authService *internalauth.AuthService) *AuthHandler {
 	}
 }
 
-// Register handles user registration
+// Register godoc
+// @Summary Register a new user and tenant
+// @Description Creates a new tenant and the first user (admin) within that tenant
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param payload body handler.RegisterRequestDTO true "Registration payload"
+// @Success 201 {object} map[string]interface{} "user, token, refresh_token"
+// @Failure 400 {object} map[string]interface{} "missing or invalid fields"
+// @Failure 409 {object} map[string]interface{} "email already exists"
+// @Failure 500 {object} map[string]interface{} "internal error"
+// @Router /auth/register [post]
 func (h *AuthHandler) Register(c echo.Context) error {
 	// Accept legacy payload: { name, email, password, phone, company }
 	var legacy struct {
@@ -174,7 +187,17 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	return nil
 }
 
-// Login handles user authentication
+// Login godoc
+// @Summary Login
+// @Description Authenticates a user and returns access and refresh tokens
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param payload body internalauth.LoginRequest true "Login payload"
+// @Success 200 {object} map[string]interface{} "user, token, refresh_token"
+// @Failure 400 {object} map[string]interface{} "invalid request body"
+// @Failure 401 {object} map[string]interface{} "invalid credentials"
+// @Router /auth/login [post]
 func (h *AuthHandler) Login(c echo.Context) error {
 	var req internalauth.LoginRequest
 	if err := c.Bind(&req); err != nil {
@@ -223,7 +246,15 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	return nil
 }
 
-// Me returns current user information
+// Me godoc
+// @Summary Get current user
+// @Description Returns the authenticated user and tenant information
+// @Tags auth
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} map[string]interface{} "user (+ tenant if available)"
+// @Failure 401 {object} map[string]interface{} "missing/invalid auth"
+// @Router /auth/me [get]
 func (h *AuthHandler) Me(c echo.Context) error {
 	userIDVal := c.Get("user_id")
 	userIDStr, _ := userIDVal.(string)
@@ -287,7 +318,17 @@ func (h *AuthHandler) Me(c echo.Context) error {
 	return nil
 }
 
-// RefreshToken generates new access token from refresh token
+// RefreshToken godoc
+// @Summary Refresh access token
+// @Description Generates a new access token using a valid refresh token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param payload body handler.RefreshTokenRequestDTO true "Refresh token payload"
+// @Success 200 {object} map[string]interface{} "user, token, refresh_token"
+// @Failure 400 {object} map[string]interface{} "invalid request body"
+// @Failure 401 {object} map[string]interface{} "invalid/expired refresh token"
+// @Router /auth/refresh [post]
 func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	var req struct {
 		RefreshToken string `json:"refresh_token"`
@@ -337,7 +378,19 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	return nil
 }
 
-// UpdatePassword updates user password
+// UpdatePassword godoc
+// @Summary Update password
+// @Description Updates the authenticated user's password
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param payload body handler.UpdatePasswordRequestDTO true "Update password payload"
+// @Success 200 {object} map[string]interface{} "success message"
+// @Failure 400 {object} map[string]interface{} "invalid request body"
+// @Failure 401 {object} map[string]interface{} "missing/invalid auth"
+// @Failure 404 {object} map[string]interface{} "user not found"
+// @Router /password [put]
 func (h *AuthHandler) UpdatePassword(c echo.Context) error {
 	var req struct {
 		CurrentPassword string `json:"current_password"`
@@ -489,7 +542,13 @@ func (h *AuthHandler) UpdatePassword(c echo.Context) error {
 	return nil
 }
 
-// Logout handles user logout (client-side token removal)
+// Logout godoc
+// @Summary Logout
+// @Description Stateless logout (client removes token)
+// @Tags auth
+// @Produce json
+// @Success 200 {object} map[string]interface{} "success message"
+// @Router /auth/logout [post]
 func (h *AuthHandler) Logout(c echo.Context) error {
 	// In a stateless JWT system, logout is typically handled client-side
 	// by removing the token. However, you could implement token blacklisting here
@@ -499,7 +558,123 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 	})
 }
 
+// PasswordForgot godoc
+// @Summary Initiate password reset
+// @Description Always returns 200 to prevent user enumeration. In development/local, returns a reset_token for testing.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param payload body handler.ForgotPasswordRequestDTO true "Forgot password payload"
+// @Success 200 {object} map[string]interface{} "success message; in dev includes reset_token"
+// @Router /auth/password/forgot [post]
+func PasswordForgot(s *internalauth.AuthService, c echo.Context) error {
+	var req struct {
+		Email string `json:"email"`
+	}
+	_ = c.Bind(&req) // ignore bind error; we will handle empty email below
+
+	// Normalize email quick-and-dirty without importing strings
+	email := toLowerASCII(req.Email)
+
+	// Generate a reset token regardless of whether the email exists
+	// TTL default 15m
+	token, _ := s.GenerateResetToken(email, 15*time.Minute)
+
+	resp := map[string]interface{}{
+		"success": true,
+		"message": "If the email exists, a password reset link has been sent.",
+	}
+
+	// In dev mode, include token for testing convenience
+	if env := os.Getenv("APP_ENV"); env == "" || env == "development" || env == "local" {
+		resp["data"] = map[string]interface{}{
+			"reset_token": token,
+		}
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
+// PasswordReset godoc
+// @Summary Complete password reset
+// @Description Resets password using a stateless reset token containing the email claim
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param payload body handler.ResetPasswordRequestDTO true "Reset password payload"
+// @Success 200 {object} map[string]interface{} "success message"
+// @Failure 400 {object} map[string]interface{} "invalid or expired token / invalid payload"
+// @Failure 500 {object} map[string]interface{} "internal error"
+// @Router /auth/password/reset [post]
+func PasswordReset(s *internalauth.AuthService, c echo.Context) error {
+	var req struct {
+		Token       string `json:"token"`
+		NewPassword string `json:"new_password"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "invalid request body",
+			},
+		})
+	}
+	if len(req.NewPassword) < 6 || req.Token == "" {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "token and a new_password of at least 6 characters are required",
+			},
+		})
+	}
+
+	claims, err := s.ValidateResetToken(req.Token)
+	if err != nil || claims == nil || claims.Email == "" {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "invalid or expired reset token",
+			},
+		})
+	}
+
+	// Find user by email (active users only)
+	user, err := s.GetUserByEmail(c.Request().Context(), claims.Email)
+	if err != nil || user == nil {
+		// Avoid leaking enumeration; return generic error
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": "invalid or expired reset token",
+			},
+		})
+	}
+
+	// Update password; requires userID and tenantID
+	if err := s.UpdatePassword(c.Request().Context(), user.ID, user.TenantID, req.NewPassword); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    http.StatusInternalServerError,
+				"message": "failed to reset password",
+				"details": err.Error(),
+			},
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "Password has been reset successfully",
+	})
+}
+
 // RegisterRoutes registers all auth routes
+// @Tags auth
+// @Router /auth [get]
 func (h *AuthHandler) RegisterRoutes(e *echo.Echo) {
 	auth := e.Group("/api/auth")
 	
@@ -507,6 +682,10 @@ func (h *AuthHandler) RegisterRoutes(e *echo.Echo) {
 	auth.POST("/login", h.Login)
 	auth.POST("/refresh", h.RefreshToken)
 	auth.POST("/logout", h.Logout)
+
+	// Public password reset routes
+	auth.POST("/password/forgot", func(c echo.Context) error { return PasswordForgot(h.authService, c) })
+	auth.POST("/password/reset", func(c echo.Context) error { return PasswordReset(h.authService, c) })
 }
 
 // indexOf returns the index of sub in s or -1 (ASCII; no strings import)
@@ -541,6 +720,8 @@ func toLowerASCII(in string) string {
 }
 
 // RegisterProtectedRoutes registers protected auth routes
+// @Tags auth
+// @Security Bearer
 func (h *AuthHandler) RegisterProtectedRoutes(g *echo.Group) {
 	g.GET("/me", h.Me)
 	g.PUT("/password", h.UpdatePassword)
