@@ -1,7 +1,7 @@
 
 services:
   db:
-    image: postgres:15
+    image: postgres:17-alpine
     container_name: agromart-db
     environment:
       POSTGRES_USER: postgres
@@ -39,6 +39,22 @@ services:
       - ./apps/server/sql/schema:/app/sql/schema
     command: >
       sh -c "migrate -path /app/sql/schema -database $$DATABASE_URL up && ./main"
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./apps/client:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+      - API_BASE_URL=http://localhost:8080
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:

@@ -32,7 +32,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Verify token and get user info
           const response = await apiClient.auth.me();
           if (response.success) {
-            setUser(response.data);
+            // Backend returns { data: { user, tenant } } for /auth/me
+            // Accept both shapes: either data.user or data itself is a user-like object
+            const data: any = (response as any).data;
+            const candidateUser = data?.user ?? data;
+            if (candidateUser && (candidateUser.id || candidateUser.email)) {
+              setUser(candidateUser as User);
+            } else {
+              // Unexpected shape; treat as unauthenticated
+              clearTokens();
+              setToken(null);
+            }
           } else {
             // Token is invalid, clear it
             clearTokens();
