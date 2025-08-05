@@ -1,101 +1,73 @@
-version: '3'
+version: "3"
 
 vars:
-  DOCKER_BUILDKIT: 1
-  COMPOSE_DOCKER_CLI_BUILD: 1
-
-env:
-  DOCKER_BUILDKIT: "{{.DOCKER_BUILDKIT}}"
-  COMPOSE_DOCKER_CLI_BUILD: "{{.COMPOSE_DOCKER_CLI_BUILD}}"
+  TEST_DATABASE_URL: "postgres://postgres:secret@localhost:5436/inventory_test?sslmode=disable"
+  TEST_MIGRATIONS_PATH: "./apps/server/sql/schema"
 
 tasks:
-  dev:build:
-    desc: Start dev stack; build only if images are missing. Always prints ps snapshot.
+  # Bring up disposable Postgres for tests
+  test:db:up:
+    desc: "Start disposable Postgres for tests on port 5436"
     cmds:
-      - bash -lc |
-          set -euo pipefail
-          echo "--- Check if images exist (backend, frontend) ---"
-          NEED_BUILD=0
-          if ! docker compose images --quiet | grep -q "[a-zA-Z0-9]"; then
-            NEED_BUILD=1
-          fi
-          if [ "$NEED_BUILD" -eq 1 ]; then
-            echo "--- Images missing -> Build (pull + plain progress, 15m timeout) ---"
-            timeout 15m docker compose build --pull --progress=plain
+      - docker compose -f docker-compose.test.yml up -d
+      - echo "Waiting for Postgres healthcheck..."
+      - bash -c 'for i in {1..60}; do
+            docker inspect --format "{{json .State.Health.Status }}" agromart2-postgres-test 2>/dev/null | grep -q healthy && exit 0;
+            sleep 1;
+          done; echo "Postgres did not become healthy in time" >&2; exit 1'
+
+  # Tear down the disposable DB
+  test:db:down:
+    desc: "Stop and remove disposable Postgres for tests"
+    cmds:
+      - docker compose -f docker-compose.test.yml down -v
+
+  # Run migrations against the disposable DB using golang-migrate CLI
+  test:db:migrate:
+    desc: "Apply DB migrations (golang-migrate) to disposable Postgres"
+    cmds:
+      - bash -c 'command -v migrate >/dev/null 2>&1 || { echo "golang-migrate CLI not installed"; exit 1; }'
+      - bash -c '[ -d "{{.TEST_MIGRATIONS_PATH}}" ] || { echo "Migrations path {{.TEST_MIGRATIONS_PATH}} not found"; exit 1; }'
+      - bash -c 'migrate -path "{{.TEST_MIGRATIONS_PATH}}" -database "{{.TEST_DATABASE_URL}}" up || true'
+
+  # sqlc generate (supports either root or apps/server config)
+  sqlc:generate:
+    desc: "Generate sqlc code"
+    cmds:
+      - bash -c 'if [ -f sqlc.yaml ]; then
+            command -v sqlc >/dev/null 2>&1 && sqlc version || echo "sqlc not installed";
+            sqlc generate -f sqlc.yaml;
+          elif [ -f apps/server/sqlc.yaml ]; then
+            pushd apps/server >/dev/null;
+            command -v sqlc >/dev/null 2>&1 && sqlc version || echo "sqlc not installed";
+            sqlc generate;
+            popd >/dev/null;
           else
-            echo "--- Images already present -> Skipping build ---"
-          fi
-          echo "--- Up (detached) ---"
-          docker compose up -d --remove-orphans
-          echo "--- DEV ps ---"
-          docker compose ps
+            echo "No sqlc.yaml found at root or apps/server; skipping";
+          fi'
+
+  # Backend unit tests (no special tags)
+  test:server:unit:
+    desc: "Run backend unit tests"
+    cmds:
+      - go test ./apps/server/... -count=1
+
+  # Backend integration tests (require DB up and migrated). Uses build tag: integration
+  test:server:integration:
+    desc: "Run backend integration tests (expects disposable DB up and migrated)"
+    env:
+      DATABASE_URL: "{{.TEST_DATABASE_URL}}"
+    cmds:
+      - go test ./apps/server/integration -tags=integration -count=1
+
+  # Composite: spin up DB, migrate, run unit+integration, tear down
+  test:server:all:
+    desc: "End-to-end: start test DB, migrate, run unit and integration tests, tear down"
+    cmds:
+      - task: sqlc:generate
+      - task: test:db:up
+      - task: test:db:migrate
+      - task: test:server:unit
+      - task: test:server:integration
+      - task: test:db:down
     silent: false
-
-  dev:rebuild:
-    desc: Force rebuild without cache (plain progress, 15m timeout) and restart dev stack
-    cmds:
-      - bash -lc 'set -euo pipefail; echo "--- Build (no-cache + plain progress, 15m timeout) ---"; timeout 15m docker compose build --no-cache --progress=plain'
-      - bash -lc 'echo "--- Up (detached) ---"; docker compose up -d --remove-orphans'
-      - bash -lc 'echo "--- DEV ps ---"; docker compose ps'
-
-  dev:up:
-    desc: Start dev stack (db, backend, frontend) in background (no build)
-    cmds:
-      - bash -lc 'set -euo pipefail; docker compose up -d --remove-orphans && docker compose ps'
-
-  dev:down:
-    desc: Stop and remove dev stack with volumes
-    cmds:
-      - bash -lc 'set -euo pipefail; docker compose down -v --remove-orphans'
-
-  dev:logs:
-    desc: Tail backend logs for development
-    cmds:
-      - bash -lc 'set -euo pipefail; docker compose logs -f backend'
-
-  dev:health:
-    desc: Probe dev backend and frontend health
-    cmds:
-      - bash -lc 'set -e; echo "# backend"; (curl -i -sS http://localhost:8080/health | sed -n "1,40p") || true; echo; echo "# frontend"; (curl -i -sS http://localhost:3000 | sed -n "1,40p") || true'
-
-  prod:build:
-    desc: Build AND start production stack (build images, then up) using docker-compose.prod.yml
-    cmds:
-      - bash -lc 'set -euo pipefail; DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build --target runtime -t agromart-backend:prod -f Dockerfile .'
-      - bash -lc 'set -euo pipefail; DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build -t agromart-frontend:prod -f docker/frontend.Dockerfile .'
-      - bash -lc 'set -euo pipefail; docker compose -f docker-compose.prod.yml up -d --remove-orphans'
-      - bash -lc 'echo "--- PROD ps ---"; docker compose -f docker-compose.prod.yml ps'
-
-  prod:rebuild:
-    desc: Force rebuild images without cache and restart production stack
-    cmds:
-      - bash -lc 'set -euo pipefail; DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build --no-cache --target runtime -t agromart-backend:prod -f Dockerfile .'
-      - bash -lc 'set -euo pipefail; DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build --no-cache -t agromart-frontend:prod -f docker/frontend.Dockerfile .'
-      - bash -lc 'set -euo pipefail; docker compose -f docker-compose.prod.yml up -d --remove-orphans'
-      - bash -lc 'echo "--- PROD ps ---"; docker compose -f docker-compose.prod.yml ps'
-
-  prod:up:
-    desc: Start production stack (db, backend, nginx) using docker-compose.prod.yml
-    cmds:
-      - bash -lc 'set -euo pipefail; docker compose -f docker-compose.prod.yml up -d --remove-orphans && docker compose -f docker-compose.prod.yml ps'
-
-  prod:down:
-    desc: Stop and remove production stack with volumes
-    cmds:
-      - bash -lc 'set -euo pipefail; docker compose -f docker-compose.prod.yml down -v --remove-orphans'
-
-  prod:logs:
-    desc: Tail nginx logs for production
-    cmds:
-      - bash -lc 'set -euo pipefail; docker compose -f docker-compose.prod.yml logs -f nginx'
-
-  prod:health:
-    desc: Probe production Nginx and backend health
-    cmds:
-      - bash -lc 'set -e; echo "# nginx root"; (curl -i -sS http://localhost/ | sed -n "1,40p") || true; echo; echo "# nginx /api/health"; (curl -i -sS http://localhost/api/health | sed -n "1,60p") || true; echo; echo "# backend direct :8080/health"; (curl -i -sS http://localhost:8080/health | sed -n "1,60p") || true'
-
-  ci:prod:push:
-    desc: Build and push production images via GH Actions workflow (requires repo secrets)
-    cmds:
-      - echo "This task is a placeholder; CI is handled by .github/workflows/docker-prod.yml"
-

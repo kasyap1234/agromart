@@ -32,11 +32,11 @@ type RegisterRequest struct {
 }
 
 type LoginResponse struct {
-	Token        string    `json:"token"`
-	RefreshToken string    `json:"refresh_token"`
-	User         UserInfo  `json:"user"`
+	Token        string     `json:"token"`
+	RefreshToken string     `json:"refresh_token"`
+	User         UserInfo   `json:"user"`
 	Tenant       TenantInfo `json:"tenant"`
-	ExpiresAt    time.Time `json:"expires_at"`
+	ExpiresAt    time.Time  `json:"expires_at"`
 }
 
 type UserInfo struct {
@@ -71,16 +71,14 @@ func NewAuthService(queries db.Querier, jwtSecret string) *AuthService {
 }
 
 func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*LoginResponse, error) {
-	// Check if user already exists
 	_, err := s.queries.GetUserByEmail(ctx, db.GetUserByEmailParams{
 		Email:    req.Email,
-		TenantID: uuid.Nil, // We'll set this after tenant creation
+		TenantID: uuid.Nil,
 	})
 	if err == nil {
 		return nil, errors.New("user already exists")
 	}
 
-	// Create tenant first
 	tenant, err := s.queries.CreateTenant(ctx, db.CreateTenantParams{
 		Name:  req.Company,
 		Email: req.Email,
@@ -90,26 +88,37 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*Login
 		return nil, err
 	}
 
-	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create admin user
-	user, err := s.queries.CreateUser(ctx, db.CreateUserParams{
+	urow, err := s.queries.CreateUser(ctx, db.CreateUserParams{
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: string(hashedPassword),
 		Phone:    req.Phone,
 		TenantID: tenant.ID,
-		Role:     "admin", // First user is always admin
+		// role must match enum user_role; SQL casts with ::user_role in queries/users.sql
+		Column6: "admin",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Generate tokens
+	user := db.User{
+		ID:            urow.ID,
+		Name:          urow.Name,
+		Email:         urow.Email,
+		Password:      urow.Password,
+		Phone:         urow.Phone,
+		TenantID:      urow.TenantID,
+		Role:          urow.Role,
+		EmailVerified: urow.EmailVerified,
+		IsActive:      urow.IsActive,
+		CreatedAt:     urow.CreatedAt,
+	}
+
 	token, refreshToken, expiresAt, err := s.generateTokens(user, tenant)
 	if err != nil {
 		return nil, err
@@ -137,53 +146,57 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*Login
 }
 
 func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*LoginResponse, error) {
-	// Get user by email (we need to find the tenant first)
-	// This is a simplified approach - in production you might want a different strategy
+	// Find admin users to infer tenant then match email
 	users, err := s.queries.ListUsersByRole(ctx, db.ListUsersByRoleParams{
-		Role:   "admin", // Start with admin to find tenant
-		Limit:  100,
-		Offset: 0,
+		TenantID: uuid.Nil,
+		Column2:  "admin",
+		Limit:    100,
+		Offset:   0,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	var user db.User
-	var found bool
+	found := false
 	for _, u := range users {
 		if u.Email == req.Email {
-			user = u
+			user = db.User{
+				ID:            u.ID,
+				Name:          u.Name,
+				Email:         u.Email,
+				Password:      u.Password,
+				Phone:         u.Phone,
+				TenantID:      u.TenantID,
+				Role:          u.Role,
+				EmailVerified: u.EmailVerified,
+				IsActive:      u.IsActive,
+				CreatedAt:     u.CreatedAt,
+			}
 			found = true
 			break
 		}
 	}
-
 	if !found {
 		return nil, errors.New("invalid credentials")
 	}
 
-	// Verify password
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
-	if err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		return nil, errors.New("invalid credentials")
 	}
 
-	// Check if user is active
-	if !user.IsActive.Bool {
+	if user.IsActive.Valid && !user.IsActive.Bool {
 		return nil, errors.New("account is disabled")
 	}
 
-	// Get tenant
 	tenant, err := s.queries.GetTenantByID(ctx, user.TenantID)
 	if err != nil {
 		return nil, err
 	}
-
 	if !tenant.IsActive {
 		return nil, errors.New("tenant account is disabled")
 	}
 
-	// Generate tokens
 	token, refreshToken, expiresAt, err := s.generateTokens(user, tenant)
 	if err != nil {
 		return nil, err
@@ -212,7 +225,6 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*LoginRespon
 
 func (s *AuthService) generateTokens(user db.User, tenant db.Tenant) (string, string, time.Time, error) {
 	expiresAt := time.Now().Add(24 * time.Hour)
-
 	claims := Claims{
 		UserID:   user.ID.String(),
 		TenantID: tenant.ID.String(),
@@ -224,29 +236,24 @@ func (s *AuthService) generateTokens(user db.User, tenant db.Tenant) (string, st
 			Issuer:    "agromart",
 		},
 	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(s.jwtSecret))
 	if err != nil {
 		return "", "", time.Time{}, err
 	}
-
-	// Generate refresh token
 	refreshToken, err := s.generateRefreshToken()
 	if err != nil {
 		return "", "", time.Time{}, err
 	}
-
 	return tokenString, refreshToken, expiresAt, nil
 }
 
 func (s *AuthService) generateRefreshToken() (string, error) {
-	bytes := make([]byte, 32)
-	_, err := rand.Read(bytes)
-	if err != nil {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(bytes), nil
+	return hex.EncodeToString(b), nil
 }
 
 func (s *AuthService) ValidateToken(tokenString string) (*Claims, error) {
@@ -256,10 +263,8 @@ func (s *AuthService) ValidateToken(tokenString string) (*Claims, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
 		return claims, nil
 	}
-
 	return nil, errors.New("invalid token")
 }

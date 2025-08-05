@@ -4,21 +4,44 @@ import (
 	"net/http"
 	"strconv"
 
+	"agromart2/db"
+	"agromart2/internal/utils"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
-type Handler struct {
+type ProductHandler struct {
 	service *ProductService
 }
 
-func NewHandler(service *ProductService) *Handler {
-	return &Handler{service: service}
+func NewProductHandler(service *ProductService) *ProductHandler {
+	return &ProductHandler{service: service}
+}
+
+// RegisterRoutes registers product routes under provided group (expected to be /api)
+func (h *ProductHandler) RegisterRoutes(g *echo.Group) {
+	g.POST("/products", h.CreateProduct)
+	g.GET("/products", h.ListProducts)
+	g.GET("/products/search", h.SearchProducts)
+	g.GET("/products/:id", h.GetProduct)
+	g.PATCH("/products/:id", h.PatchProduct)
+	// Units helpers
+	g.GET("/units", h.ListUnits)
 }
 
 // CreateProduct creates a new product
-func (h *Handler) CreateProduct(c echo.Context) error {
-	var req CreateProductRequest
+func (h *ProductHandler) CreateProduct(c echo.Context) error {
+	var req struct {
+		SKU          string     `json:"sku" validate:"required"`
+		Name         string     `json:"name" validate:"required"`
+		Price        int        `json:"price" validate:"required"`
+		Description  string     `json:"description"`
+		ImageURL     string     `json:"image_url"`
+		Brand        string     `json:"brand"`
+		UnitID       uuid.UUID  `json:"unit_id"`
+		PricePerUnit int        `json:"price_per_unit"`
+		GSTPercent   int        `json:"gst_percent"`
+	}
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
 	}
@@ -44,71 +67,71 @@ func (h *Handler) CreateProduct(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	return c.JSON(http.StatusCreated, map[string]interface{}{
+	return c.JSON(http.StatusCreated, map[string]any{
 		"success": true,
 		"data":    product,
 		"message": "Product created successfully",
 	})
 }
 
-// GetProduct retrieves a product by ID
-func (h *Handler) GetProduct(c echo.Context) error {
-	productID, err := uuid.Parse(c.Param("id"))
+// GetProduct returns product by id
+func (h *ProductHandler) GetProduct(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid product ID")
 	}
-
 	tenantID, err := uuid.Parse(c.Get("tenant_id").(string))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid tenant")
 	}
 
-	product, err := h.service.GetProductByID(c.Request().Context(), productID, tenantID)
+	product, err := h.service.GetProductByID(c.Request().Context(), id, tenantID)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "product not found")
 	}
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"success": true,
 		"data":    product,
 	})
 }
 
-// ListProducts lists all products with pagination
-func (h *Handler) ListProducts(c echo.Context) error {
+// ListProducts lists products with pagination
+func (h *ProductHandler) ListProducts(c echo.Context) error {
 	tenantID, err := uuid.Parse(c.Get("tenant_id").(string))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid tenant")
 	}
 
-	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	if page < 1 {
 		page = 1
 	}
-	
 	limit, _ := strconv.Atoi(c.QueryParam("limit"))
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-
 	offset := (page - 1) * limit
 
-	products, err := h.service.ListProducts(c.Request().Context(), tenantID, limit, offset)
+	items, err := h.service.ListProducts(c.Request().Context(), tenantID, limit, offset)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	// Get total count
 	total, err := h.service.CountProducts(c.Request().Context(), tenantID)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	// convert []db.Product to []any for consistent JSON payload
+	out := make([]any, 0, len(items))
+	for _, it := range items {
+		out = append(out, it)
+	}
+
+	return c.JSON(http.StatusOK, map[string]any{
 		"success": true,
-		"data":    products,
-		"pagination": map[string]interface{}{
+		"data":    out,
+		"pagination": map[string]any{
 			"page":  page,
 			"limit": limit,
 			"total": total,
@@ -117,49 +140,47 @@ func (h *Handler) ListProducts(c echo.Context) error {
 	})
 }
 
-// SearchProducts searches products by name or SKU
-func (h *Handler) SearchProducts(c echo.Context) error {
+// SearchProducts searches by name or sku (uses q param)
+func (h *ProductHandler) SearchProducts(c echo.Context) error {
 	tenantID, err := uuid.Parse(c.Get("tenant_id").(string))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid tenant")
 	}
-
-	query := c.QueryParam("q")
-	if query == "" {
+	q := c.QueryParam("q")
+	if q == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "search query is required")
 	}
-
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	if page < 1 {
 		page = 1
 	}
-
 	limit, _ := strconv.Atoi(c.QueryParam("limit"))
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-
 	offset := (page - 1) * limit
 
-	products, err := h.service.SearchProducts(c.Request().Context(), tenantID, "%"+query+"%", limit, offset)
+	items, err := h.service.SearchProducts(c.Request().Context(), tenantID, q, limit, offset)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	out := make([]any, 0, len(items))
+	for _, it := range items {
+		out = append(out, it)
+	}
+	return c.JSON(http.StatusOK, map[string]any{
 		"success": true,
-		"data":    products,
-		"query":   query,
+		"data":    out,
+		"query":   q,
 	})
 }
 
-// UpdateProduct updates a product
-func (h *Handler) UpdateProduct(c echo.Context) error {
+// PatchProduct applies partial update based on allowed fields
+func (h *ProductHandler) PatchProduct(c echo.Context) error {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid product ID")
 	}
-
 	tenantID, err := uuid.Parse(c.Get("tenant_id").(string))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid tenant")
@@ -170,85 +191,47 @@ func (h *Handler) UpdateProduct(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
 	}
 
-	err = h.service.PatchProduct(c.Request().Context(), tenantID, productID, req)
-	if err != nil {
+	if err := h.service.PatchProduct(c.Request().Context(), tenantID, productID, req); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"success": true,
 		"message": "Product updated successfully",
 	})
 }
 
-// CreateUnit creates a new unit
-func (h *Handler) CreateUnit(c echo.Context) error {
-	var req CreateUnitRequest
-	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
-	}
-
+// ListUnits returns units with pagination
+func (h *ProductHandler) ListUnits(c echo.Context) error {
 	tenantID, err := uuid.Parse(c.Get("tenant_id").(string))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusUnauthorized, "invalid tenant")
 	}
 
-	unit, err := h.service.CreateUnit(c.Request().Context(), uuid.New(), tenantID, req.Name, req.Abbreviation)
+	page, _ := strconv.Atoi(c.QueryParam("page"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(c.QueryParam("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
+	units, err := h.service.ListUnits(c.Request().Context(), tenantID, limit, offset)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
-
-	return c.JSON(http.StatusCreated, map[string]interface{}{
+	out := make([]any, 0, len(units))
+	for _, u := range units {
+		out = append(out, u)
+	}
+	return c.JSON(http.StatusOK, map[string]any{
 		"success": true,
-		"data":    unit,
-		"message": "Unit created successfully",
+		"data":    out,
 	})
 }
 
-// ListUnits lists all units
-func (h *Handler) ListUnits(c echo.Context) error {
-	tenantID, err := uuid.Parse(c.Get("tenant_id").(string))
-	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "invalid tenant")
-	}
-
-	units, err := h.service.ListUnits(c.Request().Context(), tenantID, 100, 0)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	}
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
-		"data":    units,
-	})
-}
-
-// RegisterRoutes registers all product routes
-func (h *Handler) RegisterRoutes(g *echo.Group) {
-	g.POST("/products", h.CreateProduct)
-	g.GET("/products", h.ListProducts)
-	g.GET("/products/search", h.SearchProducts)
-	g.GET("/products/:id", h.GetProduct)
-	g.PUT("/products/:id", h.UpdateProduct)
-	
-	g.POST("/units", h.CreateUnit)
-	g.GET("/units", h.ListUnits)
-}
-
-// Request/Response types
-type CreateProductRequest struct {
-	SKU          string    `json:"sku" validate:"required"`
-	Name         string    `json:"name" validate:"required"`
-	Price        int       `json:"price" validate:"required,min=0"`
-	Description  string    `json:"description"`
-	ImageURL     string    `json:"image_url"`
-	Brand        string    `json:"brand"`
-	UnitID       uuid.UUID `json:"unit_id" validate:"required"`
-	PricePerUnit int       `json:"price_per_unit" validate:"required,min=0"`
-	GSTPercent   int       `json:"gst_percent" validate:"min=0,max=100"`
-}
-
-type CreateUnitRequest struct {
-	Name         string `json:"name" validate:"required"`
-	Abbreviation string `json:"abbreviation" validate:"required"`
-}
+// compile-time usage to avoid unused import errors for db and utils when methods evolve
+var _ = db.Product{}
+var _ = utils.P

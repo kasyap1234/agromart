@@ -15,17 +15,17 @@ import (
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (name, email, password, phone, tenant_id, role)
-VALUES ($1, $2, $3, $4, $5, $6::text)
+VALUES ($1, $2, $3, $4, $5, CAST($6 AS user_role))
 RETURNING id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at
 `
 
 type CreateUserParams struct {
-	Name     string    `json:"name"`
-	Email    string    `json:"email"`
-	Password string    `json:"password"`
-	Phone    string    `json:"phone"`
-	TenantID uuid.UUID `json:"tenant_id"`
-	Column6  string    `json:"column_6"`
+	Name     string      `json:"name"`
+	Email    string      `json:"email"`
+	Password string      `json:"password"`
+	Phone    string      `json:"phone"`
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Column6  interface{} `json:"column_6"`
 }
 
 type CreateUserRow struct {
@@ -145,16 +145,16 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 
 const listUsersByRole = `-- name: ListUsersByRole :many
 SELECT id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at FROM users
-WHERE tenant_id = $1 AND role = $2::text
+WHERE tenant_id = $1 AND role = CAST($2 AS user_role)
 ORDER BY name
 LIMIT $3 OFFSET $4
 `
 
 type ListUsersByRoleParams struct {
-	TenantID uuid.UUID `json:"tenant_id"`
-	Column2  string    `json:"column_2"`
-	Limit    int32     `json:"limit"`
-	Offset   int32     `json:"offset"`
+	TenantID uuid.UUID   `json:"tenant_id"`
+	Column2  interface{} `json:"column_2"`
+	Limit    int32       `json:"limit"`
+	Offset   int32       `json:"offset"`
 }
 
 type ListUsersByRoleRow struct {
@@ -208,7 +208,7 @@ func (q *Queries) ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams
 
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
-SET name = $2, email = $3, phone = $4, role = $5::text, email_verified = $6
+SET name = $2, email = $3, phone = $4, role = CAST($5 AS user_role), email_verified = $6
 WHERE id = $1 AND tenant_id = $7
 RETURNING id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at
 `
@@ -218,7 +218,7 @@ type UpdateUserParams struct {
 	Name          string      `json:"name"`
 	Email         string      `json:"email"`
 	Phone         string      `json:"phone"`
-	Column5       string      `json:"column_5"`
+	Column5       interface{} `json:"column_5"`
 	EmailVerified pgtype.Bool `json:"email_verified"`
 	TenantID      uuid.UUID   `json:"tenant_id"`
 }

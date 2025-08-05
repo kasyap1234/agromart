@@ -80,7 +80,7 @@ func main() {
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
-	productHandler := products.NewHandler(productService)
+	productHandler := products.NewProductHandler(productService)
 	inventoryHandler := inventory.NewHandler(inventoryService)
 
 	// Initialize Echo

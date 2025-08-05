@@ -82,10 +82,10 @@ func main() {
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
-	productHandler := products.NewHandler(productService)
+	productHandler := products.NewProductHandler(productService)
 	inventoryHandler := inventory.NewHandler(inventoryService)
 	supplierHandler := suppliers.NewHandler(supplierService)
-	customerHandler := customers.NewHandler(customerService)
+	customerHandler := customers.NewCustomerHandler(customerService)
 	purchaseOrderHandler := purchase_orders.NewHandler(purchaseOrderService)
 	healthHandler := handler.NewHealthHandler(dbService)
 

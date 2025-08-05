@@ -147,44 +147,37 @@ export const apiClient = {
       page?: number;
       limit?: number;
       search?: string;
-      category?: string;
-      is_active?: boolean;
     }) => apiClient.get('/products', params),
     
     get: (id: string) => apiClient.get(`/products/${id}`),
     
     create: (data: {
-      name: string;
-      description: string;
       sku: string;
-      category: string;
+      name: string;
+      price: number;
+      description?: string;
+      image_url?: string;
+      brand?: string;
       unit_id: string;
-      min_stock_level: number;
-      max_stock_level: number;
-      reorder_point: number;
-      cost_price: number;
-      selling_price: number;
-      tax_rate: number;
+      price_per_unit: number;
+      gst_percent?: number;
     }) => apiClient.post('/products', data),
     
     update: (id: string, data: Partial<{
       name: string;
+      price: number;
       description: string;
-      sku: string;
-      category: string;
+      image_url: string;
+      brand: string;
       unit_id: string;
-      min_stock_level: number;
-      max_stock_level: number;
-      reorder_point: number;
-      cost_price: number;
-      selling_price: number;
-      tax_rate: number;
-      is_active: boolean;
-    }>) => apiClient.patch(`/products/${id}`, data),
+      price_per_unit: number;
+      gst_percent: number;
+    }>) => apiClient.put(`/products/${id}`, data),
     
     delete: (id: string) => apiClient.delete(`/products/${id}`),
     
-    search: (query: string) => apiClient.get(`/products/search?q=${query}`),
+    search: (query: string, params?: { page?: number; limit?: number }) =>
+      apiClient.get('/products/search', { q: query, ...(params || {}) }),
   },
 
   // Product Units
