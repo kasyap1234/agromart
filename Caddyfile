@@ -1,0 +1,42 @@
+{
+  # Global options
+  auto_https off
+  servers {
+    metrics
+  }
+}
+
+:80 {
+  encode zstd gzip
+
+  @health path /health
+  handle @health {
+    respond "healthy" 200
+  }
+
+  # Proxy API to backend
+  @api path /api*
+  handle @api {
+    reverse_proxy backend:8080
+  }
+
+  # Default: proxy everything else to frontend
+  handle {
+    reverse_proxy frontend:3000
+  }
+}
+
+# TLS variant for real domains (example)
+# {$CADDY_DOMAIN} {
+#   encode zstd gzip
+#   tls {$EMAIL_FOR_TLS}
+#
+#   @api path /api*
+#   handle @api {
+#     reverse_proxy backend:8080
+#   }
+#
+#   handle {
+#     reverse_proxy frontend:3000
+#   }
+# }

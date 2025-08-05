@@ -8,9 +8,9 @@ This guide covers the complete deployment process for the AgroMart agricultural 
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│     Nginx       │    │    Frontend     │    │    Backend      │
-│  Load Balancer  │────│   (Next.js)     │────│     (Go)        │
-│   Rate Limiting │    │     Port 3000   │    │   Port 8080     │
+│     Caddy       │    │    Frontend     │    │    Backend      │
+│ Reverse Proxy   │────│   (Next.js)     │────│     (Go)        │
+│   TLS/HTTP      │    │     Port 3000   │    │   Port 8080     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                                              │
          │              ┌─────────────────┐            │
@@ -130,7 +130,7 @@ MAX_CONN_IDLE_TIME=1h
 
 ### Available Compose Files
 - `docker-compose.yml` - Development environment
-- `docker-compose.prod.yml` - Production environment with Nginx
+- `docker-compose.prod.yml` - Production environment with Caddy
 
 ### Manual Docker Commands
 ```bash
@@ -152,7 +152,7 @@ All containers include health checks:
 - **Database**: `pg_isready` check
 - **Backend**: HTTP health endpoint `/health`
 - **Frontend**: HTTP availability check
-- **Nginx**: HTTP health endpoint
+- **Caddy**: HTTP health endpoint
 
 ## 🔍 Health Monitoring
 
@@ -231,15 +231,12 @@ docker-compose exec db psql -U postgres -d agromart < backup_file.sql
 - [ ] Set up monitoring and alerting
 
 ### SSL/HTTPS Setup
-1. Obtain SSL certificates (Let's Encrypt recommended)
-2. Place certificates in `nginx/ssl/`
-3. Uncomment HTTPS server block in `nginx/nginx.conf`
-4. Update environment variables for HTTPS URLs
+- Caddy handles automatic HTTPS via ACME when using a real domain.
+- For localhost or non-public domains, use HTTP (:80) configuration in Caddyfile.
+- Update NEXT_PUBLIC_API_URL to the correct scheme and host before building frontend.
 
 ### Rate Limiting
-Nginx is configured with rate limiting:
-- API endpoints: 10 requests/second
-- Auth endpoints: 5 requests/minute
+- If you need rate limiting, implement it at the application layer or via Caddy global options/plugins.
 
 ## 📊 Performance Optimization
 
@@ -301,8 +298,8 @@ docker-compose exec frontend env | grep NEXT_PUBLIC
 ```
 
 ### Log Locations
-- **Application logs**: `docker-compose logs [service]`
-- **Nginx logs**: `nginx_logs` volume
+- **Application logs**: `docker compose logs [service]`
+- **Caddy logs**: `docker compose logs caddy`
 - **Database logs**: PostgreSQL container logs
 
 ### Performance Issues
@@ -386,6 +383,6 @@ curl http://localhost:8080/health
 - `docker-compose.yml` - Development configuration
 - `docker-compose.prod.yml` - Production configuration
 - `.env.production` - Production environment variables
-- `nginx/nginx.conf` - Nginx configuration
+- `Caddyfile` - Caddy reverse proxy configuration
 - `scripts/deploy.sh` - Deployment script
 - `scripts/backup.sh` - Backup script

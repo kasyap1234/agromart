@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Production deploy script:
 # - Builds multi-stage backend (static Go) and frontend (Next.js) images
-# - Builds nginx image that serves the built frontend and proxies /api to backend
+# - Uses Caddy as reverse proxy to serve frontend and proxy /api to backend
 # - Optionally pushes images to a registry
 # - Brings up the stack with docker-compose.prod.yml using .env.production
 
@@ -35,11 +35,11 @@ fi
 
 # Images (allow override)
 BACKEND_IMAGE="${DOCKER_IMAGE_BACKEND:-${REGISTRY_PREFIX:+$REGISTRY_PREFIX-}agromart-backend}:${IMAGE_TAG}"
-NGINX_IMAGE="${DOCKER_IMAGE_NGINX:-${REGISTRY_PREFIX:+$REGISTRY_PREFIX-}agromart-frontend}:${IMAGE_TAG}"
+FRONTEND_IMAGE="${DOCKER_IMAGE_FRONTEND:-${REGISTRY_PREFIX:+$REGISTRY_PREFIX-}agromart-frontend}:${IMAGE_TAG}"
 
 echo "[deploy] Using images:"
 echo "  BACKEND_IMAGE=${BACKEND_IMAGE}"
-echo "  NGINX_IMAGE=${NGINX_IMAGE}"
+echo "  FRONTEND_IMAGE=${FRONTEND_IMAGE}"
 echo "  IMAGE_TAG=${IMAGE_TAG}"
 
 # Build backend (uses top-level Dockerfile multi-stage; runtime target produces static binary + migrations)
@@ -50,13 +50,11 @@ docker build \
   -f Dockerfile \
   .
 
-# Build nginx (serves built Next.js app and proxies /api)
-# docker/frontend.Dockerfile must build Next.js and copy .next/static into nginx html root,
-# and copy nginx/nginx.conf to /etc/nginx/nginx.conf
-echo "[deploy] Building nginx frontend image..."
+# Build frontend image (Next.js). Caddy will reverse-proxy to this container.
+echo "[deploy] Building frontend image..."
 docker build \
   --build-arg PUBLIC_API_URL="${PUBLIC_API_URL:-/api}" \
-  -t "${NGINX_IMAGE}" \
+  -t "${FRONTEND_IMAGE}" \
   -f docker/frontend.Dockerfile \
   .
 
@@ -64,14 +62,14 @@ docker build \
 if [ "${PUSH_IMAGES:-false}" = "true" ]; then
   echo "[deploy] Pushing images..."
   docker push "${BACKEND_IMAGE}"
-  docker push "${NGINX_IMAGE}"
+  docker push "${FRONTEND_IMAGE}"
 fi
 
 # Bring up production stack
 echo "[deploy] Starting production stack with docker-compose.prod.yml"
 # Export images and tag for compose file
 export DOCKER_IMAGE_BACKEND="${BACKEND_IMAGE%:*}"
-export DOCKER_IMAGE_NGINX="${NGINX_IMAGE%:*}"
+export DOCKER_IMAGE_FRONTEND="${FRONTEND_IMAGE%:*}"
 export IMAGE_TAG="${IMAGE_TAG}"
 
 docker compose -f docker-compose.prod.yml --env-file .env.production pull || true
@@ -87,8 +85,8 @@ for i in $(seq 1 60); do
 done
 [ "${status:-}" = "healthy" ] || { echo "[deploy] db not healthy"; docker compose -f docker-compose.prod.yml logs db --tail=200 || true; exit 1; }
 
-# Start backend and nginx
-docker compose -f docker-compose.prod.yml --env-file .env.production up -d backend nginx
+# Start backend, frontend (if defined in compose), and caddy
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d backend caddy
 
 # Health checks
 BACKEND_PORT="${APP_APPPORT:-8080}"
@@ -101,15 +99,16 @@ done
 [ "${code:-000}" = "200" ] || { echo "[deploy] backend not healthy"; docker compose -f docker-compose.prod.yml logs backend --tail=200 || true; exit 1; }
 
 PUB_HTTP="${PUBLIC_HTTP_PORT:-80}"
-echo "[deploy] Probing nginx: http://localhost:${PUB_HTTP}"
+echo "[deploy] Probing caddy: http://localhost:${PUB_HTTP}"
 for i in $(seq 1 60); do
   ncode=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${PUB_HTTP}" || true)
   [ "$ncode" = "200" ] && break || true
   sleep 2
 done
-[ "${ncode:-000}" = "200" ] || { echo "[deploy] nginx not serving 200"; docker compose -f docker-compose.prod.yml logs nginx --tail=200 || true; exit 1; }
+[ "${ncode:-000}" = "200" ] || { echo "[deploy] caddy not serving 200"; docker compose -f docker-compose.prod.yml logs caddy --tail=200 || true; exit 1; }
 
 echo "[deploy] Production URLs:"
-echo " - Nginx:   http://localhost:${PUB_HTTP}"
-echo " - Backend: http://localhost:${BACKEND_PORT} (direct)"
-echo " - API via Nginx: http://localhost:${PUB_HTTP}/api"
+echo " - Caddy:    http://localhost:${PUB_HTTP}"
+echo " - Backend:  http://localhost:${BACKEND_PORT} (direct)"
+echo " - Frontend: http://localhost:${PUB_HTTP}"
+echo " - API via Caddy: http://localhost:${PUB_HTTP}/api"

@@ -13,8 +13,9 @@ on:
       - "Dockerfile"
       - "docker/**"
       - "apps/**"
-      - "nginx/**"
+      - "Caddyfile"
       - ".github/workflows/docker-prod.yml"
+      - "!nginx/**"
 
 env:
   REGISTRY: docker.io
@@ -69,7 +70,7 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.vars.outputs.repo }}-backend:${{ steps.vars.outputs.tag }}
 
-      - name: Build nginx (frontend) image
+      - name: Build frontend image
         uses: docker/build-push-action@v6
         with:
           context: .
