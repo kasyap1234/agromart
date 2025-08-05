@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -31,7 +32,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("APP_DB_PORT", 5432)
 	viper.SetDefault("APP_DB_USER", "postgres")
 	viper.SetDefault("APP_DB_PASSWORD", "password")
-	viper.SetDefault("APP_DB_NAME", "agromart")
+	viper.SetDefault("APP_DB_NAME", "inventory")
 	viper.SetDefault("JWT_SECRET", "your-secret-key-change-in-production")
 	viper.SetDefault("MAX_CONNS", 25)
 	viper.SetDefault("MIN_CONNS", 5)
@@ -48,7 +49,7 @@ func LoadConfig() (*Config, error) {
 
 	// Read from config file if it exists (don't fail if it doesn't)
 	if err := viper.ReadInConfig(); err != nil {
-		log.Printf("Warning: Could not read config file: %v. Using environment variables and defaults.", err)
+		log.Printf("[CONFIG] Could not read .env: %v (falling back to env/defaults)", err)
 	}
 
 	// Environment variables take precedence
@@ -84,6 +85,17 @@ func LoadConfig() (*Config, error) {
 		}
 		c.MaxConnIdleTime = duration
 	}
+
+	// Diagnostics
+	mask := func(s string) string {
+		if len(s) <= 4 {
+			return "****"
+		}
+		return s[:2] + "****" + s[len(s)-2:]
+	}
+	log.Printf("[CONFIG] Loaded. Port=%d DB=%s:%d/%s User=%s Pwd=%s JWT?%t ENV=%s",
+		c.AppPort, c.DB_Host, c.DB_Port, c.DB_Name, c.DB_User, mask(c.DB_Password), c.JWTSecret != "",
+		os.Getenv("GO_ENV"))
 
 	return &c, nil
 }

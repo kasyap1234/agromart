@@ -1,0 +1,44 @@
+
+services:
+  db:
+    image: postgres:15
+    container_name: agromart-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: inventory
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_DB_HOST: db
+      APP_DB_PORT: 5432
+      APP_DB_USER: postgres
+      APP_DB_PASSWORD: secret
+      APP_DB_NAME: inventory
+      APP_APPPORT: 8080
+      JWT_SECRET: your-secret-key-change-in-production
+      DATABASE_URL: postgres://postgres:secret@db:5432/inventory?sslmode=disable
+    volumes:
+      - ./apps/server/sql/schema:/app/sql/schema
+    command: >
+      sh -c "migrate -path /app/sql/schema -database $$DATABASE_URL up && ./main"
+
+volumes:
+  pgdata:

@@ -5,15 +5,17 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	echoMiddleware "github.com/labstack/echo/v4/middleware"
+	"github.com/google/uuid"
 
 	"agromart2/apps/server/config"
 	"agromart2/internal/auth"
 	"agromart2/internal/database"
 	"agromart2/internal/middleware"
-	
+
 	"agromart2/db"
 	"agromart2/apps/server/products"
 	"agromart2/apps/server/inventory"
@@ -21,11 +23,13 @@ import (
 )
 
 func main() {
-	// Load configuration
+	// Load configuration with diagnostics
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatal("Failed to load config:", err)
 	}
+	log.Printf("[BOOT] Config loaded: env(JWT set? %t) appPort=%d db_host=%s db_port=%d maxConns=%d",
+		cfg.JWTSecret != "", cfg.AppPort, cfg.DB_Host, cfg.DB_Port, cfg.MaxConns)
 
 	// Create database config
 	dbConfig := &database.Config{
@@ -49,16 +53,19 @@ func main() {
 
 	// Initialize database connection pool
 	ctx := context.Background()
+	start := time.Now()
 	pool, err := dbConfig.NewPool(ctx)
 	if err != nil {
 		log.Fatal("Failed to create database connection pool:", err)
 	}
 	defer pool.Close()
+	log.Printf("[BOOT] DB pool created in %s", time.Since(start))
 
 	// Test database connection
 	if err := pool.Ping(ctx); err != nil {
 		log.Fatal("Failed to ping database:", err)
 	}
+	log.Printf("[BOOT] DB ping OK")
 
 	// Initialize SQLC queries
 	queries := db.New(pool)
@@ -81,9 +88,11 @@ func main() {
 
 	// Middleware
 	e.Use(echoMiddleware.Logger())
-	e.Use(echoMiddleware.Recover())
+	// Use our custom Recover to avoid Echo's default interfering with error flow
+	e.Use(middleware.RecoverMiddleware)
 	e.Use(middleware.RequestIDMiddleware)
-	e.Use(middleware.ErrorHandler)
+	// Use proper global HTTP error handler to preserve status codes
+	e.HTTPErrorHandler = middleware.HTTPErrorHandler
 	e.Use(echoMiddleware.CORS())
 
 	// Health check
@@ -100,17 +109,21 @@ func main() {
 	// Auth routes
 	authGroup := api.Group("/auth")
 	authMiddleware := auth.NewMiddleware(authService)
-	
+
 	authGroup.POST("/register", authHandler.Register)
 	authGroup.POST("/login", authHandler.Login)
 	authGroup.POST("/logout", authHandler.Logout)
 	authGroup.POST("/refresh", authHandler.RefreshToken)
-	authGroup.GET("/me", authMiddleware.RequireAuth(authHandler.Me))
+	// Me endpoint should be protected; wrap the handler invocation in RequireAuth
+	authGroup.GET("/me", authMiddleware.RequireAuth(func(c echo.Context) error {
+		return authHandler.Me(c)
+	}))
 
 	// Protected routes
 	protected := api.Group("")
+	// Protect all subsequent routes in this group
 	protected.Use(authMiddleware.RequireAuth)
-	
+
 	// Auth protected routes
 	authHandler.RegisterProtectedRoutes(protected)
 
@@ -124,39 +137,109 @@ func main() {
 
 	// Reports routes
 	reportsGroup := protected.Group("/reports")
+	// Dashboard stats - real implementation using inventory service
 	reportsGroup.GET("/dashboard-stats", func(c echo.Context) error {
-		// TODO: Implement dashboard stats
+		tenantStr, ok := c.Get("tenant_id").(string)
+		if !ok || tenantStr == "" {
+			return echo.NewHTTPError(401, "invalid tenant context")
+		}
+		tenantUUID, err := uuid.Parse(tenantStr)
+		if err != nil {
+			return echo.NewHTTPError(401, "invalid tenant id")
+		}
+		stats, err := inventoryService.GetInventorySummary(c.Request().Context(), tenantUUID)
+		if err != nil {
+			log.Printf("[REPORTS] dashboard-stats error: %v", err)
+			return echo.NewHTTPError(500, "failed to compute dashboard stats")
+		}
 		return c.JSON(200, map[string]interface{}{
 			"success": true,
-			"data": map[string]interface{}{
-				"total_products":     150,
-				"low_stock_count":    12,
-				"total_value":        45000,
-				"expiring_batches":   8,
-			},
+			"data":    stats,
 		})
 	})
-	
+
+	// Low stock with optional threshold query param (default 10)
 	reportsGroup.GET("/low-stock", func(c echo.Context) error {
-		// TODO: Implement low stock report
+		tenantStr, ok := c.Get("tenant_id").(string)
+		if !ok || tenantStr == "" {
+			return echo.NewHTTPError(401, "invalid tenant context")
+		}
+		tenantUUID, err := uuid.Parse(tenantStr)
+		if err != nil {
+			return echo.NewHTTPError(401, "invalid tenant id")
+		}
+		threshold := 10
+		if t := c.QueryParam("threshold"); t != "" {
+			if v, err := strconv.Atoi(t); err == nil && v >= 0 {
+				threshold = v
+			}
+		}
+		items, err := inventoryService.GetLowStockReport(c.Request().Context(), tenantUUID, threshold)
+		if err != nil {
+			log.Printf("[REPORTS] low-stock error: %v", err)
+			return echo.NewHTTPError(500, "failed to get low stock report")
+		}
 		return c.JSON(200, map[string]interface{}{
 			"success": true,
-			"data":    []interface{}{},
+			"data":    items,
 		})
 	})
-	
+
+	// Expiring batches with optional days query param (default 30)
 	reportsGroup.GET("/expiring-batches", func(c echo.Context) error {
-		// TODO: Implement expiring batches report
+		tenantStr, ok := c.Get("tenant_id").(string)
+		if !ok || tenantStr == "" {
+			return echo.NewHTTPError(401, "invalid tenant context")
+		}
+		tenantUUID, err := uuid.Parse(tenantStr)
+		if err != nil {
+			return echo.NewHTTPError(401, "invalid tenant id")
+		}
+		days := 30
+		if d := c.QueryParam("days"); d != "" {
+			if v, err := strconv.Atoi(d); err == nil && v >= 0 {
+				days = v
+			}
+		}
+		items, err := inventoryService.GetExpiringBatches(c.Request().Context(), tenantUUID, days)
+		if err != nil {
+			log.Printf("[REPORTS] expiring-batches error: %v", err)
+			return echo.NewHTTPError(500, "failed to get expiring batches")
+		}
 		return c.JSON(200, map[string]interface{}{
 			"success": true,
-			"data":    []interface{}{},
+			"data":    items,
+		})
+	})
+
+	// Inventory total value endpoint expected by frontend
+	reportsGroup.GET("/inventory-value", func(c echo.Context) error {
+		tenantStr, ok := c.Get("tenant_id").(string)
+		if !ok || tenantStr == "" {
+			return echo.NewHTTPError(401, "invalid tenant context")
+		}
+		tenantUUID, err := uuid.Parse(tenantStr)
+		if err != nil {
+			return echo.NewHTTPError(401, "invalid tenant id")
+		}
+		val, err := inventoryService.GetInventoryValue(c.Request().Context(), tenantUUID)
+	 if err != nil {
+			log.Printf("[REPORTS] inventory-value error: %v", err)
+		 return echo.NewHTTPError(500, "failed to get inventory value")
+	 }
+		return c.JSON(200, map[string]interface{}{
+			"success": true,
+			"data":    val,
 		})
 	})
 
 	// Start server
 	port := getPort(cfg.AppPort)
-	log.Printf("Server starting on port %s", port)
-	log.Fatal(e.Start(":" + port))
+	log.Printf("[BOOT] Server starting on port %s", port)
+	// Ensure graceful error surfacing while preserving proper exit on fatal
+	if err := e.Start(":" + port); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func getPort(defaultPort int) string {

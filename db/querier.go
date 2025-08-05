@@ -31,13 +31,14 @@ type Querier interface {
 	CreateSupplier(ctx context.Context, arg CreateSupplierParams) (Supplier, error)
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
 	CreateUnit(ctx context.Context, arg CreateUnitParams) (Unit, error)
-	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeactivateCustomer(ctx context.Context, arg DeactivateCustomerParams) error
 	DeactivateSupplier(ctx context.Context, arg DeactivateSupplierParams) error
 	GetBatchByID(ctx context.Context, arg GetBatchByIDParams) (Batch, error)
 	GetCustomerByID(ctx context.Context, arg GetCustomerByIDParams) (Customer, error)
 	GetCustomerByName(ctx context.Context, arg GetCustomerByNameParams) (Customer, error)
 	GetCustomerSalesSummary(ctx context.Context, tenantID uuid.UUID) ([]GetCustomerSalesSummaryRow, error)
+	// Return integer days_until_expiry. Filter using a DATE upper bound so $2 remains a date.
 	GetExpiringBatches(ctx context.Context, arg GetExpiringBatchesParams) ([]GetExpiringBatchesRow, error)
 	GetInventoryByProductBatch(ctx context.Context, arg GetInventoryByProductBatchParams) (Inventory, error)
 	GetInventoryLogByBatch(ctx context.Context, arg GetInventoryLogByBatchParams) ([]InventoryLog, error)
@@ -62,8 +63,8 @@ type Querier interface {
 	GetSupplierPurchaseSummary(ctx context.Context, tenantID uuid.UUID) ([]GetSupplierPurchaseSummaryRow, error)
 	GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error)
 	GetUnitByID(ctx context.Context, arg GetUnitByIDParams) (Unit, error)
-	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (User, error)
-	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	ListActiveCustomers(ctx context.Context, arg ListActiveCustomersParams) ([]Customer, error)
 	ListActiveSuppliers(ctx context.Context, arg ListActiveSuppliersParams) ([]Supplier, error)
 	ListAllInventory(ctx context.Context, arg ListAllInventoryParams) ([]ListAllInventoryRow, error)
@@ -76,7 +77,7 @@ type Querier interface {
 	ListSuppliers(ctx context.Context, arg ListSuppliersParams) ([]Supplier, error)
 	ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error)
 	ListUnits(ctx context.Context, arg ListUnitsParams) ([]Unit, error)
-	ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams) ([]User, error)
+	ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams) ([]ListUsersByRoleRow, error)
 	ReduceInventoryQuantity(ctx context.Context, arg ReduceInventoryQuantityParams) error
 	SearchCustomers(ctx context.Context, arg SearchCustomersParams) ([]Customer, error)
 	SearchProducts(ctx context.Context, arg SearchProductsParams) ([]Product, error)
@@ -94,7 +95,7 @@ type Querier interface {
 	UpdateSupplier(ctx context.Context, arg UpdateSupplierParams) (Supplier, error)
 	UpdateTenant(ctx context.Context, arg UpdateTenantParams) (Tenant, error)
 	UpdateUnit(ctx context.Context, arg UpdateUnitParams) (Unit, error)
-	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserRow, error)
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 }
 

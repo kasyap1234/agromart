@@ -139,26 +139,27 @@ func (q *Queries) GetBatchByID(ctx context.Context, arg GetBatchByIDParams) (Bat
 
 const getExpiringBatches = `-- name: GetExpiringBatches :many
 SELECT
-    b.id as batch_id,
+    b.id AS batch_id,
     b.batch_number,
     b.expiry_date,
-    p.id as product_id,
-    p.name as product_name,
-    p.sku as product_sku,
+    p.id AS product_id,
+    p.name AS product_name,
+    p.sku AS product_sku,
     i.quantity,
-    EXTRACT(DAY FROM (b.expiry_date - CURRENT_DATE)) as days_until_expiry
+    GREATEST((b.expiry_date::date - CURRENT_DATE), 0) AS days_until_expiry
 FROM batches b
 JOIN products p ON b.product_id = p.id
 JOIN inventory i ON b.id = i.batch_id
 WHERE b.tenant_id = $1
-    AND b.expiry_date <= $2
-    AND i.quantity > 0
+  AND i.quantity > 0
+  AND b.expiry_date IS NOT NULL
+  AND b.expiry_date::date BETWEEN CURRENT_DATE AND $2::date
 ORDER BY b.expiry_date ASC
 `
 
 type GetExpiringBatchesParams struct {
-	TenantID   uuid.UUID `json:"tenant_id"`
-	ExpiryDate time.Time `json:"expiry_date"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	Column2  time.Time `json:"column_2"`
 }
 
 type GetExpiringBatchesRow struct {
@@ -169,11 +170,12 @@ type GetExpiringBatchesRow struct {
 	ProductName     string         `json:"product_name"`
 	ProductSku      string         `json:"product_sku"`
 	Quantity        pgtype.Numeric `json:"quantity"`
-	DaysUntilExpiry float64        `json:"days_until_expiry"`
+	DaysUntilExpiry interface{}    `json:"days_until_expiry"`
 }
 
+// Return integer days_until_expiry. Filter using a DATE upper bound so $2 remains a date.
 func (q *Queries) GetExpiringBatches(ctx context.Context, arg GetExpiringBatchesParams) ([]GetExpiringBatchesRow, error) {
-	rows, err := q.db.Query(ctx, getExpiringBatches, arg.TenantID, arg.ExpiryDate)
+	rows, err := q.db.Query(ctx, getExpiringBatches, arg.TenantID, arg.Column2)
 	if err != nil {
 		return nil, err
 	}

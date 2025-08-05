@@ -2,6 +2,7 @@ package auth
 
 import (
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -18,19 +19,44 @@ func NewMiddleware(authService *AuthService) *Middleware {
 
 func (m *Middleware) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		start := time.Now()
 		authHeader := c.Request().Header.Get("Authorization")
 		if authHeader == "" {
-			return echo.NewHTTPError(401, "missing authorization header")
+			c.Response().Header().Set("X-Auth-Debug", "missing_header")
+			_ = c.JSON(401, map[string]interface{}{
+				"success": false,
+				"error": map[string]interface{}{
+					"code":    401,
+					"message": "missing authorization header",
+				},
+			})
+			return nil
 		}
 
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			return echo.NewHTTPError(401, "invalid authorization header format")
+			c.Response().Header().Set("X-Auth-Debug", "bad_format")
+			_ = c.JSON(401, map[string]interface{}{
+				"success": false,
+				"error": map[string]interface{}{
+					"code":    401,
+					"message": "invalid authorization header format",
+				},
+			})
+			return nil
 		}
 
 		tokenStr := authHeader[len("Bearer "):]
 		claims, err := m.authService.ValidateToken(tokenStr)
 		if err != nil {
-			return echo.NewHTTPError(401, "invalid token")
+			c.Response().Header().Set("X-Auth-Debug", "invalid_token")
+			_ = c.JSON(401, map[string]interface{}{
+				"success": false,
+				"error": map[string]interface{}{
+					"code":    401,
+					"message": "invalid token",
+				},
+			})
+			return nil
 		}
 
 		// Set user context
@@ -38,6 +64,9 @@ func (m *Middleware) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		c.Set("tenant_id", claims.TenantID)
 		c.Set("user_role", claims.Role)
 		c.Set("user_email", claims.Email)
+
+		// lightweight diagnostic timing header
+		c.Response().Header().Set("X-Auth-Time", time.Since(start).String())
 
 		return next(c)
 	}
@@ -48,7 +77,14 @@ func (m *Middleware) RequireRole(roles ...string) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			userRole := c.Get("user_role")
 			if userRole == nil {
-				return echo.NewHTTPError(401, "unauthorized")
+				_ = c.JSON(401, map[string]interface{}{
+					"success": false,
+					"error": map[string]interface{}{
+						"code":    401,
+						"message": "unauthorized",
+					},
+				})
+				return nil
 			}
 
 			role := userRole.(string)
@@ -58,7 +94,14 @@ func (m *Middleware) RequireRole(roles ...string) echo.MiddlewareFunc {
 				}
 			}
 
-			return echo.NewHTTPError(403, "insufficient permissions")
+			_ = c.JSON(403, map[string]interface{}{
+				"success": false,
+				"error": map[string]interface{}{
+					"code":    403,
+					"message": "insufficient permissions",
+				},
+			})
+			return nil
 		}
 	}
 }
