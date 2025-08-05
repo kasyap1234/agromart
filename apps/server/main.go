@@ -105,6 +105,24 @@ func main() {
 	// API routes
 	api := e.Group("/api")
 
+	// IMPORTANT: Ensure public /api/health is NOT protected by group auth middleware.
+	// Register it directly on the root Echo with explicit path to avoid inheriting /api group's middleware.
+	e.GET("/api/health", func(c echo.Context) error {
+		return c.JSON(200, map[string]interface{}{
+			"service": "agromart-api",
+			"status":  "ok",
+		})
+	})
+
+	// Public health alias under /api to match frontend expectations
+	// This must be registered before applying auth middleware to protected groups
+	api.GET("/health", func(c echo.Context) error {
+		return c.JSON(200, map[string]interface{}{
+			"service": "agromart-api",
+			"status":  "ok",
+		})
+	})
+
 	// Auth routes
 	authGroup := api.Group("/auth")
 	authMiddleware := auth.NewMiddleware(authService)

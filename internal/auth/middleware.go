@@ -68,6 +68,13 @@ func GetEmail(ctx context.Context) string {
 func (m *Middleware) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		start := time.Now()
+
+		// Public route allowlist: bypass auth for health and public auth endpoints
+		// Use raw URL path instead of route template to avoid group/template mismatches.
+		if isPublicPath(c.Request().URL.Path, c.Request().Method) {
+			return next(c)
+		}
+
 		authHeader := c.Request().Header.Get("Authorization")
 		if authHeader == "" {
 			c.Response().Header().Set("X-Auth-Debug", "missing_header")
@@ -126,6 +133,28 @@ func (m *Middleware) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 
 		return next(c)
 	}
+}
+
+// isPublicPath determines if the request should bypass auth middleware.
+// Note: echo.Context.Path() returns the registered route path with param placeholders.
+func isPublicPath(rawPath, method string) bool {
+	// Allow CORS preflight and HEAD
+	if method == "OPTIONS" || method == "HEAD" {
+		return true
+	}
+
+	// Health endpoints: allow both root and API health, plus any subpaths like /api/healthz
+	if rawPath == "/health" || strings.HasPrefix(rawPath, "/api/health") {
+		return true
+	}
+
+	// Public auth endpoints (login/register/forgot/reset/refresh/logout) in both unversioned and v1
+	if strings.HasPrefix(rawPath, "/api/auth/") || strings.HasPrefix(rawPath, "/api/v1/auth/") {
+		return true
+	}
+
+	// Everything else is protected.
+	return false
 }
 
 func (m *Middleware) RequireRole(roles ...string) echo.MiddlewareFunc {
