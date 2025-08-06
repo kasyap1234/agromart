@@ -1,101 +1,113 @@
 # Development Deployment (Local)
 
 This repo contains:
-- Backend: Go Echo API at apps/server (dev entrypoint at apps/server/cmd/api/main.go)
+- Backend: Go API at apps/server
 - Frontend: Next.js app at apps/client
 - Database: Postgres
-- Docker: docker/backend.Dockerfile and docker/frontend.Dockerfile
-- Compose files: docker-compose.yml (primary), docker-compose.dev.yml (optional if present)
+- Docker: docker/backend.Dockerfile and apps/client/Dockerfile
+- Compose files: docker-compose.dev.yml (dev stack with reverse proxy)
 
-This guide gets you running locally with docker compose, JWT auth, and optional dev data seeding.
+This guide explains how to run the full dev stack locally using Docker Compose, including Caddy as a reverse proxy that fronts both the Next.js client and the Go backend.
 
 Prerequisites
 - Docker 24+ and docker compose plugin
-- Ports available: 3000 (frontend), 8080 (backend), 5432 (db)
+- Ports available: 8081 (Caddy), 8080 (backend), 3000 (client)
 - bash, curl (for quick verification)
 
+Services and Ports
+- caddy: reverse proxy on http://localhost:8081
+  - Proxies /api* to backend:8080
+  - Proxies everything else to client:3000
+- backend: Go server on http://localhost:8080
+- client: Next.js app on http://localhost:3000
+- db: Postgres 17 (internal only by default; not bound to host)
+
 Environment Variables
-Create a .env file at project root if you want to override defaults. Typical variables:
+The dev compose file wires defaults. If you need to override, set them in the compose or export them before running compose.
+
+Backend (see docker-compose.dev.yml):
+- APP_DB_HOST=db
+- APP_DB_PORT=5432
+- APP_DB_USER=postgres
+- APP_DB_PASSWORD=secret
+- APP_DB_NAME=inventory
+- APP_APPPORT=8080
+- JWT_SECRET=your-secret-key-change-in-production
+- DATABASE_URL=postgres://postgres:secret@db:5432/inventory?sslmode=disable
+
+Client:
+- NEXT_PUBLIC_API_URL=http://caddy
+  - The client talks to the backend through the Caddy service name on the Docker network.
+  - When accessing via your browser, use Caddy at http://localhost:8081 so API calls resolve inside the network.
+
+Database:
 - POSTGRES_USER=postgres
 - POSTGRES_PASSWORD=secret
 - POSTGRES_DB=inventory
-- DB_HOST=db
-- DB_PORT=5432
-- DB_NAME=inventory
-- JWT_SECRET=change_me_for_dev
-- APP_PORT=8080
-- NEXT_PUBLIC_API_URL=http://localhost:8080/api
-- NODE_ENV=development
-- SEED_DEV=true (optional; see note below)
+- Data volume: named volume pgdata
 
-Important: The dev entrypoint supports optional seeding via SEED_DEV=true inside the backend container. If seeding fails due to schema changes (e.g., products.price NOT NULL), use manual registration and skip seeding.
+Start the Dev Stack
+1) Bring everything up (builds images on first run):
+   docker compose -f docker-compose.dev.yml up -d --build
 
-Start Services
-1) Build and start backend and db (and frontend if included in compose)
-- docker compose build backend
-- docker compose up -d db
-- docker compose up -d backend
-- Optional: docker compose up -d frontend
+2) Check status:
+   docker compose -f docker-compose.dev.yml ps
 
-2) Check container status
-- docker compose ps
+3) Tail logs (useful on first boot):
+   docker compose -f docker-compose.dev.yml logs -f
 
-3) Tail backend logs (useful during first boot)
-- docker compose logs -f backend
+Reverse Proxy Details
+Caddy configuration ([Caddyfile](Caddyfile:1)):
+- /api* -> backend:8080
+- all other paths -> client:3000
+- Caddy listens on container :80 and is published on host 8081
 
-Health Checks
-- Backend health:
-  - curl http://localhost:8080/health
-  - curl http://localhost:8080/api/health
+Verify
+- UI via Caddy:
+  - http://localhost:8081/
+  - http://localhost:8081/dashboard
+- API via Caddy:
+  - http://localhost:8081/api/health
+- Direct targets (optional):
+  - http://localhost:3000/
+  - http://localhost:8080/health
 
-- If you enabled the dev entrypoint with Swagger:
-  - Open http://localhost:8080/swagger/index.html (if enabled by the entrypoint)
-
-Authentication for Dev
-Dev flow works without seeding:
-1) Register a user
-  curl -sS -X POST http://localhost:8080/api/auth/register \
-    -H "Content-Type: application/json" \
-    -d '{"email":"admin@test.local","password":"S3cure!Pass","name":"Admin User","tenant":"Acme Inc"}'
-
-Expected JSON includes data.token and data.refresh_token.
-
-2) Login (if needed)
-  curl -sS -X POST http://localhost:8080/api/auth/login \
-    -H "Content-Type: application/json" \
-    -d '{"email":"admin@test.local","password":"S3cure!Pass"}'
-
-Extract token from top-level token or data.token and call protected routes with:
-  curl -H "Authorization: Bearer <TOKEN>" http://localhost:8080/api/auth/me
-
-Frontend
-If running the Next.js frontend:
-- Ensure NEXT_PUBLIC_API_URL points to http://localhost:8080/api
-- Access UI at http://localhost:3000
-- Login via the UI with your registered user
+Database Notes
+- The db uses a named volume (pgdata). If you previously ran a different Postgres major version on the same volume, you may see an incompatibility error.
+- To reset the dev database volume cleanly:
+  docker compose -f docker-compose.dev.yml down
+  docker volume rm agromart2_pgdata
+  docker compose -f docker-compose.dev.yml up -d --build
+- By default the db is not exposed on host 5432 to avoid conflicts. If you need host access for tools like psql or DBeaver, uncomment the ports section in [docker-compose.dev.yml](docker-compose.dev.yml:10).
 
 Common Issues
-- 401 on /api/auth/login: Ensure the backend is running the dev entrypoint (cmd/api) and public path bypass is active. Manual registration works even if seeding fails.
-- Seeding error (e.g., products.price NOT NULL): This only affects optional demo data. Register/login manually and create records via UI or API.
-- CORS: The dev entrypoint configures permissive CORS suitable for local development.
-- Database connection: Verify db container is healthy and backend logs show DB ping OK.
+- 502 from Caddy:
+  - Ensure Caddyfile proxies to client:3000 (service name “client”) and backend:8080.
+  - Ensure client is listening on 0.0.0.0:3000 (the provided client Dockerfile/Next.js defaults to binding all interfaces).
+- DB unhealthy or FATAL version mismatch:
+  - Reset the pgdata volume as shown above when changing major Postgres versions.
+- Backend migrations:
+  - The backend container runs migrations on startup using:
+    migrate -path /app/sql/schema -database $DATABASE_URL up
+  - Schema directory is mounted from [apps/server/sql/schema](apps/server/sql/schema:1).
 
 Useful Commands
-- Rebuild backend with dev entrypoint:
-  docker compose build --no-cache backend && docker compose up -d backend
-- Show last backend logs:
-  docker compose logs --tail=200 backend
-- Stop all:
-  docker compose down
+- Rebuild all and start:
+  docker compose -f docker-compose.dev.yml up -d --build --remove-orphans
+- Tail a specific service:
+  docker compose -f docker-compose.dev.yml logs -f backend
+- Restart only Caddy after editing Caddyfile:
+  docker compose -f docker-compose.dev.yml up -d caddy
+- Stop and remove containers and network:
+  docker compose -f docker-compose.dev.yml down
 
 Project Paths Reference
-- Backend production entrypoint: apps/server/main.go
-- Backend dev entrypoint: apps/server/cmd/api/main.go
-- Backend auth middleware: internal/auth/middleware.go
-- SQL schema: apps/server/sql/schema
-- SQL queries: apps/server/sql/queries
-- Frontend config: apps/client/next.config.js
+- Backend main: [apps/server/main.go](apps/server/main.go:1)
+- SQL schema: [apps/server/sql/schema](apps/server/sql/schema:1)
+- SQL queries: [apps/server/sql/queries](apps/server/sql/queries:1)
+- Frontend config: [apps/client/next.config.js](apps/client/next.config.js:1)
+- Backend auth middleware: [internal/auth/middleware.go](internal/auth/middleware.go:1)
 
 Notes
-- Keep SEED_DEV for dev only. For production, never seed demo data.
-- If the frontend has its own healthcheck path configured, it may not reflect real readiness; rely on backend /health and /api/health for API readiness.
+- For local development, access everything through Caddy at http://localhost:8081 so the client’s API calls to http://caddy resolve correctly inside Docker.
+- Only expose Postgres to host if required; otherwise keep it internal to avoid conflicts with a local Postgres installation.
