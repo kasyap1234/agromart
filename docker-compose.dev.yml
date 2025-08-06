@@ -40,5 +40,29 @@ services:
     command: >
       sh -c "migrate -path /app/sql/schema -database $$DATABASE_URL up && ./main"
 
+  client:
+    build:
+      context: ./apps/client
+      dockerfile: Dockerfile
+    environment:
+      # Expose backend URL to Next.js (adjust if your client reads a different var)
+      NEXT_PUBLIC_API_URL: http://caddy
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+  caddy:
+    image: caddy:2
+    container_name: agromart-caddy
+    ports:
+      - "8081:80"
+      # - "443:443" # uncomment if you need TLS locally and 443 is free
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - client
+      - backend
+
 volumes:
   pgdata:
