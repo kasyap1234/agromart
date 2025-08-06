@@ -11,7 +11,8 @@
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.0",
@@ -68,7 +69,8 @@
     "jest-environment-jsdom": "^29.5.0",
     "lint-staged": "^13.2.0",
     "prettier": "^3.0.0",
-    "prettier-plugin-tailwindcss": "^0.5.0"
+    "prettier-plugin-tailwindcss": "^0.5.0",
+    "@next/bundle-analyzer": "^14.0.0"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
