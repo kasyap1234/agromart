@@ -20,9 +20,9 @@
     reverse_proxy backend:8080
   }
 
-  # Default: proxy everything else to frontend
+  # Default: proxy everything else to client (Next.js)
   handle {
-    reverse_proxy frontend:3000
+    reverse_proxy client:3000
   }
 }
 

@@ -7,15 +7,18 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: inventory
-    ports:
-      - "5432:5432"
+    # Avoid binding host 5432 to prevent conflicts with local Postgres
+    # Uncomment if you explicitly need host access:
+    # ports:
+    #   - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h 127.0.0.1"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 20
+    restart: unless-stopped
 
   backend:
     build:
@@ -39,6 +42,7 @@ services:
       - ./apps/server/sql/schema:/app/sql/schema
     command: >
       sh -c "migrate -path /app/sql/schema -database $$DATABASE_URL up && ./main"
+    restart: unless-stopped
 
   client:
     build:
@@ -51,6 +55,7 @@ services:
       - backend
     ports:
       - "3000:3000"
+    restart: unless-stopped
 
   caddy:
     image: caddy:2
@@ -63,6 +68,7 @@ services:
     depends_on:
       - client
       - backend
+    restart: unless-stopped
 
 volumes:
   pgdata:
