@@ -5,7 +5,10 @@ import { AuthResponse } from '@/types';
 import { MeResponse } from '@/types/auth';
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+// Prefer same-origin relative base in the browser to ensure requests go through Caddy (localhost:8081).
+// Fall back to env when running on the server or when explicitly provided.
+const API_BASE_URL =
+  (typeof window !== 'undefined' ? '/api' : process.env.NEXT_PUBLIC_API_URL) || '/api';
 
 // Debug: surface base URL and token presence to console for diagnostics
 if (typeof window !== 'undefined') {
@@ -35,7 +38,8 @@ api.interceptors.request.use(
       (config.headers as any)['X-Debug-Client'] = 'agromart-web-no-token';
     }
     // eslint-disable-next-line no-console
-    console.debug('[API][REQ]', config.method?.toUpperCase(), config.baseURL + config.url, {
+    const dbgUrl = `${config.baseURL ?? ''}${config.url ?? ''}`;
+    console.debug('[API][REQ]', (config.method ?? 'GET').toUpperCase(), dbgUrl, {
       hasToken: !!token,
       params: config.params,
     });

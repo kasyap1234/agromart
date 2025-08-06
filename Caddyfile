@@ -1,28 +1,71 @@
 {
   # Global options
   auto_https off
-  servers {
-    metrics
-  }
+  metrics
 }
 
 :80 {
   encode zstd gzip
 
+  # Health
   @health path /health
   handle @health {
     respond "healthy" 200
   }
 
-  # Proxy API to backend
+  # API to backend
   @api path /api*
   handle @api {
-    reverse_proxy backend:8080
+    reverse_proxy backend:8080 {
+      header_up Host {host}
+      header_up X-Forwarded-Host {host}
+      header_up X-Forwarded-Proto {scheme}
+      transport http {
+        read_timeout 5m
+        write_timeout 5m
+        dial_timeout 10s
+        keepalive 30s
+        versions h1 h2c
+      }
+    }
+  }
+
+  # Next.js dev assets and HMR (must be before default)
+  @next_assets path /_next/* /static/* /favicon.ico /robots.txt /manifest*.json /logo*.png
+  handle @next_assets {
+    reverse_proxy client:3000 {
+      header_up Connection {>Connection}
+      header_up Upgrade {>Upgrade}
+      header_up Host {host}
+      header_up X-Forwarded-Host {host}
+      header_up X-Forwarded-Proto {scheme}
+      header_down Cache-Control {>Cache-Control}
+      transport http {
+        read_timeout 5m
+        write_timeout 5m
+        dial_timeout 10s
+        keepalive 30s
+        versions h1 h2c
+      }
+    }
   }
 
   # Default: proxy everything else to client (Next.js)
   handle {
-    reverse_proxy client:3000
+    reverse_proxy client:3000 {
+      header_up Connection {>Connection}
+      header_up Upgrade {>Upgrade}
+      header_up Host {host}
+      header_up X-Forwarded-Host {host}
+      header_up X-Forwarded-Proto {scheme}
+      transport http {
+        read_timeout 5m
+        write_timeout 5m
+        dial_timeout 10s
+        keepalive 30s
+        versions h1 h2c
+      }
+    }
   }
 }
 
