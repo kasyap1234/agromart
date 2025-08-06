@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	echoProm "github.com/labstack/echo-contrib/prometheus"
+	echoPprof "github.com/labstack/echo-contrib/pprof"
 	"github.com/labstack/echo/v4"
 	echoMiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/google/uuid"
@@ -98,6 +100,25 @@ func main() {
 	e.HTTPErrorHandler = middleware.HTTPErrorHandler
 	e.Use(echoMiddleware.CORS())
 
+// Dev-only instrumentation: Prometheus metrics and pprof
+{
+	// Decide dev mode via environment variable to avoid depending on config struct shape
+	appEnv := os.Getenv("APP_ENV")
+	if appEnv == "" {
+		appEnv = os.Getenv("ENV")
+	}
+	if appEnv == "" {
+		appEnv = "development"
+	}
+	if appEnv == "development" || appEnv == "dev" || appEnv == "local" {
+		// Register Prometheus metrics middleware and /metrics endpoint
+		p := echoProm.NewPrometheus("agromart_http", echoMiddleware.DefaultSkipper)
+		p.Use(e)
+
+		// Register pprof handlers at /debug/pprof/*
+		echoPprof.Register(e)
+	}
+}
 	// Health check - switch to comprehensive health handler
 	healthHandler := handler.NewHealthHandler(database.New(pool))
 	healthHandler.RegisterRoutes(e)
