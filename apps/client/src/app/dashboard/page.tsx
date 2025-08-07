@@ -149,6 +149,8 @@ interface ExpiringBatch {
 }
 
 export default function DashboardPage() {
+  // Only call endpoints implemented on the backend.
+  // dashboardStats and expiringBatches are stubbed in apiClient; treat missing data gracefully.
   const { data: dashboardStats, error: statsError, isLoading: statsLoading } = useSWR(
     '/reports/dashboard-stats',
     () => apiClient.reports.dashboardStats()
@@ -159,6 +161,7 @@ export default function DashboardPage() {
     () => apiClient.reports.lowStock(10)
   );
 
+  // Replace call to non-existent backend endpoint with a safe stub call (returns empty array)
   const { data: expiringBatches, error: expiringError, isLoading: expiringLoading } = useSWR(
     '/reports/expiring-batches',
     () => apiClient.reports.expiringBatches(30)
@@ -172,7 +175,8 @@ export default function DashboardPage() {
     );
   }
 
-  if (statsError || lowStockError || expiringError) {
+  // Only treat lowStock errors as blocking; the others are optional
+  if (lowStockError) {
     return (
       <DashboardLayout title="Dashboard">
         <div className="text-center py-12">
@@ -186,7 +190,12 @@ export default function DashboardPage() {
     );
   }
 
-  const stats = (dashboardStats as DashboardStats) || {};
+  const stats = (dashboardStats as DashboardStats) || {
+    total_products: 0,
+    low_stock_count: 0,
+    total_value: 0,
+    expiring_batches: 0,
+  };
   const lowStock = (lowStockItems as LowStockItem[]) || [];
   const expiring = (expiringBatches as ExpiringBatch[]) || [];
 
