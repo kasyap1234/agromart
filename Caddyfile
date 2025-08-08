@@ -16,6 +16,7 @@
   # API to backend
   @api path /api*
   handle @api {
+    rewrite * {uri}
     reverse_proxy backend:8080
   }
 

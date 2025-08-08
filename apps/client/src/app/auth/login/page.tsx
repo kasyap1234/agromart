@@ -29,11 +29,7 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    try {
-      await login(data.email, data.password);
-    } catch (error) {
-      // Error is handled in the AuthContext
-    }
+    await login(data.email, data.password);
   };
 
   return (

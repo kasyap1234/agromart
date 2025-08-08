@@ -35,10 +35,10 @@ export function middleware(req: NextRequest) {
   }
 
   // If authenticated user hits public auth pages, redirect to dashboard
-  if (authToken && (pathname === '/' || pathname.startsWith('/auth'))) {
-    const dashboardUrl = new URL('/dashboard', req.url);
-    return NextResponse.redirect(dashboardUrl);
-  }
+  // if (authToken && (pathname === '/' || pathname.startsWith('/auth'))) {
+  //   const dashboardUrl = new URL('/dashboard', req.url);
+  //   return NextResponse.redirect(dashboardUrl);
+  // }
 
   return NextResponse.next();
 }

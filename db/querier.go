@@ -79,6 +79,7 @@ type Querier interface {
 	GetTopProductsByRevenue(ctx context.Context, arg GetTopProductsByRevenueParams) ([]GetTopProductsByRevenueRow, error)
 	GetUnitByID(ctx context.Context, arg GetUnitByIDParams) (Unit, error)
 	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error)
+	GetUserByEmailAcrossTenants(ctx context.Context, email string) (GetUserByEmailAcrossTenantsRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	ListActiveCustomers(ctx context.Context, arg ListActiveCustomersParams) ([]Customer, error)
 	ListActiveSuppliers(ctx context.Context, arg ListActiveSuppliersParams) ([]Supplier, error)

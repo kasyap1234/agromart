@@ -24,15 +24,7 @@ const nextConfig = {
     // Force relative base in the browser so requests always go through the same origin.
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '',
   },
-  async rewrites() {
-    // Always route browser /api/* to same-origin /api/*.
-    return [
-      {
-        source: '/api/:path*',
-        destination: '/api/:path*',
-      },
-    ];
-  },
+  
   // Performance optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',

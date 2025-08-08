@@ -28,7 +28,8 @@ RUN case "$BUILD_TARGET" in \
       app|*)  echo "Building apps/server entrypoint"; CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./apps/server ;; \
     esac
 
-# Final stage
+
+# Production stage
 FROM alpine:latest
 
 # Install ca-certificates for HTTPS requests
@@ -38,7 +39,9 @@ RUN apk --no-cache add ca-certificates tzdata
 RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup
 
-WORKDIR /root/
+# Create app directory
+RUN mkdir -p /app
+WORKDIR /app
 
 # Copy the binary from builder stage
 COPY --from=builder /app/main .
@@ -47,8 +50,11 @@ COPY --from=builder /go/bin/migrate /usr/local/bin/migrate
 # Copy migration files
 COPY --from=builder /app/apps/server/sql/schema ./sql/schema
 
+# Copy Swagger documentation
+COPY --from=builder /app/apps/server/docs ./docs
+
 # Change ownership to non-root user
-RUN chown -R appuser:appgroup /root/
+RUN chown -R appuser:appgroup /app
 
 # Switch to non-root user
 USER appuser

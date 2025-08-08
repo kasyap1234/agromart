@@ -1,4 +1,3 @@
-
 services:
   db:
     image: postgres:17-alpine
@@ -6,69 +5,51 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
-      POSTGRES_DB: inventory
-    # Avoid binding host 5432 to prevent conflicts with local Postgres
-    # Uncomment if you explicitly need host access:
-    # ports:
-    #   - "5432:5432"
+      POSTGRES_DB: agromart
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h 127.0.0.1"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
       timeout: 5s
-      retries: 20
-    restart: unless-stopped
+      retries: 5
 
   backend:
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
+    container_name: agromart-backend
+    volumes:
+      - ./.env:/app/.env
+    environment:
+      APP_ENV: development
+      APP_DB_HOST: db
+      APP_DB_PORT: 5432
+      APP_DB_USER: postgres
+      APP_DB_PASSWORD: secret
+      APP_DB_NAME: agromart
+      APP_JWT_SECRET: supersecretjwt-change-me-for-local-dev-if-you-want
     ports:
       - "8080:8080"
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      APP_DB_HOST: db
-      APP_DB_PORT: 5432
-      APP_DB_USER: postgres
-      APP_DB_PASSWORD: secret
-      APP_DB_NAME: inventory
-      APP_APPPORT: 8080
-      JWT_SECRET: your-secret-key-change-in-production
-      DATABASE_URL: postgres://postgres:secret@db:5432/inventory?sslmode=disable
-    volumes:
-      - ./apps/server/sql/schema:/app/sql/schema
-    command: >
-      sh -c "migrate -path /app/sql/schema -database $$DATABASE_URL up && ./main"
-    restart: unless-stopped
 
   client:
     build:
-      context: ./apps/client
+      context: apps/client
       dockerfile: Dockerfile
+      
+    container_name: agromart-client
+    volumes:
+      - ./apps/client:/app
+      - /app/node_modules
     environment:
-      # Expose backend URL to Next.js (adjust if your client reads a different var)
-      NEXT_PUBLIC_API_URL: http://caddy
-    depends_on:
-      - backend
+      NEXT_PUBLIC_API_URL: http://localhost:8080/api
     ports:
       - "3000:3000"
-    restart: unless-stopped
-
-  caddy:
-    image: caddy:2
-    container_name: agromart-caddy
-    ports:
-      - "8081:80"
-      # - "443:443" # uncomment if you need TLS locally and 443 is free
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-    depends_on:
-      - client
-      - backend
-    restart: unless-stopped
 
 volumes:
   pgdata:

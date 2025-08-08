@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-	"strconv"
 
 	internalauth "agromart2/internal/auth"
 	"github.com/golang-jwt/jwt/v5"
@@ -45,147 +44,17 @@ func NewAuthHandler(authService *internalauth.AuthService) *AuthHandler {
 // @Failure 500 {object} map[string]interface{} "internal error"
 // @Router /auth/register [post]
 func (h *AuthHandler) Register(c echo.Context) error {
-	// Accept legacy payload: { name, email, password, phone, company }
-	var legacy struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-		Phone    string `json:"phone"`
-		Company  string `json:"company"`
-	}
-	if err := c.Bind(&legacy); err != nil {
-		_ = c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error": map[string]interface{}{
-				"code":    http.StatusBadRequest,
-				"message": "invalid request body",
-			},
-		})
-		return nil
-	}
-
-	trim := func(s string) string {
-		b := []rune(s)
-		i, j := 0, len(b)-1
-		for i <= j && (b[i] == ' ' || b[i] == '\t' || b[i] == '\n' || b[i] == '\r') {
-			i++
-		}
-		for j >= i && (b[j] == ' ' || b[j] == '\t' || b[j] == '\n' || b[j] == '\r') {
-			j--
-		}
-		if i > j {
-			return ""
-		}
-		return string(b[i : j+1])
-	}
-	legacy.Name = trim(legacy.Name)
-	legacy.Email = trim(legacy.Email)
-	legacy.Password = trim(legacy.Password)
-	legacy.Phone = trim(legacy.Phone)
-	legacy.Company = trim(legacy.Company)
-
-	// Defaults for optional/missing legacy fields
-	if legacy.Company == "" {
-		legacy.Company = "Test Company"
-	}
-	if legacy.Name == "" {
-		legacy.Name = "Test User"
-	}
-
-	// Build service DTO
 	var req internalauth.RegisterRequest
-	req.Email = legacy.Email
-	req.Password = legacy.Password
-	req.Phone = legacy.Phone
-	req.CompanyName = legacy.Company
-
-	// Split name
-	if legacy.Name != "" {
-		nameRunes := []rune(legacy.Name)
-		spaceIdx := -1
-		for i, r := range nameRunes {
-			if r == ' ' {
-				spaceIdx = i
-				break
-			}
-		}
-		if spaceIdx >= 0 {
-			req.FirstName = string(nameRunes[:spaceIdx])
-			req.LastName = string(nameRunes[spaceIdx+1:])
-		} else {
-			req.FirstName = legacy.Name
-			req.LastName = "User"
-		}
-	}
-	if req.FirstName == "" {
-		req.FirstName = "User"
-	}
-	if req.LastName == "" {
-		req.LastName = "User"
-	}
-
-	// Final required checks - respond directly with JSON to preserve 4xx
-	if req.Email == "" || req.Password == "" || req.CompanyName == "" {
-		c.Response().Header().Set("X-Handler-Error", "register-missing-required-fields")
-		_ = c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error": map[string]interface{}{
-				"code":    http.StatusBadRequest,
-				"message": "missing required fields",
-				"details": "email, password, and company_name are required",
-			},
-		})
-		return nil
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
 	}
 
 	resp, err := h.authService.Register(c.Request().Context(), req)
 	if err != nil {
-		// Map known validation/missing-field errors deterministically
-		msg := toLowerASCII(err.Error())
-		switch {
-		case indexOf(msg, "duplicate") >= 0 || indexOf(msg, "unique") >= 0 || indexOf(msg, "already exists") >= 0 || indexOf(msg, "conflict") >= 0:
-			_ = c.JSON(http.StatusConflict, map[string]interface{}{
-				"success": false,
-				"error": map[string]interface{}{
-					"code":    http.StatusConflict,
-					"message": "email already exists",
-				},
-			})
-			return nil
-		case indexOf(msg, "invalid") >= 0 || indexOf(msg, "missing") >= 0 || indexOf(msg, "bad request") >= 0 || indexOf(msg, "code=400") >= 0:
-			_ = c.JSON(http.StatusBadRequest, map[string]interface{}{
-				"success": false,
-				"error": map[string]interface{}{
-					"code":    http.StatusBadRequest,
-					"message": err.Error(),
-				},
-			})
-			return nil
-		default:
-			_ = c.JSON(http.StatusInternalServerError, map[string]interface{}{
-				"success": false,
-				"error": map[string]interface{}{
-					"code":    http.StatusInternalServerError,
-					"message": "internal server error",
-					"details": err.Error(),
-				},
-			})
-			return nil
-		}
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	if err := c.JSON(http.StatusCreated, map[string]interface{}{
-		"success": true,
-		"data": map[string]interface{}{
-			"user":          resp.User,
-			"token":         resp.Token,
-			"refresh_token": resp.RefreshToken,
-		},
-		"message": "User registered successfully",
-	}); err != nil {
-		return err
-	}
-	return nil
+	return c.JSON(http.StatusCreated, resp)
 }
 
 // Login godoc
@@ -202,75 +71,15 @@ func (h *AuthHandler) Register(c echo.Context) error {
 func (h *AuthHandler) Login(c echo.Context) error {
 	var req internalauth.LoginRequest
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error": map[string]interface{}{
-				"code":    http.StatusBadRequest,
-				"message": "invalid request body",
-			},
-		})
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
 	}
 
-	// Normalize email similar to service normalization to aid diagnostics
-	normalize := func(s string) string {
-		// trim ASCII spaces
-		r := []rune(s)
-		i, j := 0, len(r)-1
-		for i <= j && (r[i] == ' ' || r[i] == '\t' || r[i] == '\n' || r[i] == '\r') { i++ }
-		for j >= i && (r[j] == ' ' || r[j] == '\t' || r[j] == '\n' || r[j] == '\r') { j-- }
-		if i > j { return "" }
-		out := r[i:j+1]
-		// lower ASCII
-		b := []byte(string(out))
-		for k := range b { if b[k] >= 'A' && b[k] <= 'Z' { b[k] += 32 } }
-		return string(b)
-	}
-	req.Email = normalize(req.Email)
-
-	// Basic validation
-	if req.Email == "" || req.Password == "" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error": map[string]interface{}{
-				"code":    http.StatusBadRequest,
-				"message": "email and password are required",
-			},
-		})
-	}
-
-	// Dev-only diagnostics to trace binding and lookup mismatches
-	if env := os.Getenv("APP_ENV"); env == "" || env == "development" || env == "local" {
-		c.Response().Header().Set("X-Debug-Login-Email-Len", strconv.Itoa(len(req.Email)))
-		c.Response().Header().Set("X-Debug-CT", c.Request().Header.Get(echo.HeaderContentType))
-	}
-
-	response, err := h.authService.Login(c.Request().Context(), req)
+	resp, err := h.authService.Login(c.Request().Context(), req)
 	if err != nil {
-		// Add minimal debug header for 401 in dev
-		if env := os.Getenv("APP_ENV"); env == "" || env == "development" || env == "local" {
-			c.Response().Header().Set("X-Debug-Login-Err", "unauthorized")
-		}
-		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-			"success": false,
-			"error": map[string]interface{}{
-				"code":    http.StatusUnauthorized,
-				"message": err.Error(),
-			},
-		})
+		return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
 	}
 
-	if err := c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
-		"data": map[string]interface{}{
-			"user":          response.User,
-			"token":         response.Token,
-			"refresh_token": response.RefreshToken,
-		},
-		"message": "Login successful",
-	}); err != nil {
-		return err
-	}
-	return nil
+	return c.JSON(http.StatusOK, resp)
 }
 
 // Me godoc

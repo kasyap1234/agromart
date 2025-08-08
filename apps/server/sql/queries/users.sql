@@ -22,6 +22,10 @@ WHERE tenant_id = $1 AND role = CAST($2 AS user_role)
 ORDER BY name
 LIMIT $3 OFFSET $4;
 
+-- name: GetUserByEmailAcrossTenants :one
+SELECT id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at FROM users
+WHERE email = $1;
+
 -- name: UpdateUser :one
 UPDATE users
 SET name = $2, email = $3, phone = $4, role = CAST($5 AS user_role), email_verified = $6

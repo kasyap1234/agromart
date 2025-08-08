@@ -3,26 +3,27 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
 
-	echoProm "github.com/labstack/echo-contrib/prometheus"
+	"github.com/google/uuid"
 	echoPprof "github.com/labstack/echo-contrib/pprof"
+	echoProm "github.com/labstack/echo-contrib/prometheus"
 	"github.com/labstack/echo/v4"
 	echoMiddleware "github.com/labstack/echo/v4/middleware"
-	"github.com/google/uuid"
 
 	"agromart2/apps/server/config"
 	"agromart2/internal/auth"
 	"agromart2/internal/database"
 	"agromart2/internal/middleware"
 
-	"agromart2/db"
-	"agromart2/apps/server/products"
-	"agromart2/apps/server/inventory"
-	"agromart2/apps/server/handler"
 	"agromart2/apps/server/analytics"
+	"agromart2/apps/server/handler"
+	"agromart2/apps/server/inventory"
+	"agromart2/apps/server/products"
+	"agromart2/db"
 )
 
 func main() {
@@ -73,10 +74,8 @@ func main() {
 	// Initialize SQLC queries
 	queries := db.New(pool)
 
-	// Initialize JWT service
-	jwtService := auth.NewJWTService(cfg.JWTSecret)
-
 	// Initialize services
+	jwtService := auth.NewJWTService(cfg.JWTSecret)
 	authService := auth.NewAuthService(pool, queries, jwtService)
 	productService := products.NewProductService(pool, queries)
 	inventoryService := inventory.NewService(pool, queries)
@@ -98,27 +97,41 @@ func main() {
 	e.Use(middleware.RequestIDMiddleware)
 	// Use proper global HTTP error handler to preserve status codes
 	e.HTTPErrorHandler = middleware.HTTPErrorHandler
-	e.Use(echoMiddleware.CORS())
+	e.Use(echoMiddleware.CORSWithConfig(echoMiddleware.CORSConfig{
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8080"},
+		AllowMethods:     []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodPatch, http.MethodOptions},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, "X-Debug-Client"},
+		AllowCredentials: true,
+	}))
 
-// Dev-only instrumentation: Prometheus metrics and pprof
-{
-	// Decide dev mode via environment variable to avoid depending on config struct shape
-	appEnv := os.Getenv("APP_ENV")
-	if appEnv == "" {
-		appEnv = os.Getenv("ENV")
-	}
-	if appEnv == "" {
-		appEnv = "development"
-	}
-	if appEnv == "development" || appEnv == "dev" || appEnv == "local" {
-		// Register Prometheus metrics middleware and /metrics endpoint
-		p := echoProm.NewPrometheus("agromart_http", echoMiddleware.DefaultSkipper)
-		p.Use(e)
+	// Dev-only instrumentation: Prometheus metrics and pprof
+	{
+		// Decide dev mode via environment variable to avoid depending on config struct shape
+		appEnv := os.Getenv("APP_ENV")
+		if appEnv == "" {
+			appEnv = os.Getenv("ENV")
+		}
+		if appEnv == "" {
+			appEnv = "development"
+		}
+		if appEnv == "development" || appEnv == "dev" || appEnv == "local" {
+			// Register Prometheus metrics middleware and /metrics endpoint
+			p := echoProm.NewPrometheus("agromart_http", echoMiddleware.DefaultSkipper)
+			p.Use(e)
 
-		// Register pprof handlers at /debug/pprof/*
-		echoPprof.Register(e)
+			// Register pprof handlers at /debug/pprof/*
+			echoPprof.Register(e)
+
+			// Register Swagger documentation
+			e.GET("/swagger", func(c echo.Context) error {
+				return c.Redirect(http.StatusMovedPermanently, "/swagger/")
+			})
+			e.GET("/swagger/", func(c echo.Context) error {
+				return c.Redirect(http.StatusMovedPermanently, "/swagger/index.html")
+			})
+			e.Static("/swagger", "docs")
+		}
 	}
-}
 	// Health check - switch to comprehensive health handler
 	healthHandler := handler.NewHealthHandler(database.New(pool))
 	healthHandler.RegisterRoutes(e)
@@ -149,6 +162,9 @@ func main() {
 	authMiddleware := auth.NewMiddleware(authService)
 
 	authGroup.POST("/register", authHandler.Register)
+	authGroup.OPTIONS("/register", func(c echo.Context) error {
+		return c.NoContent(http.StatusNoContent)
+	})
 	authGroup.POST("/login", authHandler.Login)
 	authGroup.POST("/logout", authHandler.Logout)
 	authGroup.POST("/refresh", authHandler.RefreshToken)
@@ -276,10 +292,10 @@ func main() {
 			return echo.NewHTTPError(401, "invalid tenant id")
 		}
 		val, err := inventoryService.GetInventoryValue(c.Request().Context(), tenantUUID)
-	 if err != nil {
+		if err != nil {
 			log.Printf("[REPORTS] inventory-value error: %v", err)
-		 return echo.NewHTTPError(500, "failed to get inventory value")
-	 }
+			return echo.NewHTTPError(500, "failed to get inventory value")
+		}
 		return c.JSON(200, map[string]interface{}{
 			"success": true,
 			"data":    val,

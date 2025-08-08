@@ -7,8 +7,7 @@ import { MeResponse } from '@/types/auth';
 // API Configuration
 // Prefer same-origin relative base in the browser to ensure requests go through Caddy (localhost:8081).
 // Fall back to env when running on the server or when explicitly provided.
-const API_BASE_URL =
-  (typeof window !== 'undefined' ? '/api' : process.env.NEXT_PUBLIC_API_URL) || '/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Debug: surface base URL and token presence to console for diagnostics
 if (typeof window !== 'undefined') {
@@ -129,7 +128,7 @@ export const apiClient = {
     // Force absolute API-prefixed paths to avoid any baseURL ambiguity observed in logs where
     // requests were sent to "/auth/login" instead of "/api/auth/login".
     login: (email: string, password: string): Promise<AuthResponse> =>
-      api.post('/api/auth/login', { email, password }),
+      api.post('/auth/login', { email, password }),
     
     register: (data: {
       email: string;
@@ -137,14 +136,14 @@ export const apiClient = {
       first_name: string;
       last_name: string;
       company_name: string;
-    }): Promise<AuthResponse> => api.post('/api/auth/register', data),
+    }): Promise<AuthResponse> => api.post('/auth/register', data),
     
-    logout: () => api.post('/api/auth/logout'),
+    logout: () => api.post('/auth/logout'),
     
-    me: (): Promise<MeResponse> => api.get('/api/auth/me'),
+    me: (): Promise<MeResponse> => api.get('/auth/me'),
     
     refreshToken: (refreshToken: string) =>
-      api.post('/api/auth/refresh', { refresh_token: refreshToken }),
+      api.post('/auth/refresh', { refresh_token: refreshToken }),
   },
 
   // Products
