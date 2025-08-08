@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"strconv"
 
 	internalauth "agromart2/internal/auth"
 	"github.com/golang-jwt/jwt/v5"
@@ -210,6 +211,22 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		})
 	}
 
+	// Normalize email similar to service normalization to aid diagnostics
+	normalize := func(s string) string {
+		// trim ASCII spaces
+		r := []rune(s)
+		i, j := 0, len(r)-1
+		for i <= j && (r[i] == ' ' || r[i] == '\t' || r[i] == '\n' || r[i] == '\r') { i++ }
+		for j >= i && (r[j] == ' ' || r[j] == '\t' || r[j] == '\n' || r[j] == '\r') { j-- }
+		if i > j { return "" }
+		out := r[i:j+1]
+		// lower ASCII
+		b := []byte(string(out))
+		for k := range b { if b[k] >= 'A' && b[k] <= 'Z' { b[k] += 32 } }
+		return string(b)
+	}
+	req.Email = normalize(req.Email)
+
 	// Basic validation
 	if req.Email == "" || req.Password == "" {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
@@ -221,8 +238,18 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		})
 	}
 
+	// Dev-only diagnostics to trace binding and lookup mismatches
+	if env := os.Getenv("APP_ENV"); env == "" || env == "development" || env == "local" {
+		c.Response().Header().Set("X-Debug-Login-Email-Len", strconv.Itoa(len(req.Email)))
+		c.Response().Header().Set("X-Debug-CT", c.Request().Header.Get(echo.HeaderContentType))
+	}
+
 	response, err := h.authService.Login(c.Request().Context(), req)
 	if err != nil {
+		// Add minimal debug header for 401 in dev
+		if env := os.Getenv("APP_ENV"); env == "" || env == "development" || env == "local" {
+			c.Response().Header().Set("X-Debug-Login-Err", "unauthorized")
+		}
 		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
 			"success": false,
 			"error": map[string]interface{}{

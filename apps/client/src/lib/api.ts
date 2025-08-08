@@ -126,8 +126,10 @@ export const apiClient = {
 
   // Authentication
   auth: {
+    // Force absolute API-prefixed paths to avoid any baseURL ambiguity observed in logs where
+    // requests were sent to "/auth/login" instead of "/api/auth/login".
     login: (email: string, password: string): Promise<AuthResponse> =>
-      apiClient.post('/auth/login', { email, password }),
+      api.post('/api/auth/login', { email, password }),
     
     register: (data: {
       email: string;
@@ -135,14 +137,14 @@ export const apiClient = {
       first_name: string;
       last_name: string;
       company_name: string;
-    }): Promise<AuthResponse> => apiClient.post('/auth/register', data),
+    }): Promise<AuthResponse> => api.post('/api/auth/register', data),
     
-    logout: () => apiClient.post('/auth/logout'),
+    logout: () => api.post('/api/auth/logout'),
     
-    me: (): Promise<MeResponse> => apiClient.get('/auth/me'),
+    me: (): Promise<MeResponse> => api.get('/api/auth/me'),
     
     refreshToken: (refreshToken: string) =>
-      apiClient.post('/auth/refresh', { refresh_token: refreshToken }),
+      api.post('/api/auth/refresh', { refresh_token: refreshToken }),
   },
 
   // Products

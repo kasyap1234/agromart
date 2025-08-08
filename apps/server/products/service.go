@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"agromart2/db"
 	"agromart2/internal/database"
+	"agromart2/internal/pgconv"
 	"agromart2/internal/utils"
 	"github.com/rs/zerolog/log"
 )
@@ -69,22 +70,34 @@ func (s *ProductService) CountProducts(ctx context.Context, tenantID uuid.UUID) 
 }
 
 func (s *ProductService) CreateProduct(ctx context.Context, params CreateProductParams) (db.Product, error) {
+	// DEV DIAGNOSTICS: observe values arriving from handler
+	log.Info().
+		Str("sku", params.SKU).
+		Str("name", params.Name).
+		Int("price", params.Price).
+		Int("price_per_unit", params.PricePerUnit).
+		Int("gst_percent", params.GSTPercent).
+		Str("tenant_id", params.TenantID.String()).
+		Str("unit_id", params.UnitID.String()).
+		Msg("[DEV] products.CreateProduct params (pgconv)")
+
+	// Use explicit pgconv to ensure non-null mapping for provided ints/strings
 	args := db.CreateProductParams{
 		TenantID:     params.TenantID,
 		Sku:          params.SKU,
 		Name:         params.Name,
-		Price:        utils.P.Numeric(params.Price),
-		Description:  utils.P.Text(params.Description),
-		ImageUrl:     utils.P.Text(params.ImageURL),
-		Brand:        utils.P.Text(params.Brand),
+		Price:        pgconv.NumericFromInt(params.Price),
+		Description:  pgconv.TextFromString(params.Description),
+		ImageUrl:     pgconv.TextFromString(params.ImageURL),
+		Brand:        pgconv.TextFromString(params.Brand),
 		UnitID:       params.UnitID,
-		PricePerUnit: utils.P.Numeric(params.PricePerUnit),
-		GstPercent:   utils.P.Numeric(params.GSTPercent),
+		PricePerUnit: pgconv.NumericFromInt(params.PricePerUnit),
+		GstPercent:   pgconv.NumericFromInt(params.GSTPercent),
 	}
 
 	product, err := s.q.CreateProduct(ctx, args)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to create product")
+		log.Error().Err(err).Msg("failed to create product (pgconv)")
 		return db.Product{}, err
 	}
 	return product, nil
@@ -207,13 +220,13 @@ func ToUpdateProductPatchParms(p ProductInputRequest, productID, tenantID uuid.U
 	return db.UpdateProductPatchParams{
 		ID:           productID,
 		TenantID:     tenantID,
-		Name:         utils.P.TextPtr(p.Name),
-		Price:        utils.P.NumericPtr(p.Price),
-		Description:  utils.P.TextPtr(p.Description),
-		ImageUrl:     utils.P.TextPtr(p.ImageUrl),
-		Brand:        utils.P.TextPtr(p.Brand),
-		PricePerUnit: utils.P.NumericPtr(p.PricePerUnit),
-		GstPercent:   utils.P.NumericPtr(p.GstPercent),
+		Name:         pgconv.TextPtrFromString(p.Name),
+		Price:        pgconv.NumericPtrFromInt(p.Price),
+		Description:  pgconv.TextPtrFromString(p.Description),
+		ImageUrl:     pgconv.TextPtrFromString(p.ImageUrl),
+		Brand:        pgconv.TextPtrFromString(p.Brand),
+		PricePerUnit: pgconv.NumericPtrFromInt(p.PricePerUnit),
+		GstPercent:   pgconv.NumericPtrFromInt(p.GstPercent),
 		UnitID:       utils.P.UUIDPtr(p.UnitID),
 	}
 }

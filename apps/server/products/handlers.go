@@ -59,7 +59,14 @@ func (h *ProductHandler) RegisterRoutes(g *echo.Group) {
 // @Router /products [post]
 func (h *ProductHandler) CreateProduct(c echo.Context) error {
 	var req CreateProductRequest
+
+	// Dev diagnostics: capture headers and small body for binding issues
+	ct := c.Request().Header.Get("Content-Type")
+
 	if err := c.Bind(&req); err != nil {
+		// attach debug header signals
+		c.Response().Header().Set("X-Debug-CreateProduct", "bind-error")
+		c.Response().Header().Set("X-Debug-CT", ct)
 		return c.JSON(http.StatusBadRequest, map[string]any{
 			"success": false,
 			"error": map[string]any{
@@ -67,6 +74,25 @@ func (h *ProductHandler) CreateProduct(c echo.Context) error {
 				"message": "invalid request body",
 			},
 		})
+	}
+
+	// Add lightweight debug headers to introspect what was bound
+	c.Response().Header().Set("X-Debug-CreateProduct", "bound")
+	c.Response().Header().Set("X-Debug-CT", ct)
+	c.Response().Header().Set("X-Debug-Price", strconv.Itoa(req.Price))
+	if req.SKU != "" {
+		if len(req.SKU) > 16 {
+			c.Response().Header().Set("X-Debug-SKU", req.SKU[:16])
+		} else {
+			c.Response().Header().Set("X-Debug-SKU", req.SKU)
+		}
+	}
+	if req.Name != "" {
+		if len(req.Name) > 16 {
+			c.Response().Header().Set("X-Debug-Name", req.Name[:16])
+		} else {
+			c.Response().Header().Set("X-Debug-Name", req.Name)
+		}
 	}
 
 	// Basic validation without adding external deps
@@ -93,6 +119,15 @@ func (h *ProductHandler) CreateProduct(c echo.Context) error {
 		})
 	}
 
+	// Add TenantID prefix as debug header to verify middleware propagation
+	if tenantStr != "" {
+		if len(tenantStr) > 8 {
+			c.Response().Header().Set("X-Debug-Tenant", tenantStr[:8])
+		} else {
+			c.Response().Header().Set("X-Debug-Tenant", tenantStr)
+		}
+	}
+
 	product, err := h.service.CreateProduct(c.Request().Context(), CreateProductParams{
 		TenantID:     tenantID,
 		SKU:          req.SKU,
@@ -106,6 +141,8 @@ func (h *ProductHandler) CreateProduct(c echo.Context) error {
 		GSTPercent:   req.GSTPercent,
 	})
 	if err != nil {
+		// record price observed at service entry as well
+		c.Response().Header().Set("X-Debug-Price-At-Service", strconv.Itoa(req.Price))
 		return c.JSON(http.StatusInternalServerError, map[string]any{
 			"success": false,
 			"error": map[string]any{

@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"os"
+	"unicode/utf8"
+	"strings"
 
 	"agromart2/db"
 	"agromart2/internal/utils"
@@ -17,6 +20,49 @@ type AuthService struct {
 	db      *pgxpool.Pool
 	queries *db.Queries
 	jwt     *JWTService
+}
+
+// devDebugf prints development-only diagnostic information.
+// Never log secrets; only metadata like lengths/flags/ids.
+func devDebugf(format string, args ...any) {
+	env := os.Getenv("APP_ENV")
+	if env == "" || env == "development" || env == "local" {
+		fmt.Printf("[DEV] "+format+"\n", args...)
+	}
+}
+
+func containsNonASCII(s string) bool {
+	for _, r := range s {
+		if r > 127 {
+			return true
+		}
+	}
+	return false
+}
+
+// local helpers to normalize email without importing strings globally
+func trimASCII(s string) string {
+	b := []rune(s)
+	i, j := 0, len(b)-1
+	for i <= j && (b[i] == ' ' || b[i] == '\t' || b[i] == '\n' || b[i] == '\r') {
+		i++
+	}
+	for j >= i && (b[j] == ' ' || b[j] == '\t' || b[j] == '\n' || b[j] == '\r') {
+		j--
+	}
+	if i > j {
+		return ""
+	}
+	return string(b[i : j+1])
+}
+func toLowerASCII(in string) string {
+	b := []byte(in)
+	for i := range b {
+		if b[i] >= 'A' && b[i] <= 'Z' {
+			b[i] += 32
+		}
+	}
+	return string(b)
 }
 
 type LoginRequest struct {
@@ -55,6 +101,21 @@ func NewAuthService(dbPool *pgxpool.Pool, queries *db.Queries, jwtService *JWTSe
 
 // Register creates a new user and tenant
 func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthResponse, error) {
+	// Normalize inputs defensively to ensure consistent storage and later lookup
+	req.Email = toLowerASCII(trimASCII(req.Email))
+	req.Password = trimASCII(req.Password)
+	req.FirstName = trimASCII(req.FirstName)
+	req.LastName = trimASCII(req.LastName)
+	req.Phone = trimASCII(req.Phone)
+	req.CompanyName = trimASCII(req.CompanyName)
+
+	// DEV diagnostics (metadata only)
+	passLen := utf8.RuneCountInString(req.Password)
+	passHasSpace := strings.Contains(req.Password, " ") || strings.ContainsRune(req.Password, '\t') || strings.ContainsRune(req.Password, '\n') || strings.ContainsRune(req.Password, '\r')
+	passHasNonASCII := containsNonASCII(req.Password)
+	devDebugf("auth.Register email_norm=%q email_len=%d pass_len=%d pass_has_space=%t pass_has_non_ascii=%t",
+		req.Email, len(req.Email), passLen, passHasSpace, passHasNonASCII)
+
 	// Start transaction
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -141,15 +202,38 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 
 // Login authenticates a user
 func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*AuthResponse, error) {
+	// Normalize email and password (trim spaces) before lookup/compare to avoid mismatch
+	req.Email = toLowerASCII(trimASCII(req.Email))
+	req.Password = trimASCII(req.Password)
+
+	// DEV diagnostics (input characteristics only)
+	passLen := utf8.RuneCountInString(req.Password)
+	passHasSpace := strings.Contains(req.Password, " ") || strings.ContainsRune(req.Password, '\t') || strings.ContainsRune(req.Password, '\n') || strings.ContainsRune(req.Password, '\r')
+	passHasNonASCII := containsNonASCII(req.Password)
+	devDebugf("auth.Login email_norm=%q email_len=%d pass_len=%d pass_has_space=%t pass_has_non_ascii=%t",
+		req.Email, len(req.Email), passLen, passHasSpace, passHasNonASCII)
+
 	// First, we need to find the user by email across all tenants
 	// This is a simplified approach - in production, you might want to have tenant-specific login
 	user, err := s.getUserByEmailAcrossTenants(ctx, req.Email)
 	if err != nil {
+		devDebugf("auth.Login lookup error email=%q err=%v", req.Email, err)
 		return nil, errors.New("invalid credentials")
 	}
+	if user == nil {
+		devDebugf("auth.Login user not found email=%q", req.Email)
+		return nil, errors.New("invalid credentials")
+	}
+	devDebugf("auth.Login selected_user_id=%s tenant_id=%s is_active_valid=%t is_active=%t role=%v",
+		user.ID.String(), user.TenantID.String(), user.IsActive.Valid, user.IsActive.Bool, user.Role)
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		kind := "other"
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			kind = "mismatch"
+		}
+		devDebugf("auth.Login bcrypt_compare_failed user_id=%s kind=%s hash_prefix=%q", user.ID.String(), kind, safePrefix(user.Password, 7))
 		return nil, errors.New("invalid credentials")
 	}
 
@@ -304,6 +388,17 @@ func (s *AuthService) UpdatePassword(ctx context.Context, userID, tenantID uuid.
 
 // Expose helpers for password reset flow
 
+// safePrefix returns up to n bytes of s for diagnostics (never secrets).
+func safePrefix(s string, n int) string {
+if n <= 0 {
+	return ""
+}
+if len(s) <= n {
+	return s
+}
+return s[:n]
+}
+
 // GenerateResetToken creates a short-lived token carrying the email
 func (s *AuthService) GenerateResetToken(email string, ttl time.Duration) (string, error) {
 	return s.jwt.GenerateResetToken(email, ttl)
@@ -381,14 +476,10 @@ func (s *AuthService) UpdateUser(ctx context.Context, userID, tenantID uuid.UUID
 
 // Helper function to find user by email across tenants
 func (s *AuthService) getUserByEmailAcrossTenants(ctx context.Context, email string) (*db.User, error) {
-	// This is a simplified approach. In production, you might want to:
-	// 1. Have a separate query that doesn't require tenant_id
-	// 2. Or implement tenant-specific login domains
-	
-	// For now, we'll query the database directly
-	query := `SELECT id, name, email, password, phone, tenant_id, role, email_verified, is_active, created_at 
+	// Cast role to text to avoid pgtype unknown OID scan errors
+	query := `SELECT id, name, email, password, phone, tenant_id, (role::text) AS role, email_verified, is_active, created_at
 			  FROM users WHERE email = $1 AND (is_active IS NULL OR is_active = true) LIMIT 1`
-	
+
 	var user db.User
 	err := s.db.QueryRow(ctx, query, email).Scan(
 		&user.ID,
@@ -405,6 +496,6 @@ func (s *AuthService) getUserByEmailAcrossTenants(ctx context.Context, email str
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &user, nil
 }
