@@ -5,9 +5,8 @@ import { AuthResponse } from '@/types';
 import { MeResponse } from '@/types/auth';
 
 // API Configuration
-// Prefer same-origin relative base in the browser to ensure requests go through Caddy (localhost:8081).
-// Fall back to env when running on the server or when explicitly provided.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+// Prefer same-origin relative base in the browser. Use env only on server.
+const API_BASE_URL = typeof window === 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || '') : '';
 
 // Debug: surface base URL and token presence to console for diagnostics
 if (typeof window !== 'undefined') {
@@ -125,25 +124,48 @@ export const apiClient = {
 
   // Authentication
   auth: {
-    // Force absolute API-prefixed paths to avoid any baseURL ambiguity observed in logs where
-    // requests were sent to "/auth/login" instead of "/api/auth/login".
-    login: (email: string, password: string): Promise<AuthResponse> =>
-      api.post('/auth/login', { email, password }),
+    // Normalize responses to the app's expected shape and
+    // always hit the backend under /api/auth/*
+    login: async (email: string, password: string): Promise<AuthResponse> => {
+      const resp = await api.post('/api/auth/login', { email, password });
+      const d = resp.data as any;
+      return {
+        success: true,
+        data: {
+          user: d.user,
+          token: d.token,
+          refresh_token: d.refresh_token,
+        },
+        message: 'Login successful',
+      } as AuthResponse;
+    },
     
-    register: (data: {
+    register: async (data: {
       email: string;
       password: string;
       first_name: string;
       last_name: string;
       company_name: string;
-    }): Promise<AuthResponse> => api.post('/auth/register', data),
+    }): Promise<AuthResponse> => {
+      const resp = await api.post('/api/auth/register', data);
+      const d = resp.data as any;
+      return {
+        success: true,
+        data: {
+          user: d.user,
+          token: d.token,
+          refresh_token: d.refresh_token,
+        },
+        message: 'Registration successful',
+      } as AuthResponse;
+    },
     
-    logout: () => api.post('/auth/logout'),
+    logout: () => api.post('/api/auth/logout').then(r => r.data),
     
-    me: (): Promise<MeResponse> => api.get('/auth/me'),
+    me: (): Promise<MeResponse> => api.get('/api/auth/me').then(r => r.data),
     
     refreshToken: (refreshToken: string) =>
-      api.post('/auth/refresh', { refresh_token: refreshToken }),
+      api.post('/api/auth/refresh', { refresh_token: refreshToken }).then(r => r.data),
   },
 
   // Products

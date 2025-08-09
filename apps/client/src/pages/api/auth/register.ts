@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { apiClient } from '@/lib/api';
+import axios from 'axios';
 
 export default async function handler(
   req: NextApiRequest,
@@ -10,10 +10,18 @@ export default async function handler(
       return res.status(405).json({ message: 'Method not allowed' });
     }
 
-    const response = await apiClient.post('/api/auth/register', req.body);
-    return res.status(200).json(response);
-  } catch (error) {
-    console.error('Registration error:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    const DEFAULT_BACKEND = 'http://localhost:8080';
+    const baseURL = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_BACKEND).replace(/\/$/, '');
+    const url = baseURL.endsWith('/api') ? `${baseURL}/auth/register` : `${baseURL}/api/auth/register`;
+    const response = await axios.post(url, req.body, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 30000,
+    });
+    return res.status(response.status || 200).json(response.data);
+  } catch (error: any) {
+    const status = error?.response?.status ?? 500;
+    const data = error?.response?.data ?? { message: 'Internal server error' };
+    console.error('Registration error:', error?.response?.data || error?.message || error);
+    return res.status(status).json(data);
   }
 }

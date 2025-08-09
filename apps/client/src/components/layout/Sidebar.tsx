@@ -41,28 +41,28 @@ export default function Sidebar() {
       name: 'Products',
       href: '/products',
       icon: CubeIcon,
-      current: pathname.startsWith('/products'),
+      current: pathname?.startsWith('/products'),
       permission: canManageProducts,
     },
     {
       name: 'Inventory',
       href: '/inventory',
       icon: ClipboardDocumentListIcon,
-      current: pathname.startsWith('/inventory'),
+      current: pathname?.startsWith('/inventory'),
       permission: canManageInventory,
     },
     {
       name: 'Batches',
       href: '/batches',
       icon: BuildingStorefrontIcon,
-      current: pathname.startsWith('/batches'),
+      current: pathname?.startsWith('/batches'),
       permission: canManageInventory,
     },
     {
       name: 'Reports',
       href: '/reports',
       icon: ChartBarIcon,
-      current: pathname.startsWith('/reports'),
+      current: pathname?.startsWith('/reports'),
       permission: canViewReports,
     },
     {
@@ -77,21 +77,21 @@ export default function Sidebar() {
       name: 'Logs',
       href: '/logs',
       icon: DocumentTextIcon,
-      current: pathname.startsWith('/logs'),
+      current: pathname?.startsWith('/logs'),
       permission: canViewReports,
     },
     {
       name: 'Users',
       href: '/users',
       icon: UsersIcon,
-      current: pathname.startsWith('/users'),
+      current: pathname?.startsWith('/users'),
       permission: canManageUsers,
     },
     {
       name: 'Settings',
       href: '/settings',
       icon: Cog6ToothIcon,
-      current: pathname.startsWith('/settings'),
+      current: pathname?.startsWith('/settings'),
     },
   ];
 
@@ -116,7 +116,7 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-        {filteredNavigation.map((item) => (
+        {Array.isArray(filteredNavigation) && filteredNavigation.map((item) => (
           <Link
             key={item.name}
             href={item.href}
