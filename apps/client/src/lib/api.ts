@@ -5,10 +5,11 @@ import { AuthResponse } from '@/types';
 import { MeResponse } from '@/types/auth';
 
 // API Configuration
-// Prefer same-origin relative base in the browser to ensure requests go through Caddy (localhost:8081).
-// Fall back to env when running on the server or when explicitly provided.
-const API_BASE_URL =
-  (typeof window !== 'undefined' ? '/api' : process.env.NEXT_PUBLIC_API_URL) || '/api';
+// In the browser, always use same-origin '/api' so requests are proxied by Next.js rewrites.
+// On the server (SSR/ISR), honor NEXT_PUBLIC_API_URL if provided; default to '/api'.
+const API_BASE_URL = typeof window === 'undefined'
+  ? (process.env.NEXT_PUBLIC_API_URL || '/api')
+  : '/api';
 
 // Debug: surface base URL and token presence to console for diagnostics
 if (typeof window !== 'undefined') {
@@ -29,25 +30,29 @@ const api: AxiosInstance = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = Cookies.get('auth_token');
+    let token: string | undefined;
+    if (typeof window !== 'undefined') {
+      token = Cookies.get('auth_token');
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      // Debug header marker for tracing through proxies
       (config.headers as any)['X-Debug-Client'] = 'agromart-web';
     } else {
       (config.headers as any)['X-Debug-Client'] = 'agromart-web-no-token';
     }
     // eslint-disable-next-line no-console
     const dbgUrl = `${config.baseURL ?? ''}${config.url ?? ''}`;
-    console.debug('[API][REQ]', (config.method ?? 'GET').toUpperCase(), dbgUrl, {
-      hasToken: !!token,
-      params: config.params,
-    });
+    if (typeof window !== 'undefined') {
+      console.debug('[API][REQ]', (config.method ?? 'GET').toUpperCase(), dbgUrl, {
+        hasToken: !!token,
+        params: config.params,
+      });
+    }
     return config;
   },
   (error) => {
     // eslint-disable-next-line no-console
-    console.error('[API][REQ][ERR]', error);
+    if (typeof window !== 'undefined') console.error('[API][REQ][ERR]', error);
     return Promise.reject(error);
   }
 );
@@ -56,16 +61,17 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     // eslint-disable-next-line no-console
-    console.debug('[API][RES]', response.config.url, response.status);
+    if (typeof window !== 'undefined') console.debug('[API][RES]', response.config.url, response.status);
     return response;
   },
   (error: AxiosError) => {
     // eslint-disable-next-line no-console
-    console.error('[API][RES][ERR]', {
-      url: error.config?.url,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
+    if (typeof window !== 'undefined')
+      console.error('[API][RES][ERR]', {
+        url: error.config?.url,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
 
     // Handle common errors
     if (error.response) {
@@ -126,25 +132,48 @@ export const apiClient = {
 
   // Authentication
   auth: {
-    // Force absolute API-prefixed paths to avoid any baseURL ambiguity observed in logs where
-    // requests were sent to "/auth/login" instead of "/api/auth/login".
-    login: (email: string, password: string): Promise<AuthResponse> =>
-      api.post('/api/auth/login', { email, password }),
+    // Normalize responses to the app's expected shape and
+    // always hit the backend under /api/auth/*
+    login: async (email: string, password: string): Promise<AuthResponse> => {
+      const resp = await api.post('/auth/login', { email, password });
+      const d = resp.data as any;
+      return {
+        success: true,
+        data: {
+          user: d.user,
+          token: d.token,
+          refresh_token: d.refresh_token,
+        },
+        message: 'Login successful',
+      } as AuthResponse;
+    },
     
-    register: (data: {
+    register: async (data: {
       email: string;
       password: string;
       first_name: string;
       last_name: string;
       company_name: string;
-    }): Promise<AuthResponse> => api.post('/api/auth/register', data),
+    }): Promise<AuthResponse> => {
+      const resp = await api.post('/auth/register', data);
+      const d = resp.data as any;
+      return {
+        success: true,
+        data: {
+          user: d.user,
+          token: d.token,
+          refresh_token: d.refresh_token,
+        },
+        message: 'Registration successful',
+      } as AuthResponse;
+    },
     
-    logout: () => api.post('/api/auth/logout'),
+    logout: () => api.post('/auth/logout').then(r => r.data),
     
-    me: (): Promise<MeResponse> => api.get('/api/auth/me'),
+    me: (): Promise<MeResponse> => api.get('/auth/me').then(r => r.data),
     
     refreshToken: (refreshToken: string) =>
-      api.post('/api/auth/refresh', { refresh_token: refreshToken }),
+      api.post('/auth/refresh', { refresh_token: refreshToken }).then(r => r.data),
   },
 
   // Products
@@ -236,6 +265,51 @@ export const apiClient = {
     }) => apiClient.get('/inventory/logs', params),
   },
 
+  // Suppliers
+  suppliers: {
+    list: (params?: { page?: number; limit?: number; search?: string; active?: boolean }) =>
+      apiClient.get('/suppliers', params),
+    search: (q: string, params?: { page?: number; limit?: number }) =>
+      apiClient.get('/suppliers/search', { q, ...(params || {}) }),
+    get: (id: string) => apiClient.get(`/suppliers/${id}`),
+    create: (data: { name: string; email?: string; phone?: string; address?: string }) =>
+      apiClient.post('/suppliers', data),
+    update: (id: string, data: { name?: string; email?: string; phone?: string; address?: string }) =>
+      apiClient.put(`/suppliers/${id}`, data),
+    delete: (id: string) => apiClient.delete(`/suppliers/${id}`),
+  },
+
+  // Customers
+  customers: {
+    list: (params?: { page?: number; limit?: number; search?: string; active?: boolean }) =>
+      apiClient.get('/customers', params),
+    search: (q: string, params?: { page?: number; limit?: number }) =>
+      apiClient.get('/customers/search', { q, ...(params || {}) }),
+    get: (id: string) => apiClient.get(`/customers/${id}`),
+    create: (data: { name: string; email?: string; phone?: string; address?: string }) =>
+      apiClient.post('/customers', data),
+    update: (id: string, data: { name?: string; email?: string; phone?: string; address?: string }) =>
+      apiClient.put(`/customers/${id}`, data),
+    delete: (id: string) => apiClient.delete(`/customers/${id}`),
+  },
+
+  // Purchase Orders
+  purchaseOrders: {
+    list: (params?: { page?: number; limit?: number; status?: string }) =>
+      apiClient.get('/purchase-orders', params),
+    get: (id: string) => apiClient.get(`/purchase-orders/${id}`),
+    create: (data: any) => apiClient.post('/purchase-orders', data),
+    updateStatus: (id: string, status: string) => apiClient.put(`/purchase-orders/${id}/status`, { status }),
+    receive: (id: string, data: any) => apiClient.post(`/purchase-orders/${id}/receive`, data),
+    exportCsv: (params?: { from?: string; to?: string }) =>
+      apiClient.get('/purchase-orders.csv', params),
+  },
+
+  // Sales
+  sales: {
+    exportCsv: (params?: { from?: string; to?: string }) => apiClient.get('/sales/orders.csv', params),
+  },
+
   // Batches
   batches: {
     create: (data: {
@@ -261,27 +335,13 @@ export const apiClient = {
   reports: {
     lowStock: (threshold?: number) =>
       apiClient.get('/reports/low-stock', { threshold }),
-    
-    // Following endpoints are not implemented on the backend; provide safe stubs
-    expiringBatches: async (_days?: number) => {
-      // return empty list to keep UI stable
-      return [] as any;
-    },
-    
-    inventoryValue: async () => {
-      // not implemented; return a number or object depending on consumer needs
-      return { total_value: 0 } as any;
-    },
-    
-    dashboardStats: async () => {
-      // return minimal shape expected by dashboard
-      return {
-        total_products: 0,
-        low_stock_count: 0,
-        total_value: 0,
-        expiring_batches: 0,
-      } as any;
-    },
+
+    expiringBatches: (days?: number) =>
+      apiClient.get('/reports/expiring-batches', { days }),
+
+    inventoryValue: () => apiClient.get('/reports/inventory-value'),
+
+    dashboardStats: () => apiClient.get('/reports/dashboard-stats'),
   },
 };
 

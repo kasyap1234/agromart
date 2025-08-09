@@ -55,3 +55,10 @@ junit.xml
 # Misc
 *.pid
 *.seed
+*.gz
+*.zip
+*.tar
+*.tgz
+
+# Ignore generated manifests
+manifest*

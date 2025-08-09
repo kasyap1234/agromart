@@ -9,6 +9,7 @@ export interface User {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  avatar?: string;
 }
 
 export interface AuthResponse {
@@ -251,7 +252,7 @@ export interface ModalProps {
 export interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, remember?: boolean) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => void;
   isLoading: boolean;

@@ -107,6 +107,42 @@ func (q *Queries) GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) 
 	return i, err
 }
 
+const getUserByEmailAcrossTenants = `-- name: GetUserByEmailAcrossTenants :one
+SELECT id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at FROM users
+WHERE email = $1
+`
+
+type GetUserByEmailAcrossTenantsRow struct {
+	ID            uuid.UUID   `json:"id"`
+	Name          string      `json:"name"`
+	Email         string      `json:"email"`
+	Password      string      `json:"password"`
+	Phone         string      `json:"phone"`
+	TenantID      uuid.UUID   `json:"tenant_id"`
+	Role          string      `json:"role"`
+	EmailVerified pgtype.Bool `json:"email_verified"`
+	IsActive      pgtype.Bool `json:"is_active"`
+	CreatedAt     time.Time   `json:"created_at"`
+}
+
+func (q *Queries) GetUserByEmailAcrossTenants(ctx context.Context, email string) (GetUserByEmailAcrossTenantsRow, error) {
+	row := q.db.QueryRow(ctx, getUserByEmailAcrossTenants, email)
+	var i GetUserByEmailAcrossTenantsRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Password,
+		&i.Phone,
+		&i.TenantID,
+		&i.Role,
+		&i.EmailVerified,
+		&i.IsActive,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
 SELECT id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at FROM users
 WHERE id = $1

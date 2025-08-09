@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/context/AuthContext';
 import { RegisterRequest } from '@/types';
+import { PasswordStrengthMeter } from '@/components/ui/password-strength';
 
 const registerSchema = z.object({
   first_name: z.string().min(2, 'First name must be at least 2 characters'),
@@ -29,15 +30,20 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const { register: registerUser, isLoading } = useAuth();
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty, isValid },
+    watch,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    mode: 'onChange',
   });
+
+  const password = watch('password');
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
@@ -65,6 +71,22 @@ export default function RegisterPage() {
           <div className="mt-8">
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
               {/* Company Information */}
+              {/* API Error Message */}
+              {apiError && (
+                <div className="rounded-md bg-error-50 p-4 mb-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-error-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-error-800">{apiError}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label htmlFor="company_name" className="block text-sm font-medium text-neutral-700">
                   Company Name
@@ -73,11 +95,15 @@ export default function RegisterPage() {
                   <input
                     {...register('company_name')}
                     type="text"
-                    className="form-input"
+                    className={`form-input ${errors.company_name ? 'border-error-300' : ''}`}
                     placeholder="Enter your company name"
+                    aria-invalid={errors.company_name ? "true" : "false"}
+                    aria-describedby="company-error"
                   />
                   {errors.company_name && (
-                    <p className="mt-1 text-sm text-error-600">{errors.company_name.message}</p>
+                    <p className="mt-1 text-sm text-error-600" id="company-error">
+                      {errors.company_name.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -92,11 +118,15 @@ export default function RegisterPage() {
                     <input
                       {...register('first_name')}
                       type="text"
-                      className="form-input"
+                      className={`form-input ${errors.first_name ? 'border-error-300' : ''}`}
                       placeholder="First name"
+                      aria-invalid={errors.first_name ? "true" : "false"}
+                      aria-describedby="first-name-error"
                     />
                     {errors.first_name && (
-                      <p className="mt-1 text-sm text-error-600">{errors.first_name.message}</p>
+                      <p className="mt-1 text-sm text-error-600" id="first-name-error">
+                        {errors.first_name.message}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -109,11 +139,15 @@ export default function RegisterPage() {
                     <input
                       {...register('last_name')}
                       type="text"
-                      className="form-input"
+                      className={`form-input ${errors.last_name ? 'border-error-300' : ''}`}
                       placeholder="Last name"
+                      aria-invalid={errors.last_name ? "true" : "false"}
+                      aria-describedby="last-name-error"
                     />
                     {errors.last_name && (
-                      <p className="mt-1 text-sm text-error-600">{errors.last_name.message}</p>
+                      <p className="mt-1 text-sm text-error-600" id="last-name-error">
+                        {errors.last_name.message}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -128,11 +162,15 @@ export default function RegisterPage() {
                     {...register('email')}
                     type="email"
                     autoComplete="email"
-                    className="form-input"
+                    className={`form-input ${errors.email ? 'border-error-300' : ''}`}
                     placeholder="Enter your email"
+                    aria-invalid={errors.email ? "true" : "false"}
+                    aria-describedby="email-error"
                   />
                   {errors.email && (
-                    <p className="mt-1 text-sm text-error-600">{errors.email.message}</p>
+                    <p className="mt-1 text-sm text-error-600" id="email-error">
+                      {errors.email.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -146,13 +184,16 @@ export default function RegisterPage() {
                     {...register('password')}
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="new-password"
-                    className="form-input pr-10"
+                    className={`form-input pr-10 ${errors.password ? 'border-error-300' : ''}`}
                     placeholder="Create a password"
+                    aria-invalid={errors.password ? "true" : "false"}
+                    aria-describedby="password-error"
                   />
                   <button
                     type="button"
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
                       <EyeSlashIcon className="h-5 w-5 text-neutral-400" />
@@ -161,7 +202,12 @@ export default function RegisterPage() {
                     )}
                   </button>
                   {errors.password && (
-                    <p className="mt-1 text-sm text-error-600">{errors.password.message}</p>
+                    <p className="mt-1 text-sm text-error-600" id="password-error">
+                      {errors.password.message}
+                    </p>
+                  )}
+                  {password && password.length > 0 && (
+                    <PasswordStrengthMeter password={password} />
                   )}
                 </div>
               </div>
@@ -175,13 +221,16 @@ export default function RegisterPage() {
                     {...register('confirmPassword')}
                     type={showConfirmPassword ? 'text' : 'password'}
                     autoComplete="new-password"
-                    className="form-input pr-10"
+                    className={`form-input pr-10 ${errors.confirmPassword ? 'border-error-300' : ''}`}
                     placeholder="Confirm your password"
+                    aria-invalid={errors.confirmPassword ? "true" : "false"}
+                    aria-describedby="confirm-password-error"
                   />
                   <button
                     type="button"
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                   >
                     {showConfirmPassword ? (
                       <EyeSlashIcon className="h-5 w-5 text-neutral-400" />
@@ -190,7 +239,9 @@ export default function RegisterPage() {
                     )}
                   </button>
                   {errors.confirmPassword && (
-                    <p className="mt-1 text-sm text-error-600">{errors.confirmPassword.message}</p>
+                    <p className="mt-1 text-sm text-error-600" id="confirm-password-error">
+                      {errors.confirmPassword.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -220,7 +271,7 @@ export default function RegisterPage() {
               <div>
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !isDirty || !isValid}
                   className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (

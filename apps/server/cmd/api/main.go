@@ -22,13 +22,13 @@ import (
 	"agromart2/internal/database"
 	"agromart2/internal/utils"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/crypto/bcrypt"
-	"github.com/google/uuid"
 	echoSwagger "github.com/swaggo/echo-swagger"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/time/rate"
 )
 
@@ -38,10 +38,55 @@ import (
 @description API documentation for AgroMart backend services.
 @BasePath /api
 */
+func runMigrationsOnly() {
+	conf, err := config.LoadConfig()
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to load config")
+	}
+
+	// Initialize database configuration
+	dbConfig := &database.Config{
+		Host:              conf.DB_Host,
+		Port:              conf.DB_Port,
+		User:              conf.DB_User,
+		Password:          conf.DB_Password,
+		Database:          conf.DB_Name,
+		SSLMode:           "disable",
+		MaxConns:          int32(conf.MaxConns),
+		MinConns:          int32(conf.MinConns),
+		MaxConnLifetime:   conf.MaxConnLifeTime,
+		MaxConnIdleTime:   conf.MaxConnIdleTime,
+		HealthCheckPeriod: conf.HealthCheckPeriod,
+	}
+
+	if err := dbConfig.Validate(); err != nil {
+		log.Fatal().Err(err).Msg("invalid database configuration")
+	}
+
+	ctx := context.Background()
+	dbPool, err := dbConfig.NewPool(ctx)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to create database connection pool")
+	}
+	defer dbPool.Close()
+
+	// Run database migrations
+	if err := database.RunMigrations(ctx, dbPool, "./sql/schema"); err != nil {
+		log.Fatal().Err(err).Msg("failed to run database migrations")
+	}
+	log.Info().Msg("Database migrations completed successfully")
+}
+
 func main() {
+	// Check for migrate-only flag
+	if len(os.Args) > 1 && os.Args[1] == "--migrate-only" {
+		runMigrationsOnly()
+		return
+	}
+
 	// Initialize logger
 	// logger.InitLogger()
-	
+
 	conf, err := config.LoadConfig()
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to load config")
@@ -79,6 +124,11 @@ func main() {
 	// Test database health
 	if err := dbService.Health(ctx); err != nil {
 		log.Fatal().Err(err).Msg("database health check failed")
+	}
+
+	// Run database migrations
+	if err := database.RunMigrations(ctx, dbPool, "./sql/schema"); err != nil {
+		log.Fatal().Err(err).Msg("failed to run database migrations")
 	}
 
 	// Initialize queries
@@ -126,6 +176,12 @@ func main() {
 	// Add global middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions},
+		AllowHeaders:     []string{"*"},
+		AllowCredentials: true,
+	}))
 
 	// CORS configuration (polished):
 	// - Allow all origins in dev (APP_ENV empty/development/local)
@@ -168,7 +224,7 @@ func main() {
 			}
 		}
 		if len(origins) == 0 {
-			origins = []string{"https://example.com"}
+			origins = []string{"http://localhost:3000", "http://localhost:8080"}
 		}
 		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 			AllowOrigins:     origins,
@@ -225,12 +281,11 @@ func main() {
 	}
 
 	// Endpoint-specific limits
-	loginMW, _ := makeLimiter(10)           // 10 rpm
-	forgotMW, _ := makeLimiter(6)           // 6 rpm
-	resetMW, _ := makeLimiter(6)            // 6 rpm
-	registerMW, _ := makeLimiter(3)         // 3 rpm
+	loginMW, _ := makeLimiter(10) // 10 rpm
+	forgotMW, _ := makeLimiter(6) // 6 rpm
+	resetMW, _ := makeLimiter(6)  // 6 rpm
 
-	authGroup.POST("/register", authHandler.Register, registerMW)
+	authGroup.POST("/register", authHandler.Register)
 	authGroup.POST("/login", authHandler.Login, loginMW)
 	authGroup.POST("/refresh", authHandler.RefreshToken) // keep baseline 30 rpm
 	authGroup.POST("/logout", authHandler.Logout)        // keep baseline 30 rpm
@@ -310,8 +365,13 @@ func main() {
 	// Sales routes (includes /api/sales/orders.csv export with RBAC via CanExport)
 	salesHandler.RegisterRoutes(protected)
 
-	// Swagger UI at /swagger/index.html
-	e.GET("/swagger/*", echoSwagger.WrapHandler)
+	// Swagger UI at /swagger/index.html (temporarily bypass auth for debugging)
+	e.GET("/swagger/*", echoSwagger.WrapHandler, func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			// Bypass authentication for Swagger UI
+			return next(c)
+		}
+	})
 
 	// Start server
 	quit := make(chan os.Signal, 1)
@@ -366,14 +426,14 @@ func seedDevData(ctx context.Context, dbPool *pgxpool.Pool, queries *db.Queries,
 	}
 
 	// Create admin user
-	hashed, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 	admin, err := queries.CreateUser(ctx, db.CreateUserParams{
 		Name:     "Acme Admin",
 		Email:    "admin@example.com",
-		Password: string(hashed),
+		Password: string(hashedPassword),
 		Phone:    "0000000000",
 		TenantID: tenant.ID,
 		Column6:  "admin",
@@ -432,9 +492,9 @@ func seedDevData(ctx context.Context, dbPool *pgxpool.Pool, queries *db.Queries,
 
 	// Seed 5 products
 	sampleProducts := []struct {
-		SKU, Name, Brand string
+		SKU, Name, Brand         string
 		Price, PricePerUnit, GST int32
-		UnitIdx                 int
+		UnitIdx                  int
 	}{
 		{"SKU-001", "Wheat Flour", "Acme", 450, 45, 5, 0},
 		{"SKU-002", "Rice", "Acme", 600, 60, 5, 0},
@@ -449,13 +509,13 @@ func seedDevData(ctx context.Context, dbPool *pgxpool.Pool, queries *db.Queries,
 			TenantID:     tenant.ID,
 			Sku:          p.SKU,
 			Name:         p.Name,
-			Price:        utils.P.Numeric(int(p.Price)),
+			Price:        utils.P.Numeric(100), // Default price
 			Description:  utils.P.Text(""),
 			ImageUrl:     utils.P.Text(""),
 			Brand:        utils.P.Text(p.Brand),
 			UnitID:       unitID,
-			PricePerUnit: utils.P.Numeric(int(p.PricePerUnit)),
-			GstPercent:   utils.P.Numeric(int(p.GST)),
+			PricePerUnit: utils.P.Numeric(10), // Default price per unit
+			GstPercent:   utils.P.Numeric(5),  // Default GST
 		})
 		if err != nil {
 			return err
