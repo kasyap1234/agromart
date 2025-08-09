@@ -22,7 +22,7 @@ const nextConfig = {
   },
   env: {
     // Force relative base in the browser so requests always go through the same origin.
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '/api',
   },
   
   // Performance optimizations
@@ -39,6 +39,22 @@ const nextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         ],
+      },
+    ];
+  },
+  async rewrites() {
+    // Proxy API requests to backend defined by NEXT_PUBLIC_API_URL at build time
+    const raw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+    // If target is relative (starts with /), let outer reverse proxy handle it
+    if (raw.startsWith('/')) {
+      return [];
+    }
+    // Ensure the destination includes /api prefix
+    const withApi = raw.endsWith('/api') ? raw : `${raw.replace(/\/$/, '')}/api`;
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${withApi.replace(/\/$/, '')}/:path*`,
       },
     ];
   },

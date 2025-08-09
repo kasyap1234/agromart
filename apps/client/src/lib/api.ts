@@ -5,8 +5,11 @@ import { AuthResponse } from '@/types';
 import { MeResponse } from '@/types/auth';
 
 // API Configuration
-// Prefer same-origin relative base in the browser. Use env only on server.
-const API_BASE_URL = typeof window === 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || '') : '';
+// In the browser, always use same-origin '/api' so requests are proxied by Next.js rewrites.
+// On the server (SSR/ISR), honor NEXT_PUBLIC_API_URL if provided; default to '/api'.
+const API_BASE_URL = typeof window === 'undefined'
+  ? (process.env.NEXT_PUBLIC_API_URL || '/api')
+  : '/api';
 
 // Debug: surface base URL and token presence to console for diagnostics
 if (typeof window !== 'undefined') {
@@ -27,25 +30,29 @@ const api: AxiosInstance = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = Cookies.get('auth_token');
+    let token: string | undefined;
+    if (typeof window !== 'undefined') {
+      token = Cookies.get('auth_token');
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      // Debug header marker for tracing through proxies
       (config.headers as any)['X-Debug-Client'] = 'agromart-web';
     } else {
       (config.headers as any)['X-Debug-Client'] = 'agromart-web-no-token';
     }
     // eslint-disable-next-line no-console
     const dbgUrl = `${config.baseURL ?? ''}${config.url ?? ''}`;
-    console.debug('[API][REQ]', (config.method ?? 'GET').toUpperCase(), dbgUrl, {
-      hasToken: !!token,
-      params: config.params,
-    });
+    if (typeof window !== 'undefined') {
+      console.debug('[API][REQ]', (config.method ?? 'GET').toUpperCase(), dbgUrl, {
+        hasToken: !!token,
+        params: config.params,
+      });
+    }
     return config;
   },
   (error) => {
     // eslint-disable-next-line no-console
-    console.error('[API][REQ][ERR]', error);
+    if (typeof window !== 'undefined') console.error('[API][REQ][ERR]', error);
     return Promise.reject(error);
   }
 );
@@ -54,16 +61,17 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     // eslint-disable-next-line no-console
-    console.debug('[API][RES]', response.config.url, response.status);
+    if (typeof window !== 'undefined') console.debug('[API][RES]', response.config.url, response.status);
     return response;
   },
   (error: AxiosError) => {
     // eslint-disable-next-line no-console
-    console.error('[API][RES][ERR]', {
-      url: error.config?.url,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
+    if (typeof window !== 'undefined')
+      console.error('[API][RES][ERR]', {
+        url: error.config?.url,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
 
     // Handle common errors
     if (error.response) {
@@ -127,7 +135,7 @@ export const apiClient = {
     // Normalize responses to the app's expected shape and
     // always hit the backend under /api/auth/*
     login: async (email: string, password: string): Promise<AuthResponse> => {
-      const resp = await api.post('/api/auth/login', { email, password });
+      const resp = await api.post('/auth/login', { email, password });
       const d = resp.data as any;
       return {
         success: true,
@@ -147,7 +155,7 @@ export const apiClient = {
       last_name: string;
       company_name: string;
     }): Promise<AuthResponse> => {
-      const resp = await api.post('/api/auth/register', data);
+      const resp = await api.post('/auth/register', data);
       const d = resp.data as any;
       return {
         success: true,
@@ -160,12 +168,12 @@ export const apiClient = {
       } as AuthResponse;
     },
     
-    logout: () => api.post('/api/auth/logout').then(r => r.data),
+    logout: () => api.post('/auth/logout').then(r => r.data),
     
-    me: (): Promise<MeResponse> => api.get('/api/auth/me').then(r => r.data),
+    me: (): Promise<MeResponse> => api.get('/auth/me').then(r => r.data),
     
     refreshToken: (refreshToken: string) =>
-      api.post('/api/auth/refresh', { refresh_token: refreshToken }).then(r => r.data),
+      api.post('/auth/refresh', { refresh_token: refreshToken }).then(r => r.data),
   },
 
   // Products
