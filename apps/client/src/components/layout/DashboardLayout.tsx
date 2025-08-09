@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
-import { withAuth } from '@/context/AuthContext';
+import React, { useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
@@ -11,6 +12,28 @@ interface DashboardLayoutProps {
 }
 
 function DashboardLayout({ children, title }: DashboardLayoutProps) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  // Redirect to login if not authenticated and loading is complete
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/auth/login');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Already redirected
+  }
+
   return (
     <div className="flex h-screen bg-neutral-50">
       {/* Sidebar */}
@@ -31,4 +54,4 @@ function DashboardLayout({ children, title }: DashboardLayoutProps) {
   );
 }
 
-export default withAuth(DashboardLayout);
+export default DashboardLayout;

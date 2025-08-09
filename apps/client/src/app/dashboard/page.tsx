@@ -6,22 +6,12 @@ import {
   Card, 
   CardHeader, 
   CardTitle, 
-  CardDescription, 
-  CardContent,
-  CardFooter
+  CardContent
 } from "@/components/ui/card";
 import { 
   Badge
 } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { 
   Table,
   TableBody,
@@ -31,15 +21,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { 
-  CubeIcon, 
-  ExclamationTriangleIcon, 
-  CurrencyDollarIcon,
-  ClockIcon,
-  PlusIcon,
-  ArrowTrendingUpIcon,
-  DocumentTextIcon
-} from "@heroicons/react/24/outline";
-import { SearchIcon, FilterIcon } from "lucide-react";
+  Package, 
+  AlertTriangle, 
+  DollarSign,
+  Clock,
+  Plus,
+  ArrowUp,
+  FileText
+} from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { formatDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -55,43 +44,31 @@ interface StatsCardProps {
   color?: "primary" | "warning" | "error" | "success";
 }
 
-function StatsCard({ title, value, icon: Icon, change, color = "primary" }: StatsCardProps) {
+function StatsCard({ title, value, icon: Icon, color = "primary" }: StatsCardProps) {
   const colorClasses = {
-    primary: "bg-green-500",
-    warning: "bg-yellow-500",
-    error: "bg-red-500",
-    success: "bg-green-500",
+    primary: "from-blue-50 to-blue-100 border-blue-200 text-blue-900",
+    warning: "from-amber-50 to-amber-100 border-amber-200 text-amber-900",
+    error: "from-rose-50 to-rose-100 border-rose-200 text-rose-900",
+    success: "from-emerald-50 to-emerald-100 border-emerald-200 text-emerald-900",
+  };
+
+  const iconColorClasses = {
+    primary: "text-blue-600",
+    warning: "text-amber-600",
+    error: "text-rose-600",
+    success: "text-emerald-600",
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow duration-200">
+    <Card className={`border bg-gradient-to-br ${colorClasses[color]}`}>
       <CardContent className="p-6">
         <div className="flex items-center">
           <div className="flex-shrink-0">
-            <div className={`w-12 h-12 rounded-lg ${colorClasses[color]} flex items-center justify-center`}>
-              <Icon className="w-6 h-6 text-white" />
-            </div>
+            <Icon className={`w-8 h-8 ${iconColorClasses[color]}`} />
           </div>
           <div className="ml-4 flex-1">
-            <p className="text-sm font-medium text-neutral-500">{title}</p>
-            <p className="text-2xl font-bold text-neutral-900">{value}</p>
-            {change && (
-              <div className="flex items-center mt-1">
-                {change.type === "increase" ? (
-                  <ArrowTrendingUpIcon className="w-4 h-4 text-green-500" />
-                ) : (
-                  <ArrowTrendingUpIcon className="w-4 h-4 text-red-500 rotate-180" />
-                )}
-                <span
-                  className={`text-sm font-medium ml-1 ${
-                    change.type === "increase" ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {Math.abs(change.value)}%
-                </span>
-                <span className="text-sm text-neutral-500 ml-1">vs last month</span>
-              </div>
-            )}
+            <p className="text-sm font-medium">{title}</p>
+            <p className="text-3xl font-bold">{value}</p>
           </div>
         </div>
       </CardContent>
@@ -108,7 +85,7 @@ function LoadingSkeleton() {
             <CardContent className="p-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-neutral-200 rounded-lg skeleton"></div>
+                  <div className="w-12 h-12 bg-neutral-200 rounded-full skeleton"></div>
                 </div>
                 <div className="ml-4 flex-1">
                   <div className="h-4 bg-neutral-200 rounded skeleton mb-2"></div>
@@ -271,8 +248,8 @@ export default function DashboardPage() {
         </div>
         <Card>
           <CardContent className="p-12 text-center">
-            <ExclamationTriangleIcon className="w-12 h-12 text-red-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-neutral-900 mb-2">Error loading dashboard</h3>
+            <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">Error loading dashboard</h3>
             <p className="text-muted-foreground">
               There was an error loading your dashboard data. Please try refreshing the page.
             </p>
@@ -303,27 +280,25 @@ export default function DashboardPage() {
         <StatsCard
           title="Total Products"
           value={stats.total_products || 0}
-          icon={CubeIcon}
+          icon={Package}
           color="primary"
-          change={{ value: 12, type: "increase" }}
         />
         <StatsCard
           title="Low Stock Items"
           value={stats.low_stock_count || 0}
-          icon={ExclamationTriangleIcon}
+          icon={AlertTriangle}
           color="warning"
         />
         <StatsCard
           title="Inventory Value"
           value={`₹${(stats.total_value || 0).toLocaleString()}`}
-          icon={CurrencyDollarIcon}
+          icon={DollarSign}
           color="success"
-          change={{ value: 8, type: "increase" }}
         />
         <StatsCard
           title="Expiring Batches"
           value={stats.expiring_batches || 0}
-          icon={ClockIcon}
+          icon={Clock}
           color="error"
         />
       </div>
@@ -332,9 +307,9 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Low Stock Items */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-base font-medium">Low Stock Items</CardTitle>
-            <Button variant="ghost" size="sm">View All</Button>
+          <CardHeader className="flex flex-row items-center justify-between pb-4">
+            <CardTitle className="text-lg font-medium">Low Stock Items</CardTitle>
+            <Button variant="outline" size="sm">View All</Button>
           </CardHeader>
           <CardContent>
             {lowStock.length > 0 ? (
@@ -347,7 +322,7 @@ export default function DashboardPage() {
                 </TableHeader>
                 <TableBody>
                   {lowStock.map((item: any, index: number) => (
-                    <TableRow key={index}>
+                    <TableRow key={index} className="hover:bg-muted/50">
                       <TableCell className="font-medium">
                         <div>{item.product_name}</div>
                         <div className="text-sm text-muted-foreground">SKU: {item.product_sku}</div>
@@ -362,7 +337,7 @@ export default function DashboardPage() {
               </Table>
             ) : (
               <div className="text-center py-6">
-                <CubeIcon className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <Package className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">No low stock items</p>
               </div>
             )}
@@ -371,9 +346,9 @@ export default function DashboardPage() {
 
         {/* Expiring Batches */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-base font-medium">Expiring Batches (30 days)</CardTitle>
-            <Button variant="ghost" size="sm">View All</Button>
+          <CardHeader className="flex flex-row items-center justify-between pb-4">
+            <CardTitle className="text-lg font-medium">Expiring Batches (30 days)</CardTitle>
+            <Button variant="outline" size="sm">View All</Button>
           </CardHeader>
           <CardContent>
             {expiring.length > 0 ? (
@@ -386,7 +361,7 @@ export default function DashboardPage() {
                 </TableHeader>
                 <TableBody>
                   {expiring.map((batch: any, index: number) => (
-                    <TableRow key={index}>
+                    <TableRow key={index} className="hover:bg-muted/50">
                       <TableCell className="font-medium">
                         <div>{batch.product_name}</div>
                         <div className="text-sm text-muted-foreground">Batch: {batch.batch_number}</div>
@@ -403,7 +378,7 @@ export default function DashboardPage() {
               </Table>
             ) : (
               <div className="text-center py-6">
-                <ClockIcon className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">No expiring batches</p>
               </div>
             )}
@@ -421,19 +396,25 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-4">
               {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start">
+                <div key={activity.id} className="flex items-start gap-3">
                   <div className="flex-shrink-0 mt-1">
                     {activity.type === "product_added" && (
-                      <PlusIcon className="h-5 w-5 text-green-500" />
+                      <div className="bg-success-500/10 text-success-500 w-8 h-8 rounded-full flex items-center justify-center">
+                        <Plus className="w-4 h-4" />
+                      </div>
                     )}
                     {activity.type === "inventory_updated" && (
-                      <ArrowTrendingUpIcon className="h-5 w-5 text-blue-500" />
+                      <div className="bg-primary-500/10 text-primary-500 w-8 h-8 rounded-full flex items-center justify-center">
+                        <ArrowUp className="w-4 h-4" />
+                      </div>
                     )}
                     {activity.type === "order_created" && (
-                      <DocumentTextIcon className="h-5 w-5 text-orange-500" />
+                      <div className="bg-orange-500/10 text-orange-500 w-8 h-8 rounded-full flex items-center justify-center">
+                        <FileText className="w-4 h-4" />
+                      </div>
                     )}
                   </div>
-                  <div className="ml-3 flex-1">
+                  <div className="flex-1">
                     <p className="text-sm font-medium">{activity.description}</p>
                     <p className="text-xs text-muted-foreground">{formatDate(activity.timestamp)}</p>
                   </div>
@@ -450,24 +431,30 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-3">
-              <Button className="justify-start">
-                <PlusIcon className="w-5 h-5 mr-3" />
+              <Button className="justify-start h-16 rounded-lg">
+                <div className="bg-primary-500/10 text-primary-500 w-10 h-10 rounded-lg flex items-center justify-center mr-3">
+                  <Plus className="w-5 h-5" />
+                </div>
                 <div className="text-left">
                   <div className="font-medium">Add Product</div>
                   <div className="text-xs text-muted-foreground">Create a new product</div>
                 </div>
               </Button>
               
-              <Button variant="secondary" className="justify-start">
-                <ArrowTrendingUpIcon className="w-5 h-5 mr-3" />
+              <Button variant="outline" className="justify-start h-16 rounded-lg">
+                <div className="bg-primary-500/10 text-primary-500 w-10 h-10 rounded-lg flex items-center justify-center mr-3">
+                  <ArrowUp className="w-5 h-5" />
+                </div>
                 <div className="text-left">
                   <div className="font-medium">Add Inventory</div>
                   <div className="text-xs text-muted-foreground">Increase stock levels</div>
                 </div>
               </Button>
               
-              <Button variant="outline" className="justify-start">
-                <DocumentTextIcon className="w-5 h-5 mr-3" />
+              <Button variant="outline" className="justify-start h-16 rounded-lg">
+                <div className="bg-primary-500/10 text-primary-500 w-10 h-10 rounded-lg flex items-center justify-center mr-3">
+                  <FileText className="w-5 h-5" />
+                </div>
                 <div className="text-left">
                   <div className="font-medium">Create Purchase Order</div>
                   <div className="text-xs text-muted-foreground">Order products from suppliers</div>

@@ -18,19 +18,30 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const { login, isLoading } = useAuth();
   const [remember, setRemember] = useState(true);
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty, isValid },
+    watch,
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    mode: 'onChange',
   });
 
+  const email = watch('email');
+  const password = watch('password');
+
   const onSubmit = async (data: LoginFormData) => {
-    await login(data.email, data.password, remember);
+    setApiError(null);
+    try {
+      await login(data.email, data.password, remember);
+    } catch (error: any) {
+      setApiError(error.message || 'Login failed. Please try again.');
+    }
   };
 
   return (
@@ -49,6 +60,22 @@ export default function LoginPage() {
 
           <div className="mt-8">
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+              {/* API Error Message */}
+              {apiError && (
+                <div className="rounded-md bg-error-50 p-4 mb-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-error-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-error-800">{apiError}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-neutral-700">
                   Email address
@@ -58,11 +85,15 @@ export default function LoginPage() {
                     {...register('email')}
                     type="email"
                     autoComplete="email"
-                    className="form-input"
+                    className={`form-input ${errors.email ? 'border-error-300' : ''}`}
                     placeholder="Enter your email"
+                    aria-invalid={errors.email ? "true" : "false"}
+                    aria-describedby="email-error"
                   />
                   {errors.email && (
-                    <p className="mt-1 text-sm text-error-600">{errors.email.message}</p>
+                    <p className="mt-1 text-sm text-error-600" id="email-error">
+                      {errors.email.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -76,13 +107,16 @@ export default function LoginPage() {
                     {...register('password')}
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
-                    className="form-input pr-10"
+                    className={`form-input pr-10 ${errors.password ? 'border-error-300' : ''}`}
                     placeholder="Enter your password"
+                    aria-invalid={errors.password ? "true" : "false"}
+                    aria-describedby="password-error"
                   />
                   <button
                     type="button"
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
                       <EyeSlashIcon className="h-5 w-5 text-neutral-400" />
@@ -91,7 +125,9 @@ export default function LoginPage() {
                     )}
                   </button>
                   {errors.password && (
-                    <p className="mt-1 text-sm text-error-600">{errors.password.message}</p>
+                    <p className="mt-1 text-sm text-error-600" id="password-error">
+                      {errors.password.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -121,7 +157,7 @@ export default function LoginPage() {
               <div>
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !isDirty || !isValid}
                   className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (

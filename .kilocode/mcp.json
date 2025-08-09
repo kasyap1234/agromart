@@ -6,6 +6,13 @@
         "-y",
         "@modelcontextprotocol/server-filesystem",
         "/Users/kasyapdharanikota/GolandProjects/agromart"
+      ],
+      "alwaysAllow": [
+        "read_file",
+        "read_text_file",
+        "read_media_file",
+        "read_multiple_files",
+        "write_file"
       ]
     }
   }
