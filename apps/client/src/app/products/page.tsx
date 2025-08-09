@@ -29,7 +29,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { SearchIcon, PlusIcon, FilterIcon } from "lucide-react";
+import { toast } from "react-hot-toast";
+import { SearchIcon, PlusIcon, FilterIcon, Pencil, Trash2 } from "lucide-react";
 import { apiClient } from "@/lib/api";
 
 interface Product {
@@ -146,6 +147,22 @@ export default function ProductsPage() {
     setPage(1); // Reset to first page when limit changes
     setLimit(newLimit);
   }, []);
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      await apiClient.products.delete(id);
+      toast.success('Product deleted successfully');
+      // Refresh the product list
+      mutate();
+    } catch (err: any) {
+      const message = err?.response?.data?.message || err?.message || 'Failed to delete product';
+      toast.error(message);
+    }
+  };
 
   if (error) {
     return (
@@ -289,9 +306,25 @@ export default function ProductsPage() {
                           ₹{product.price?.toFixed(2) || "0.00"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/products/${product.id}`}>View</Link>
-                          </Button>
+                          <div className="flex justify-end space-x-1">
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link href={`/products/${product.id}`}>
+                                <SearchIcon className="w-4 h-4" />
+                              </Link>
+                            </Button>
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link href={`/products/${product.id}/edit`}>
+                                <Pencil className="w-4 h-4" />
+                              </Link>
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleDelete(product.id, product.name)}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

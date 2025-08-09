@@ -1,8 +1,3 @@
--- name: CreateBatch :one
-INSERT INTO batches (tenant_id, product_id, batch_number, expiry_date, cost)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING *;
-
 -- name: AddInventoryQuantity :exec
 INSERT INTO inventory (tenant_id, product_id, batch_id, quantity)
 VALUES ($1, $2, $3, $4)
@@ -29,16 +24,6 @@ ORDER BY b.expiry_date ASC;
 -- name: CreateInventoryLog :exec
 INSERT INTO inventory_log (tenant_id, product_id, batch_id, transaction_type, quantity_change, reference_id, notes)
 VALUES ($1, $2, $3, $4, $5, $6, $7);
-
--- name: GetBatchByID :one
-SELECT * FROM batches
-WHERE id = $1 AND tenant_id = $2;
-
--- name: UpdateBatch :one
-UPDATE batches
-SET batch_number = $2, expiry_date = $3, cost = $4
-WHERE id = $1 AND tenant_id = $5
-RETURNING *;
 
 -- name: GetInventoryByProductBatch :one
 SELECT * FROM inventory

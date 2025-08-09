@@ -118,15 +118,15 @@ func (h *AuthHandler) Me(c echo.Context) error {
 	}
 
 	// Try full user + tenant via service helper
-	if ut, err := h.authService.GetUserWithTenant(c.Request().Context(), userID); err == nil && ut != nil {
-		if err := c.JSON(http.StatusOK, map[string]interface{}{
+	if ut, serviceErr := h.authService.GetUserWithTenant(c.Request().Context(), userID); serviceErr == nil && ut != nil {
+		if jsonErr := c.JSON(http.StatusOK, map[string]interface{}{
 			"success": true,
 			"data": map[string]interface{}{
 				"user":   ut.User,
 				"tenant": ut.Tenant,
 			},
-		}); err != nil {
-			return err
+		}); jsonErr != nil {
+			return jsonErr
 		}
 		return nil
 	}
@@ -364,7 +364,6 @@ func (h *AuthHandler) UpdatePassword(c echo.Context) error {
 				"error": map[string]interface{}{
 					"code":    http.StatusInternalServerError,
 					"message": "internal server error",
-					"details": err.Error(),
 				},
 			})
 			return nil
@@ -495,9 +494,8 @@ func PasswordReset(s *internalauth.AuthService, c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"success": false,
 			"error": map[string]interface{}{
-				"code":    http.StatusInternalServerError,
-				"message": "failed to reset password",
-				"details": err.Error(),
+			"code":    http.StatusInternalServerError,
+			"message": "failed to reset password",
 			},
 		})
 	}

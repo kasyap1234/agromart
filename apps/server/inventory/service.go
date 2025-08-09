@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"agromart2/db"
+	"agromart2/internal/errors"
 	"agromart2/internal/utils"
 )
 
@@ -256,6 +258,38 @@ func (s *InventoryService) CheckInventoryAvailability(ctx context.Context, tenan
 	// Convert numeric to float64 for comparison
 	currentQuantity, _ := inventory.Quantity.Float64Value()
 	return currentQuantity.Float64 >= float64(requiredQuantity), nil
+}
+
+// DeleteBatch deletes a batch by ID
+func (s *InventoryService) DeleteBatch(ctx context.Context, batchID, tenantID uuid.UUID) error {
+	// Check if batch exists and belongs to tenant
+	batch, err := s.GetBatchByID(ctx, batchID, tenantID)
+	if err != nil {
+		return errors.NewNotFound("batch not found")
+	}
+	
+	// Check if there's inventory associated with this batch
+	inventory, err := s.GetInventoryByProductBatch(ctx, tenantID, batch.ProductID, batchID)
+	if err == nil {
+		// If inventory exists, check if quantity is zero
+		currentQuantity, _ := inventory.Quantity.Float64Value()
+		if currentQuantity.Float64 > 0 {
+			return errors.NewConflict("cannot delete batch with non-zero inventory quantity")
+		}
+		// If quantity is zero, we can delete the inventory record
+		// This will be handled by cascade delete
+	}
+	
+	// Delete the batch (cascade will handle related records)
+	err = s.queries.DeleteBatch(ctx, db.DeleteBatchParams{
+		ID:       batchID,
+		TenantID: tenantID,
+	})
+	if err != nil {
+		return errors.Wrap(err, http.StatusInternalServerError, "failed to delete batch")
+	}
+	
+	return nil
 }
 
 // GetInventorySummary gets a summary of inventory for dashboard

@@ -38,6 +38,8 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeactivateCustomer(ctx context.Context, arg DeactivateCustomerParams) error
 	DeactivateSupplier(ctx context.Context, arg DeactivateSupplierParams) error
+	DeleteBatch(ctx context.Context, arg DeleteBatchParams) error
+	DeleteProduct(ctx context.Context, arg DeleteProductParams) error
 	GetBatchByID(ctx context.Context, arg GetBatchByIDParams) (Batch, error)
 	GetCustomerByID(ctx context.Context, arg GetCustomerByIDParams) (Customer, error)
 	GetCustomerByName(ctx context.Context, arg GetCustomerByNameParams) (Customer, error)
@@ -84,6 +86,7 @@ type Querier interface {
 	ListActiveCustomers(ctx context.Context, arg ListActiveCustomersParams) ([]Customer, error)
 	ListActiveSuppliers(ctx context.Context, arg ListActiveSuppliersParams) ([]Supplier, error)
 	ListAllInventory(ctx context.Context, arg ListAllInventoryParams) ([]ListAllInventoryRow, error)
+	ListBatches(ctx context.Context, arg ListBatchesParams) ([]Batch, error)
 	ListCustomers(ctx context.Context, arg ListCustomersParams) ([]Customer, error)
 	ListLocations(ctx context.Context, arg ListLocationsParams) ([]Location, error)
 	ListProducts(ctx context.Context, arg ListProductsParams) ([]Product, error)

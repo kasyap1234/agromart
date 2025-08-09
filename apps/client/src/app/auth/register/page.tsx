@@ -9,6 +9,11 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/context/AuthContext';
 import { RegisterRequest } from '@/types';
 import { PasswordStrengthMeter } from '@/components/ui/password-strength';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 const registerSchema = z.object({
   first_name: z.string().min(2, 'First name must be at least 2 characters'),
@@ -73,177 +78,163 @@ export default function RegisterPage() {
               {/* Company Information */}
               {/* API Error Message */}
               {apiError && (
-                <div className="rounded-md bg-error-50 p-4 mb-4">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-error-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-error-800">{apiError}</p>
-                    </div>
-                  </div>
-                </div>
+                <Card className="border-destructive bg-destructive/10">
+                  <CardContent className="flex items-start space-x-2 p-4">
+                    <svg className="h-5 w-5 text-destructive mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+                    </svg>
+                    <p className="text-sm font-medium text-destructive">{apiError}</p>
+                  </CardContent>
+                </Card>
               )}
 
-              <div>
-                <label htmlFor="company_name" className="block text-sm font-medium text-neutral-700">
-                  Company Name
-                </label>
-                <div className="mt-1">
-                  <input
-                    {...register('company_name')}
-                    type="text"
-                    className={`form-input ${errors.company_name ? 'border-error-300' : ''}`}
-                    placeholder="Enter your company name"
-                    aria-invalid={errors.company_name ? "true" : "false"}
-                    aria-describedby="company-error"
-                  />
-                  {errors.company_name && (
-                    <p className="mt-1 text-sm text-error-600" id="company-error">
-                      {errors.company_name.message}
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="company_name">Company Name</Label>
+                <Input
+                  {...register('company_name')}
+                  id="company_name"
+                  type="text"
+                  className={cn(errors.company_name && "border-destructive focus-visible:ring-destructive")}
+                  placeholder="Enter your company name"
+                  aria-invalid={errors.company_name ? "true" : "false"}
+                  aria-describedby="company-error"
+                />
+                {errors.company_name && (
+                  <p className="text-sm text-destructive" id="company-error">
+                    {errors.company_name.message}
+                  </p>
+                )}
               </div>
 
               {/* Personal Information */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="first_name" className="block text-sm font-medium text-neutral-700">
-                    First Name
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      {...register('first_name')}
-                      type="text"
-                      className={`form-input ${errors.first_name ? 'border-error-300' : ''}`}
-                      placeholder="First name"
-                      aria-invalid={errors.first_name ? "true" : "false"}
-                      aria-describedby="first-name-error"
-                    />
-                    {errors.first_name && (
-                      <p className="mt-1 text-sm text-error-600" id="first-name-error">
-                        {errors.first_name.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="last_name" className="block text-sm font-medium text-neutral-700">
-                    Last Name
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      {...register('last_name')}
-                      type="text"
-                      className={`form-input ${errors.last_name ? 'border-error-300' : ''}`}
-                      placeholder="Last name"
-                      aria-invalid={errors.last_name ? "true" : "false"}
-                      aria-describedby="last-name-error"
-                    />
-                    {errors.last_name && (
-                      <p className="mt-1 text-sm text-error-600" id="last-name-error">
-                        {errors.last_name.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-neutral-700">
-                  Email Address
-                </label>
-                <div className="mt-1">
-                  <input
-                    {...register('email')}
-                    type="email"
-                    autoComplete="email"
-                    className={`form-input ${errors.email ? 'border-error-300' : ''}`}
-                    placeholder="Enter your email"
-                    aria-invalid={errors.email ? "true" : "false"}
-                    aria-describedby="email-error"
+                <div className="space-y-2">
+                  <Label htmlFor="first_name">First Name</Label>
+                  <Input
+                    {...register('first_name')}
+                    id="first_name"
+                    type="text"
+                    className={cn(errors.first_name && "border-destructive focus-visible:ring-destructive")}
+                    placeholder="First name"
+                    aria-invalid={errors.first_name ? "true" : "false"}
+                    aria-describedby="first-name-error"
                   />
-                  {errors.email && (
-                    <p className="mt-1 text-sm text-error-600" id="email-error">
-                      {errors.email.message}
+                  {errors.first_name && (
+                    <p className="text-sm text-destructive" id="first-name-error">
+                      {errors.first_name.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="last_name">Last Name</Label>
+                  <Input
+                    {...register('last_name')}
+                    id="last_name"
+                    type="text"
+                    className={cn(errors.last_name && "border-destructive focus-visible:ring-destructive")}
+                    placeholder="Last name"
+                    aria-invalid={errors.last_name ? "true" : "false"}
+                    aria-describedby="last-name-error"
+                  />
+                  {errors.last_name && (
+                    <p className="text-sm text-destructive" id="last-name-error">
+                      {errors.last_name.message}
                     </p>
                   )}
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-neutral-700">
-                  Password
-                </label>
-                <div className="mt-1 relative">
-                  <input
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  {...register('email')}
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  className={cn(errors.email && "border-destructive focus-visible:ring-destructive")}
+                  placeholder="Enter your email"
+                  aria-invalid={errors.email ? "true" : "false"}
+                  aria-describedby="email-error"
+                />
+                {errors.email && (
+                  <p className="text-sm text-destructive" id="email-error">
+                    {errors.email.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
                     {...register('password')}
+                    id="password"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="new-password"
-                    className={`form-input pr-10 ${errors.password ? 'border-error-300' : ''}`}
+                    className={cn("pr-10", errors.password && "border-destructive focus-visible:ring-destructive")}
                     placeholder="Create a password"
                     aria-invalid={errors.password ? "true" : "false"}
                     aria-describedby="password-error"
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
-                      <EyeSlashIcon className="h-5 w-5 text-neutral-400" />
+                      <EyeSlashIcon className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <EyeIcon className="h-5 w-5 text-neutral-400" />
+                      <EyeIcon className="h-4 w-4 text-muted-foreground" />
                     )}
-                  </button>
-                  {errors.password && (
-                    <p className="mt-1 text-sm text-error-600" id="password-error">
-                      {errors.password.message}
-                    </p>
-                  )}
-                  {password && password.length > 0 && (
-                    <PasswordStrengthMeter password={password} />
-                  )}
+                  </Button>
                 </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive" id="password-error">
+                    {errors.password.message}
+                  </p>
+                )}
+                {password && password.length > 0 && (
+                  <PasswordStrengthMeter password={password} />
+                )}
               </div>
 
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-neutral-700">
-                  Confirm Password
-                </label>
-                <div className="mt-1 relative">
-                  <input
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <div className="relative">
+                  <Input
                     {...register('confirmPassword')}
+                    id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
                     autoComplete="new-password"
-                    className={`form-input pr-10 ${errors.confirmPassword ? 'border-error-300' : ''}`}
+                    className={cn("pr-10", errors.confirmPassword && "border-destructive focus-visible:ring-destructive")}
                     placeholder="Confirm your password"
                     aria-invalid={errors.confirmPassword ? "true" : "false"}
                     aria-describedby="confirm-password-error"
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                   >
                     {showConfirmPassword ? (
-                      <EyeSlashIcon className="h-5 w-5 text-neutral-400" />
+                      <EyeSlashIcon className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <EyeIcon className="h-5 w-5 text-neutral-400" />
+                      <EyeIcon className="h-4 w-4 text-muted-foreground" />
                     )}
-                  </button>
-                  {errors.confirmPassword && (
-                    <p className="mt-1 text-sm text-error-600" id="confirm-password-error">
-                      {errors.confirmPassword.message}
-                    </p>
-                  )}
+                  </Button>
                 </div>
+                {errors.confirmPassword && (
+                  <p className="text-sm text-destructive" id="confirm-password-error">
+                    {errors.confirmPassword.message}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center">
@@ -265,25 +256,24 @@ export default function RegisterPage() {
                 </label>
               </div>
               {errors.acceptTerms && (
-                <p className="text-sm text-error-600">{errors.acceptTerms.message}</p>
+                <p className="text-sm text-destructive">{errors.acceptTerms.message}</p>
               )}
 
-              <div>
-                <button
-                  type="submit"
-                  disabled={isLoading || !isDirty || !isValid}
-                  className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Creating account...
-                    </div>
-                  ) : (
-                    'Create account'
-                  )}
-                </button>
-              </div>
+              <Button
+                type="submit"
+                disabled={isLoading || !isDirty || !isValid}
+                className="w-full"
+                size="lg"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-background mr-2"></div>
+                    Creating account...
+                  </>
+                ) : (
+                  'Create account'
+                )}
+              </Button>
 
               <div className="text-center">
                 <p className="text-sm text-neutral-600">

@@ -68,3 +68,7 @@ SET
   gst_percent = COALESCE(sqlc.narg('gst_percent'), gst_percent),
   unit_id = COALESCE(sqlc.narg('unit_id'), unit_id)
 WHERE id = sqlc.arg('id') AND tenant_id = sqlc.arg('tenant_id');
+
+-- name: DeleteProduct :exec
+DELETE FROM products
+WHERE id = $1 AND tenant_id = $2;

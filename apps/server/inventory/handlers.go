@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-
+	"agromart2/internal/errors"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -61,6 +61,33 @@ func (h *Handler) GetBatch(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"success": true,
 		"data":    batch,
+	})
+}
+
+// DeleteBatch deletes a batch by ID
+func (h *Handler) DeleteBatch(c echo.Context) error {
+	batchID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid batch ID")
+	}
+
+	tenantID, err := uuid.Parse(c.Get("tenant_id").(string))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "invalid tenant")
+	}
+
+	err = h.service.DeleteBatch(c.Request().Context(), batchID, tenantID)
+	if err != nil {
+		// Check if it's a custom error
+		if customErr, ok := err.(*errors.CustomError); ok {
+			return echo.NewHTTPError(customErr.HTTPStatus(), customErr.Error())
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "Batch deleted successfully",
 	})
 }
 
@@ -280,6 +307,7 @@ func (h *Handler) GetInventoryLogs(c echo.Context) error {
 func (h *Handler) RegisterRoutes(g *echo.Group) {
 	g.POST("/batches", h.CreateBatch)
 	g.GET("/batches/:id", h.GetBatch)
+	g.DELETE("/batches/:id", h.DeleteBatch)
 	
 	g.POST("/inventory/add", h.AddInventory)
 	g.POST("/inventory/reduce", h.ReduceInventory)

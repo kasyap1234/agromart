@@ -35,16 +35,15 @@ func HTTPErrorHandler(err error, c echo.Context) {
 	// mark that our custom handler processed the error
 	c.Response().Header().Set("X-Error-Handler", "custom")
 
-	// 1) Our AppError
-	var ae *appErr.AppError
-	if errors.As(err, &ae) && ae != nil {
-		_ = c.JSON(ae.Code, map[string]interface{}{
+	// 1) Our CustomError
+	var ce *appErr.CustomError
+	if errors.As(err, &ce) && ce != nil {
+		_ = c.JSON(ce.Code, map[string]interface{}{
 			"success": false,
 			"handler": "custom",
 			"error": map[string]interface{}{
-				"code":    ae.Code,
-				"message": ae.Message,
-				"details": ae.Details,
+				"code":    ce.Code,
+				"message": ce.Message,
 			},
 		})
 		return

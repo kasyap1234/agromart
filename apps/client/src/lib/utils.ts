@@ -1,21 +1,22 @@
-// This file contains utility functions used throughout the app
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
 
 /**
- * Applies a CSS class conditionally
+ * Merges multiple class names into a single string using clsx and tailwind-merge
+ * @param inputs Class names to merge
+ * @returns Combined and deduplicated class string
+ */
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+/**
+ * Applies a CSS class conditionally (legacy support)
  * @param classes Object mapping class names to boolean conditions
  * @returns Space-separated string of classes that meet their conditions
  */
 export function classNames(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(' ');
-}
-
-/**
- * Merges multiple class names into a single string
- * @param inputs Class names to merge
- * @returns Combined class string
- */
-export function cn(...inputs: (string | undefined)[]) {
-  return inputs.filter(Boolean).join(' ');
 }
 
 /**

@@ -49,41 +49,6 @@ func (q *Queries) CountProductsByTenant(ctx context.Context, tenantID uuid.UUID)
 	return count, err
 }
 
-const createBatch = `-- name: CreateBatch :one
-INSERT INTO batches (tenant_id, product_id, batch_number, expiry_date, cost)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, tenant_id, product_id, batch_number, expiry_date, cost, created_at
-`
-
-type CreateBatchParams struct {
-	TenantID    uuid.UUID      `json:"tenant_id"`
-	ProductID   uuid.UUID      `json:"product_id"`
-	BatchNumber string         `json:"batch_number"`
-	ExpiryDate  time.Time      `json:"expiry_date"`
-	Cost        pgtype.Numeric `json:"cost"`
-}
-
-func (q *Queries) CreateBatch(ctx context.Context, arg CreateBatchParams) (Batch, error) {
-	row := q.db.QueryRow(ctx, createBatch,
-		arg.TenantID,
-		arg.ProductID,
-		arg.BatchNumber,
-		arg.ExpiryDate,
-		arg.Cost,
-	)
-	var i Batch
-	err := row.Scan(
-		&i.ID,
-		&i.TenantID,
-		&i.ProductID,
-		&i.BatchNumber,
-		&i.ExpiryDate,
-		&i.Cost,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const createInventoryLog = `-- name: CreateInventoryLog :exec
 INSERT INTO inventory_log (tenant_id, product_id, batch_id, transaction_type, quantity_change, reference_id, notes)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -110,31 +75,6 @@ func (q *Queries) CreateInventoryLog(ctx context.Context, arg CreateInventoryLog
 		arg.Notes,
 	)
 	return err
-}
-
-const getBatchByID = `-- name: GetBatchByID :one
-SELECT id, tenant_id, product_id, batch_number, expiry_date, cost, created_at FROM batches
-WHERE id = $1 AND tenant_id = $2
-`
-
-type GetBatchByIDParams struct {
-	ID       uuid.UUID `json:"id"`
-	TenantID uuid.UUID `json:"tenant_id"`
-}
-
-func (q *Queries) GetBatchByID(ctx context.Context, arg GetBatchByIDParams) (Batch, error) {
-	row := q.db.QueryRow(ctx, getBatchByID, arg.ID, arg.TenantID)
-	var i Batch
-	err := row.Scan(
-		&i.ID,
-		&i.TenantID,
-		&i.ProductID,
-		&i.BatchNumber,
-		&i.ExpiryDate,
-		&i.Cost,
-		&i.CreatedAt,
-	)
-	return i, err
 }
 
 const getExpiringBatches = `-- name: GetExpiringBatches :many
@@ -548,40 +488,4 @@ func (q *Queries) SetInventoryQuantity(ctx context.Context, arg SetInventoryQuan
 		arg.BatchID,
 	)
 	return err
-}
-
-const updateBatch = `-- name: UpdateBatch :one
-UPDATE batches
-SET batch_number = $2, expiry_date = $3, cost = $4
-WHERE id = $1 AND tenant_id = $5
-RETURNING id, tenant_id, product_id, batch_number, expiry_date, cost, created_at
-`
-
-type UpdateBatchParams struct {
-	ID          uuid.UUID      `json:"id"`
-	BatchNumber string         `json:"batch_number"`
-	ExpiryDate  time.Time      `json:"expiry_date"`
-	Cost        pgtype.Numeric `json:"cost"`
-	TenantID    uuid.UUID      `json:"tenant_id"`
-}
-
-func (q *Queries) UpdateBatch(ctx context.Context, arg UpdateBatchParams) (Batch, error) {
-	row := q.db.QueryRow(ctx, updateBatch,
-		arg.ID,
-		arg.BatchNumber,
-		arg.ExpiryDate,
-		arg.Cost,
-		arg.TenantID,
-	)
-	var i Batch
-	err := row.Scan(
-		&i.ID,
-		&i.TenantID,
-		&i.ProductID,
-		&i.BatchNumber,
-		&i.ExpiryDate,
-		&i.Cost,
-		&i.CreatedAt,
-	)
-	return i, err
 }

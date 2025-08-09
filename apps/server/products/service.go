@@ -6,7 +6,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"agromart2/db"
+	"net/http"
 	"agromart2/internal/database"
+	"agromart2/internal/errors"
 	"agromart2/internal/pgconv"
 	"agromart2/internal/utils"
 	"github.com/rs/zerolog/log"
@@ -238,5 +240,27 @@ func (s *ProductService) PatchProduct(ctx context.Context, tenantID, productID u
 		return err
 	}
 	return nil
+}
 
+// DeleteProduct deletes a product by ID
+func (s *ProductService) DeleteProduct(ctx context.Context, productID uuid.UUID, tenantID uuid.UUID) error {
+	// First check if product exists and belongs to tenant
+	exists, err := s.CheckProductExists(ctx, productID, tenantID)
+	if err != nil {
+		return errors.Wrap(err, http.StatusInternalServerError, "failed to check product existence")
+	}
+	if !exists {
+		return errors.NewNotFound("product not found")
+	}
+
+	// Delete the product (cascade will handle related records)
+	err = s.q.DeleteProduct(ctx, db.DeleteProductParams{
+		ID:       productID,
+		TenantID: tenantID,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to delete product")
+		return errors.Wrap(err, http.StatusInternalServerError, "failed to delete product")
+	}
+	return nil
 }

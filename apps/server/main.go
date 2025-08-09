@@ -15,14 +15,17 @@ import (
 	echoMiddleware "github.com/labstack/echo/v4/middleware"
 
 	"agromart2/apps/server/config"
+	"agromart2/apps/server/reports"
 	"agromart2/internal/auth"
 	"agromart2/internal/database"
 	"agromart2/internal/middleware"
 
 	"agromart2/apps/server/analytics"
+	"agromart2/apps/server/batches"
 	"agromart2/apps/server/handler"
 	"agromart2/apps/server/inventory"
 	"agromart2/apps/server/products"
+	"agromart2/apps/server/sales"
 	"agromart2/db"
 )
 
@@ -51,8 +54,8 @@ func main() {
 	}
 
 	// Validate config
-	if err := dbConfig.Validate(); err != nil {
-		log.Fatal("Invalid database config:", err)
+	if configErr := dbConfig.Validate(); configErr != nil {
+		log.Fatal("Invalid database config:", configErr)
 	}
 
 	// Initialize database connection pool
@@ -85,12 +88,17 @@ func main() {
 	productService := products.NewProductService(pool, queries)
 	inventoryService := inventory.NewService(pool, queries)
 	analyticsService := analytics.NewService(pool, queries)
+	salesService := sales.NewService(pool, queries)
+	batchesService := batches.NewService(pool, queries)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
 	productHandler := products.NewProductHandler(productService)
 	inventoryHandler := inventory.NewHandler(inventoryService)
 	analyticsHandler := analytics.NewHandler(analyticsService)
+	salesHandler := sales.NewHandler(salesService)
+	batchesHandler := batches.NewHandler(batchesService)
+	reportsHandler := reports.NewHandler(queries)
 
 	// Initialize Echo
 	e := echo.New()
@@ -209,28 +217,16 @@ func main() {
 	analyticsHandler.RegisterRoutes(protected)
 	// RBAC for CSV exports already enforced in handlers via CanExport
 
+	// Sales routes under /api/sales
+	salesHandler.RegisterRoutes(protected)
+
+	// Batches routes under /api/batches
+	batchesHandler.RegisterRoutes(protected)
+
 	// Reports routes
 	reportsGroup := protected.Group("/reports")
-	// Dashboard stats - real implementation using inventory service
-	reportsGroup.GET("/dashboard-stats", func(c echo.Context) error {
-		tenantStr, ok := c.Get("tenant_id").(string)
-		if !ok || tenantStr == "" {
-			return echo.NewHTTPError(401, "invalid tenant context")
-		}
-		tenantUUID, err := uuid.Parse(tenantStr)
-		if err != nil {
-			return echo.NewHTTPError(401, "invalid tenant id")
-		}
-		stats, err := inventoryService.GetInventorySummary(c.Request().Context(), tenantUUID)
-		if err != nil {
-			log.Printf("[REPORTS] dashboard-stats error: %v", err)
-			return echo.NewHTTPError(500, "failed to compute dashboard stats")
-		}
-		return c.JSON(200, map[string]interface{}{
-			"success": true,
-			"data":    stats,
-		})
-	})
+	// Register reports handler routes
+	reportsHandler.RegisterRoutes(reportsGroup)
 
 	// Low stock with optional threshold query param (default 10)
 	reportsGroup.GET("/low-stock", func(c echo.Context) error {
@@ -244,7 +240,7 @@ func main() {
 		}
 		threshold := 10
 		if t := c.QueryParam("threshold"); t != "" {
-			if v, err := strconv.Atoi(t); err == nil && v >= 0 {
+			if v, convErr := strconv.Atoi(t); convErr == nil && v >= 0 {
 				threshold = v
 			}
 		}
@@ -271,7 +267,7 @@ func main() {
 		}
 		days := 30
 		if d := c.QueryParam("days"); d != "" {
-			if v, err := strconv.Atoi(d); err == nil && v >= 0 {
+			if v, convErr := strconv.Atoi(d); convErr == nil && v >= 0 {
 				days = v
 			}
 		}

@@ -8,26 +8,49 @@
   --font-inter: 'Inter', sans-serif;
   --font-mono: 'Fira Code', 'Consolas', monospace;
   
+  /* ShadCN UI Design Tokens - Agromart Theme */
   --background: 0 0% 100%;
-  --foreground: 0 0% 3.9%;
+  --foreground: 240 10% 3.9%;
   --card: 0 0% 100%;
-  --card-foreground: 0 0% 3.9%;
+  --card-foreground: 240 10% 3.9%;
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 3.9%;
-  --primary: 142 72% 29%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 287 53% 48%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 0 0% 96.1%;
-  --muted-foreground: 0 0% 45.1%;
-  --accent: 24 83% 59%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 84% 60%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 142 76% 36%;
+  --primary-foreground: 355 100% 97%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 142 76% 36%;
+  --accent-foreground: 240 5.9% 10%;
+  --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 89.8%;
-  --input: 0 0% 89.8%;
-  --ring: 142 72% 29%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 142 76% 36%;
   --radius: 0.5rem;
+}
+
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 142 76% 36%;
+  --primary-foreground: 355 100% 97%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 142 76% 36%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 142 76% 36%;
 }
 
 * {
@@ -96,77 +119,12 @@ a {
   animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Custom button styles */
-.btn-primary {
-  @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus-ring;
-}
-
-.btn-secondary {
-  @apply bg-neutral-200 hover:bg-neutral-300 text-neutral-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus-ring;
-}
-
-.btn-danger {
-  @apply bg-error-600 hover:bg-error-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus-ring;
-}
-
-/* Form styles */
-.form-input {
-  @apply block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm;
-}
-
-.form-select {
-  @apply block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm;
-}
-
-.form-textarea {
-  @apply block w-full rounded-lg border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm;
-}
-
-/* Card styles */
-.card {
-  @apply bg-white rounded-xl shadow-soft border border-neutral-200;
-}
-
-.card-header {
-  @apply px-6 py-4 border-b border-neutral-200;
-}
-
-.card-body {
-  @apply px-6 py-4;
-}
-
-.card-footer {
-  @apply px-6 py-4 border-t border-neutral-200;
-}
-
-/* Table styles */
-.table-container {
-  @apply overflow-hidden shadow-soft ring-1 ring-black ring-opacity-5 md:rounded-lg;
-}
-
-.table {
-  @apply min-w-full divide-y divide-neutral-300;
-}
-
-.table-head {
-  @apply bg-neutral-50;
-}
-
-.table-header {
-  @apply px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider;
-}
-
-.table-body {
-  @apply bg-white divide-y divide-neutral-200;
-}
-
-.table-row {
-  @apply hover:bg-neutral-50 transition-colors duration-150;
-}
-
-.table-cell {
-  @apply px-6 py-4 whitespace-nowrap text-sm text-neutral-900;
-}
+/* Note: Custom CSS classes below are deprecated. Use ShadCN UI components instead:
+ * - Replace .btn-* with <Button> component variants
+ * - Replace .form-* with <Input>, <Select>, <Textarea> components  
+ * - Replace .card-* with <Card> component and its sub-components
+ * - Replace .table-* with <Table> component and its sub-components
+ */
 
 /* Loading states */
 .skeleton {

@@ -8,6 +8,11 @@ import { z } from 'zod';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/context/AuthContext';
 import { LoginRequest } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -62,74 +67,68 @@ export default function LoginPage() {
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
               {/* API Error Message */}
               {apiError && (
-                <div className="rounded-md bg-error-50 p-4 mb-4">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-error-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-error-800">{apiError}</p>
-                    </div>
-                  </div>
-                </div>
+                <Card className="border-destructive bg-destructive/10">
+                  <CardContent className="flex items-start space-x-2 p-4">
+                    <svg className="h-5 w-5 text-destructive mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+                    </svg>
+                    <p className="text-sm font-medium text-destructive">{apiError}</p>
+                  </CardContent>
+                </Card>
               )}
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-neutral-700">
-                  Email address
-                </label>
-                <div className="mt-1">
-                  <input
-                    {...register('email')}
-                    type="email"
-                    autoComplete="email"
-                    className={`form-input ${errors.email ? 'border-error-300' : ''}`}
-                    placeholder="Enter your email"
-                    aria-invalid={errors.email ? "true" : "false"}
-                    aria-describedby="email-error"
-                  />
-                  {errors.email && (
-                    <p className="mt-1 text-sm text-error-600" id="email-error">
-                      {errors.email.message}
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email address</Label>
+                <Input
+                  {...register('email')}
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  className={cn(errors.email && "border-destructive focus-visible:ring-destructive")}
+                  placeholder="Enter your email"
+                  aria-invalid={errors.email ? "true" : "false"}
+                  aria-describedby="email-error"
+                />
+                {errors.email && (
+                  <p className="text-sm text-destructive" id="email-error">
+                    {errors.email.message}
+                  </p>
+                )}
               </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-neutral-700">
-                  Password
-                </label>
-                <div className="mt-1 relative">
-                  <input
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
                     {...register('password')}
+                    id="password"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
-                    className={`form-input pr-10 ${errors.password ? 'border-error-300' : ''}`}
+                    className={cn("pr-10", errors.password && "border-destructive focus-visible:ring-destructive")}
                     placeholder="Enter your password"
                     aria-invalid={errors.password ? "true" : "false"}
                     aria-describedby="password-error"
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
-                      <EyeSlashIcon className="h-5 w-5 text-neutral-400" />
+                      <EyeSlashIcon className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <EyeIcon className="h-5 w-5 text-neutral-400" />
+                      <EyeIcon className="h-4 w-4 text-muted-foreground" />
                     )}
-                  </button>
-                  {errors.password && (
-                    <p className="mt-1 text-sm text-error-600" id="password-error">
-                      {errors.password.message}
-                    </p>
-                  )}
+                  </Button>
                 </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive" id="password-error">
+                    {errors.password.message}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center justify-between">
@@ -154,22 +153,21 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div>
-                <button
-                  type="submit"
-                  disabled={isLoading || !isDirty || !isValid}
-                  className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Signing in...
-                    </div>
-                  ) : (
-                    'Sign in'
-                  )}
-                </button>
-              </div>
+              <Button
+                type="submit"
+                disabled={isLoading || !isDirty || !isValid}
+                className="w-full"
+                size="lg"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-background mr-2"></div>
+                    Signing in...
+                  </>
+                ) : (
+                  'Sign in'
+                )}
+              </Button>
 
               <div className="text-center">
                 <p className="text-sm text-neutral-600">

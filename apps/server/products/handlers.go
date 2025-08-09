@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"agromart2/db"
+	"agromart2/internal/errors"
 	"agromart2/internal/utils"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -40,6 +41,7 @@ func (h *ProductHandler) RegisterRoutes(g *echo.Group) {
 	g.GET("/products/search", h.SearchProducts)
 	g.GET("/products/:id", h.GetProduct)
 	g.PATCH("/products/:id", h.PatchProduct)
+	g.DELETE("/products/:id", h.DeleteProduct)
 	// Units helpers
 	g.GET("/units", h.ListUnits)
 }
@@ -416,6 +418,71 @@ func (h *ProductHandler) PatchProduct(c echo.Context) error {
 	})
 }
 
+// DeleteProduct godoc
+// @Summary Delete product
+// @Description Deletes a product by ID
+// @Tags products
+// @Security Bearer
+// @Produce json
+// @Param id path string true "Product ID (UUID)"
+// @Success 200 {object} map[string]interface{} "success message"
+// @Failure 400 {object} map[string]interface{} "invalid id"
+// @Failure 401 {object} map[string]interface{} "invalid tenant/auth"
+// @Failure 404 {object} map[string]interface{} "not found"
+// @Failure 500 {object} map[string]interface{} "internal error"
+// @Router /products/{id} [delete]
+func (h *ProductHandler) DeleteProduct(c echo.Context) error {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]any{
+			"success": false,
+			"error": map[string]any{
+				"code":    http.StatusBadRequest,
+				"message": "invalid product ID",
+			},
+		})
+	}
+	tenantStr, _ := c.Get("tenant_id").(string)
+	tenantID, err := uuid.Parse(tenantStr)
+	if err != nil || tenantStr == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]any{
+			"success": false,
+			"error": map[string]any{
+				"code":    http.StatusUnauthorized,
+				"message": "invalid tenant",
+			},
+		})
+	}
+
+	err = h.service.DeleteProduct(c.Request().Context(), id, tenantID)
+	if err != nil {
+		// Check if it's a custom error
+		if customErr, ok := err.(*errors.CustomError); ok {
+			return c.JSON(customErr.HTTPStatus(), map[string]any{
+				"success": false,
+				"error": map[string]any{
+					"code":    customErr.HTTPStatus(),
+					"message": customErr.Error(),
+				},
+			})
+		}
+		
+		// Handle other errors
+		return c.JSON(http.StatusInternalServerError, map[string]any{
+			"success": false,
+			"error": map[string]any{
+				"code":    http.StatusInternalServerError,
+				"message": err.Error(),
+			},
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]any{
+		"success": true,
+		"message": "Product deleted successfully",
+	})
+}
+
 // ListUnits godoc
 // @Summary List units
 // @Description Lists units with pagination
@@ -423,7 +490,7 @@ func (h *ProductHandler) PatchProduct(c echo.Context) error {
 // @Security Bearer
 // @Produce json
 // @Param page query int false "Page number" minimum(1)
-// @Param limit query int false "Items per page (1-100)" minimum(1) maximum(100)
+// @Param limit query int false "Items per page (1-100) " minimum(1) maximum(100)
 // @Success 200 {object} map[string]interface{} "units"
 // @Failure 401 {object} map[string]interface{} "invalid tenant/auth"
 // @Failure 500 {object} map[string]interface{} "internal error"
@@ -470,6 +537,10 @@ func (h *ProductHandler) ListUnits(c echo.Context) error {
 		"data":    out,
 	})
 }
+
+// compile-time usage to avoid unused import errors for db and utils when methods evolve
+var _ = db.Product{}
+var _ = utils.P
 
 // compile-time usage to avoid unused import errors for db and utils when methods evolve
 var _ = db.Product{}

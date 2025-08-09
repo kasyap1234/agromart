@@ -210,10 +210,7 @@ export const apiClient = {
       gst_percent: number;
     }>) => apiClient.patch(`/products/${id}`, data),
     
-    // Server does not expose DELETE /products/:id; guard remove until backend supports it
-    delete: (_id: string) => {
-      throw new Error('Product delete is not supported by the backend');
-    },
+    delete: (id: string) => apiClient.delete(`/products/${id}`),
     
     search: (query: string, params?: { page?: number; limit?: number }) =>
       apiClient.get('/products/search', { q: query, ...(params || {}) }),
@@ -329,6 +326,8 @@ export const apiClient = {
     }) => {
       throw new Error('Batch update is not supported by the backend');
     },
+    
+    delete: (id: string) => apiClient.delete(`/batches/${id}`),
   },
 
   // Reports
@@ -342,6 +341,35 @@ export const apiClient = {
     inventoryValue: () => apiClient.get('/reports/inventory-value'),
 
     dashboardStats: () => apiClient.get('/reports/dashboard-stats'),
+  },
+
+  // Audit Logs
+  auditLogs: {
+    list: (params?: {
+      page?: number;
+      limit?: number;
+      action?: string;
+      entity_type?: string;
+      user_id?: string;
+      start_date?: string;
+      end_date?: string;
+    }) => apiClient.get('/inventory/logs', params),
+
+    getByProduct: (productId: string, params?: {
+      page?: number;
+      limit?: number;
+    }) => apiClient.get(`/inventory/logs`, { product_id: productId, ...params }),
+
+    getByBatch: (batchId: string, params?: {
+      page?: number;
+      limit?: number;
+    }) => apiClient.get(`/inventory/logs`, { batch_id: batchId, ...params }),
+
+    export: (params?: {
+      format?: 'csv' | 'pdf';
+      start_date?: string;
+      end_date?: string;
+    }) => apiClient.get('/inventory/logs/export', params),
   },
 };
 

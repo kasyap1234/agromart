@@ -114,6 +114,21 @@ func (q *Queries) CreateUnit(ctx context.Context, arg CreateUnitParams) (Unit, e
 	return i, err
 }
 
+const deleteProduct = `-- name: DeleteProduct :exec
+DELETE FROM products
+WHERE id = $1 AND tenant_id = $2
+`
+
+type DeleteProductParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+func (q *Queries) DeleteProduct(ctx context.Context, arg DeleteProductParams) error {
+	_, err := q.db.Exec(ctx, deleteProduct, arg.ID, arg.TenantID)
+	return err
+}
+
 const getProductByID = `-- name: GetProductByID :one
 SELECT id, tenant_id, sku, name, price, description, image_url, brand, unit_id, price_per_unit, gst_percent, created_at FROM products
 WHERE id = $1 AND tenant_id = $2

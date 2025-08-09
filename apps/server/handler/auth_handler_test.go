@@ -22,10 +22,14 @@ func TestAuth_Login_HandlesBadBody(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	// Should return 400 for malformed JSON without panic
-	_ = h.Login(c)
-	require.Equal(t, http.StatusBadRequest, rec.Code)
-	// And body should not be empty
-	require.NotEmpty(t, rec.Body.String())
+	err := h.Login(c)
+	
+	// Echo returns HTTPError for validation failures
+	require.NotNil(t, err)
+	httpErr, ok := err.(*echo.HTTPError)
+	require.True(t, ok, "Expected HTTPError")
+	require.Equal(t, http.StatusBadRequest, httpErr.Code)
+	require.Equal(t, "invalid request body", httpErr.Message)
 }
 
 // Constructor smoke test to ensure handler can be instantiated without env/service.

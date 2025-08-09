@@ -11,6 +11,7 @@ import (
 
 	"agromart2/db"
 	"agromart2/internal/utils"
+	"agromart2/internal/validation"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
@@ -67,14 +68,14 @@ func toLowerASCII(in string) string {
 
 type LoginRequest struct {
 	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=6"`
+	Password string `json:"password" validate:"required,min=8"`
 }
 
 type RegisterRequest struct {
 	FirstName   string `json:"first_name" validate:"required"`
 	LastName    string `json:"last_name" validate:"required"`
 	Email       string `json:"email" validate:"required,email"`
-	Password    string `json:"password" validate:"required,min=6"`
+	Password    string `json:"password" validate:"required,min=8"`
 	Phone       string `json:"phone,omitempty"`
 	CompanyName string `json:"company_name" validate:"required"`
 	Role        string `json:"role,omitempty"`
@@ -124,6 +125,11 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 	defer tx.Rollback(ctx)
 
 	qtx := s.queries.WithTx(tx)
+
+	// Validate password strength
+	if err := validation.ValidatePassword(req.Password); err != nil {
+		return nil, fmt.Errorf("password validation failed: %w", err)
+	}
 
 	// Create tenant first
 	tenant, err := qtx.CreateTenant(ctx, db.CreateTenantParams{
