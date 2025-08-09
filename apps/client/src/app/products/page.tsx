@@ -1,8 +1,36 @@
 "use client";
 
-import useSWR from 'swr';
-import Link from 'next/link';
-import { apiClient } from '@/lib/api';
+import useSWR from "swr";
+import Link from "next/link";
+import { useState, useMemo, useCallback } from "react";
+import { debounce } from "@/lib/utils";
+import { 
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { SearchIcon, PlusIcon, FilterIcon } from "lucide-react";
+import { apiClient } from "@/lib/api";
 
 interface Product {
   id: string;
@@ -15,89 +43,302 @@ interface Product {
   price_per_unit?: number;
 }
 
-interface ListResponse<T> {
-  success?: boolean;
-  data?: T[];
-  items?: T[];
-  total?: number;
-}
-
-const fetcher = async () => {
-  // Support both {data: [...]} and bare array
-  const data = await apiClient.products.list();
+const fetcher = async (
+  key: string, 
+  page: number, 
+  limit: number, 
+  search: string,
+  filters: {
+    minPrice?: number;
+    maxPrice?: number;
+    brand?: string;
+  }
+) => {
+  const params: any = { page, limit };
+  
+  if (search && search.trim()) {
+    params.search = search.trim();
+  }
+  
+  if (filters.minPrice !== undefined) {
+    params.min_price = filters.minPrice;
+  }
+  
+  if (filters.maxPrice !== undefined) {
+    params.max_price = filters.maxPrice;
+  }
+  
+  if (filters.brand) {
+    params.brand = filters.brand;
+  }
+  
+  const data = await apiClient.products.list(params);
   const arr = (data as any)?.data ?? (data as any)?.items ?? data;
   return Array.isArray(arr) ? arr as Product[] : [] as Product[];
 };
 
-export default function ProductsIndexPage() {
-  const { data, error, isLoading, mutate } = useSWR<Product[]>(['products:list'], fetcher);
+// Extract unique brands from products
+const extractBrands = (products: Product[]): string[] => {
+  const brands = new Set<string>();
+  products.forEach(product => {
+    if (product.brand) {
+      brands.add(product.brand);
+    }
+  });
+  return Array.from(brands).sort();
+};
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
+export default function ProductsPage() {
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<{
+    minPrice?: number;
+    maxPrice?: number;
+    brand?: string;
+  }>({});
+
+  // Debounced search to reduce API calls
+  const debouncedSearch = useMemo(
+    () => debounce((value: string) => setSearch(value), 300),
+    []
+  );
+
+  const handleSearchChange = useCallback((value: string) => {
+    setPage(1); // Reset to first page when search changes
+    debouncedSearch(value);
+  }, [debouncedSearch]);
+
+  const { data, error, isLoading, mutate } = useSWR<Product[]>(
+    ["products:list", page, limit, search, filters],
+    ([key, p, l, s, f]) => fetcher(String(key), Number(p), Number(l), String(s), f as { minPrice?: number; maxPrice?: number; brand?: string; }),
+    { 
+      keepPreviousData: true,
+      revalidateOnFocus: false,
+      revalidateIfStale: false
+    }
+  );
+
+  // Extract brands for filter dropdown
+  const brands = useMemo(() => {
+    return data ? extractBrands(data) : [];
+  }, [data]);
+
+  // Handle filter changes
+  const handleFiltersChange = useCallback((newFilters: {
+    minPrice?: number;
+    maxPrice?: number;
+    brand?: string;
+  }) => {
+    setPage(1); // Reset to first page when filters change
+    setFilters(newFilters);
+  }, []);
+
+  // Handle page change
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  // Handle limit change
+  const handleLimitChange = useCallback((newLimit: number) => {
+    setPage(1); // Reset to first page when limit changes
+    setLimit(newLimit);
+  }, []);
 
   if (error) {
     return (
-      <div className="p-8">
-        <h1 className="text-2xl font-semibold">Products</h1>
-        <p className="mt-4 text-red-600">Failed to load products.</p>
-        <button
-          className="mt-4 px-4 py-2 rounded bg-primary-600 text-white"
-          onClick={() => mutate()}
-        >
-          Retry
-        </button>
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Products</h1>
+            <p className="text-muted-foreground">Manage your product inventory</p>
+          </div>
+          <Button asChild>
+            <Link href="/products/new">
+              <PlusIcon className="w-4 h-4 mr-2" />
+              Add Product
+            </Link>
+          </Button>
+        </div>
+        
+        <Card>
+          <CardContent className="p-12 text-center">
+            <div className="text-red-500 mb-4">Failed to load products.</div>
+            <Button variant="outline" onClick={() => mutate()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   const products = data || [];
+  const hasNextPage = products.length === limit;
+  const hasPrevPage = page > 1;
 
   return (
-    <div className="p-6 sm:p-8">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Products</h1>
-        <Link
-          href="/products/new"
-          className="inline-flex items-center rounded bg-primary-600 px-4 py-2 text-white hover:bg-primary-700"
-        >
-          Add product
-        </Link>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Products</h1>
+          <p className="text-muted-foreground">Manage your product inventory</p>
+        </div>
+        <Button asChild>
+          <Link href="/products/new">
+            <PlusIcon className="w-4 h-4 mr-2" />
+            Add Product
+          </Link>
+        </Button>
       </div>
 
-      {products.length === 0 ? (
-        <div className="mt-8 rounded border border-dashed p-12 text-center text-gray-600">
-          No products yet. Click "Add product" to create one.
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="lg:col-span-2">
+              <div className="relative">
+                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Search products by name, SKU, or brand"
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Select onValueChange={(value: string) => handleFiltersChange({ ...filters, brand: value || undefined })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Brands" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Brands</SelectItem>
+                  {brands.map(brand => (
+                    <SelectItem key={brand} value={brand}>{brand}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex space-x-2">
+              <Button variant="outline" size="icon">
+                <FilterIcon className="w-4 h-4" />
+              </Button>
+              <Button variant="outline">Export</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {isLoading && (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
+      )}
+
+      {!isLoading && products.length === 0 ? (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <div className="text-muted-foreground mb-4">No products found.</div>
+            <Button variant="outline" onClick={() => {
+              setSearch("");
+              setFilters({});
+              setPage(1);
+            }}>
+              Clear all filters
+            </Button>
+            <Button className="ml-2" asChild>
+              <Link href="/products/new">Add a new product</Link>
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {products.map((p) => (
-            <li key={p.id} className="rounded border p-4 hover:shadow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-lg font-medium">{p.name}</h2>
-                  <p className="text-sm text-gray-500">SKU: {p.sku}</p>
+        !isLoading && (
+          <>
+            {/* Products Table */}
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead>Brand</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {products.map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell className="font-medium">
+                          <div>{product.name}</div>
+                        </TableCell>
+                        <TableCell>{product.sku}</TableCell>
+                        <TableCell>
+                          {product.brand ? (
+                            <Badge variant="secondary">{product.brand}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          ₹{product.price?.toFixed(2) || "0.00"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/products/${product.id}`}>View</Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+              <CardFooter className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-muted-foreground">Rows per page</span>
+                  <Select value={String(limit)} onValueChange={(value: string) => handleLimitChange(Number(value))}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                {typeof p.price === 'number' && (
-                  <span className="text-right font-semibold">₹{p.price.toFixed(2)}</span>
-                )}
-              </div>
-              {p.brand && <p className="mt-2 text-sm text-gray-600">Brand: {p.brand}</p>}
-              <div className="mt-3">
-                <Link
-                  href={`/products/${p.id}`}
-                  className="text-primary-600 hover:underline"
-                >
-                  View details
-                </Link>
-              </div>
-            </li>
-          ))}
-        </ul>
+                
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(page - 1)}
+                    disabled={!hasPrevPage}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {page}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(page + 1)}
+                    disabled={!hasNextPage}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </CardFooter>
+            </Card>
+          </>
+        )
       )}
     </div>
   );

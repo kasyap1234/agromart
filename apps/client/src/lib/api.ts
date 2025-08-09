@@ -265,6 +265,51 @@ export const apiClient = {
     }) => apiClient.get('/inventory/logs', params),
   },
 
+  // Suppliers
+  suppliers: {
+    list: (params?: { page?: number; limit?: number; search?: string; active?: boolean }) =>
+      apiClient.get('/suppliers', params),
+    search: (q: string, params?: { page?: number; limit?: number }) =>
+      apiClient.get('/suppliers/search', { q, ...(params || {}) }),
+    get: (id: string) => apiClient.get(`/suppliers/${id}`),
+    create: (data: { name: string; email?: string; phone?: string; address?: string }) =>
+      apiClient.post('/suppliers', data),
+    update: (id: string, data: { name?: string; email?: string; phone?: string; address?: string }) =>
+      apiClient.put(`/suppliers/${id}`, data),
+    delete: (id: string) => apiClient.delete(`/suppliers/${id}`),
+  },
+
+  // Customers
+  customers: {
+    list: (params?: { page?: number; limit?: number; search?: string; active?: boolean }) =>
+      apiClient.get('/customers', params),
+    search: (q: string, params?: { page?: number; limit?: number }) =>
+      apiClient.get('/customers/search', { q, ...(params || {}) }),
+    get: (id: string) => apiClient.get(`/customers/${id}`),
+    create: (data: { name: string; email?: string; phone?: string; address?: string }) =>
+      apiClient.post('/customers', data),
+    update: (id: string, data: { name?: string; email?: string; phone?: string; address?: string }) =>
+      apiClient.put(`/customers/${id}`, data),
+    delete: (id: string) => apiClient.delete(`/customers/${id}`),
+  },
+
+  // Purchase Orders
+  purchaseOrders: {
+    list: (params?: { page?: number; limit?: number; status?: string }) =>
+      apiClient.get('/purchase-orders', params),
+    get: (id: string) => apiClient.get(`/purchase-orders/${id}`),
+    create: (data: any) => apiClient.post('/purchase-orders', data),
+    updateStatus: (id: string, status: string) => apiClient.put(`/purchase-orders/${id}/status`, { status }),
+    receive: (id: string, data: any) => apiClient.post(`/purchase-orders/${id}/receive`, data),
+    exportCsv: (params?: { from?: string; to?: string }) =>
+      apiClient.get('/purchase-orders.csv', params),
+  },
+
+  // Sales
+  sales: {
+    exportCsv: (params?: { from?: string; to?: string }) => apiClient.get('/sales/orders.csv', params),
+  },
+
   // Batches
   batches: {
     create: (data: {
@@ -290,27 +335,13 @@ export const apiClient = {
   reports: {
     lowStock: (threshold?: number) =>
       apiClient.get('/reports/low-stock', { threshold }),
-    
-    // Following endpoints are not implemented on the backend; provide safe stubs
-    expiringBatches: async (_days?: number) => {
-      // return empty list to keep UI stable
-      return [] as any;
-    },
-    
-    inventoryValue: async () => {
-      // not implemented; return a number or object depending on consumer needs
-      return { total_value: 0 } as any;
-    },
-    
-    dashboardStats: async () => {
-      // return minimal shape expected by dashboard
-      return {
-        total_products: 0,
-        low_stock_count: 0,
-        total_value: 0,
-        expiring_batches: 0,
-      } as any;
-    },
+
+    expiringBatches: (days?: number) =>
+      apiClient.get('/reports/expiring-batches', { days }),
+
+    inventoryValue: () => apiClient.get('/reports/inventory-value'),
+
+    dashboardStats: () => apiClient.get('/reports/dashboard-stats'),
   },
 };
 

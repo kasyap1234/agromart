@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import { apiClient, setAuthToken, setRefreshToken, clearTokens, getAuthToken } from '@/lib/api';
 import { User, AuthResponse, RegisterRequest, AuthContextType } from '@/types';
 import { MeResponse } from '@/types/auth';
+import Cookies from 'js-cookie';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     initAuth();
   }, []);
 
-  const login = async (email: string, password: string): Promise<void> => {
+  const login = async (email: string, password: string, remember?: boolean): Promise<void> => {
     try {
       setIsLoading(true);
       const response: AuthResponse = await apiClient.auth.login(email, password);
@@ -70,8 +71,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const { user: userData, token: authToken, refresh_token } = response.data;
         
         // Store tokens
-        setAuthToken(authToken);
-        setRefreshToken(refresh_token);
+        if (remember) {
+          setAuthToken(authToken);
+          setRefreshToken(refresh_token);
+        } else {
+          // Session-only cookies
+          Cookies.set('auth_token', authToken);
+          Cookies.set('refresh_token', refresh_token);
+        }
         
         // Update state
         setUser(userData);
@@ -156,12 +163,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 }
 
+// Default context for SSR
+const defaultAuthContext: AuthContextType = {
+  user: null,
+  token: null,
+  login: async () => {},
+  register: async () => {},
+  logout: async () => {},
+  isLoading: true,
+  isAuthenticated: false,
+};
+
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  // Return default context during SSR
+  return context || defaultAuthContext;
 }
 
 // Higher-order component for protecting routes

@@ -29,6 +29,26 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
+  
+  // Bundle optimizations
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      '@heroicons/react',
+      '@radix-ui/react-icons',
+      'recharts'
+    ]
+  },
+  
+  // Enable React Server Components
+  reactStrictMode: true,
+  
+  // Optimize fonts
+  optimizeFonts: true,
+  
+  // Enable compression
+  compress: true,
+  
   // Security headers
   async headers() {
     return [
@@ -38,10 +58,12 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
       },
     ];
   },
+  
   async rewrites() {
     // Proxy API requests to backend defined by NEXT_PUBLIC_API_URL at build time
     const raw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';

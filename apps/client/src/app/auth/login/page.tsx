@@ -19,6 +19,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading } = useAuth();
+  const [remember, setRemember] = useState(true);
 
   const {
     register,
@@ -29,7 +30,7 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    await login(data.email, data.password);
+    await login(data.email, data.password, remember);
   };
 
   return (
@@ -102,6 +103,8 @@ export default function LoginPage() {
                     name="remember-me"
                     type="checkbox"
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
                   />
                   <label htmlFor="remember-me" className="ml-2 block text-sm text-neutral-900">
                     Remember me
