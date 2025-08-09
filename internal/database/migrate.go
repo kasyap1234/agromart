@@ -3,123 +3,107 @@ package database
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 )
 
-// MigrationConfig holds migration configuration
-type MigrationConfig struct {
-	SchemaPath string
-	TableName  string
+// Migration represents a database migration
+type Migration struct {
+	Version string
+	Script  string
 }
 
-// DefaultMigrationConfig returns default migration configuration
-func DefaultMigrationConfig() *MigrationConfig {
-	return &MigrationConfig{
-		SchemaPath: "apps/server/sql/schema",
-		TableName:  "schema_migrations",
-	}
-}
-
-// Migrator handles database migrations
-type Migrator struct {
-	pool   *pgxpool.Pool
-	config *MigrationConfig
-}
-
-// NewMigrator creates a new migrator instance
-func NewMigrator(pool *pgxpool.Pool, config *MigrationConfig) *Migrator {
-	if config == nil {
-		config = DefaultMigrationConfig()
-	}
-	return &Migrator{
-		pool:   pool,
-		config: config,
-	}
-}
-
-// CreateMigrationTable creates the migration tracking table if it doesn't exist
-func (m *Migrator) CreateMigrationTable(ctx context.Context) error {
-	query := fmt.Sprintf(`
-		CREATE TABLE IF NOT EXISTS %s (
-			version BIGINT PRIMARY KEY,
-			dirty BOOLEAN NOT NULL DEFAULT FALSE,
-			applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+// RunMigrations runs all migrations from the given directory
+func RunMigrations(ctx context.Context, pool *pgxpool.Pool, migrationDir string) error {
+	// Create the schema_migrations table if it doesn't exist
+	createTableSQL := `
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			version VARCHAR(255) PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)
-	`, m.config.TableName)
-
-	_, err := m.pool.Exec(ctx, query)
+	`
+	_, err := pool.Exec(ctx, createTableSQL)
 	if err != nil {
-		return fmt.Errorf("failed to create migration table: %w", err)
+		return fmt.Errorf("failed to create schema_migrations table: %w", err)
 	}
 
-	log.Info().Str("table", m.config.TableName).Msg("migration table ready")
-	return nil
-}
-
-// GetCurrentVersion returns the current migration version
-func (m *Migrator) GetCurrentVersion(ctx context.Context) (int64, error) {
-	var version int64
-	query := fmt.Sprintf("SELECT COALESCE(MAX(version), 0) FROM %s WHERE NOT dirty", m.config.TableName)
-	
-	err := m.pool.QueryRow(ctx, query).Scan(&version)
+	// Read migration files
+	files, err := os.ReadDir(migrationDir)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get current version: %w", err)
+		return fmt.Errorf("failed to read migration directory: %w", err)
 	}
 
-	return version, nil
-}
-
-// SetVersion sets the current migration version
-func (m *Migrator) SetVersion(ctx context.Context, version int64, dirty bool) error {
-	query := fmt.Sprintf(`
-		INSERT INTO %s (version, dirty) 
-		VALUES ($1, $2) 
-		ON CONFLICT (version) 
-		DO UPDATE SET dirty = $2, applied_at = NOW()
-	`, m.config.TableName)
-
-	_, err := m.pool.Exec(ctx, query, version, dirty)
-	if err != nil {
-		return fmt.Errorf("failed to set version: %w", err)
+	// Collect migration files (only .up.sql)
+	migrations := []Migration{}
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		if strings.HasSuffix(file.Name(), ".up.sql") {
+			version := strings.TrimSuffix(file.Name(), ".up.sql")
+			// Validate version format? We expect numeric prefix, but we'll just use the file name.
+			path := filepath.Join(migrationDir, file.Name())
+			script, err := os.ReadFile(path)
+			if err != nil {
+				return fmt.Errorf("failed to read migration file %s: %w", path, err)
+			}
+			migrations = append(migrations, Migration{
+				Version: version,
+				Script:  string(script),
+			})
+		}
 	}
 
-	return nil
-}
+	// Sort migrations by version (lexicographical order by file name, which should be numeric)
+	sort.Slice(migrations, func(i, j int) bool {
+		return migrations[i].Version < migrations[j].Version
+	})
 
-// CheckHealth verifies the migration table is accessible
-func (m *Migrator) CheckHealth(ctx context.Context) error {
-	query := fmt.Sprintf("SELECT 1 FROM %s LIMIT 1", m.config.TableName)
-	_, err := m.pool.Exec(ctx, query)
-	if err != nil {
-		return fmt.Errorf("migration table health check failed: %w", err)
-	}
-	return nil
-}
+	// Run each migration if not applied
+	for _, migration := range migrations {
+		var exists bool
+		err := pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1)", migration.Version).Scan(&exists)
+		if err != nil {
+			return fmt.Errorf("failed to check migration version %s: %w", migration.Version, err)
+		}
 
-// GetMigrationFiles returns a list of migration files in the schema directory
-// This is a helper function that you can extend based on your migration file naming convention
-func (m *Migrator) GetMigrationFiles() ([]string, error) {
-	pattern := filepath.Join(m.config.SchemaPath, "*.up.sql")
-	matches, err := filepath.Glob(pattern)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find migration files: %w", err)
-	}
-	return matches, nil
-}
+		if exists {
+			log.Info().Str("version", migration.Version).Msg("migration already applied")
+			continue
+		}
 
-// Validate checks if the migrator is properly configured
-func (m *Migrator) Validate() error {
-	if m.pool == nil {
-		return fmt.Errorf("database pool is nil")
+		// Begin transaction
+		tx, err := pool.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to begin transaction for migration %s: %w", migration.Version, err)
+		}
+
+		// Execute migration script
+		_, err = tx.Exec(ctx, migration.Script)
+		if err != nil {
+			tx.Rollback(ctx)
+			return fmt.Errorf("failed to execute migration %s: %w", migration.Version, err)
+		}
+
+		// Record migration
+		_, err = tx.Exec(ctx, "INSERT INTO schema_migrations (version) VALUES ($1)", migration.Version)
+		if err != nil {
+			tx.Rollback(ctx)
+			return fmt.Errorf("failed to record migration %s: %w", migration.Version, err)
+		}
+
+		err = tx.Commit(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to commit migration %s: %w", migration.Version, err)
+		}
+
+		log.Info().Str("version", migration.Version).Msg("migration applied")
 	}
-	if m.config.SchemaPath == "" {
-		return fmt.Errorf("schema path is required")
-	}
-	if m.config.TableName == "" {
-		return fmt.Errorf("migration table name is required")
-	}
+
 	return nil
 }

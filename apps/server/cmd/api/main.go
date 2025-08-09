@@ -38,7 +38,52 @@ import (
 @description API documentation for AgroMart backend services.
 @BasePath /api
 */
+func runMigrationsOnly() {
+	conf, err := config.LoadConfig()
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to load config")
+	}
+
+	// Initialize database configuration
+	dbConfig := &database.Config{
+		Host:              conf.DB_Host,
+		Port:              conf.DB_Port,
+		User:              conf.DB_User,
+		Password:          conf.DB_Password,
+		Database:          conf.DB_Name,
+		SSLMode:           "disable",
+		MaxConns:          int32(conf.MaxConns),
+		MinConns:          int32(conf.MinConns),
+		MaxConnLifetime:   conf.MaxConnLifeTime,
+		MaxConnIdleTime:   conf.MaxConnIdleTime,
+		HealthCheckPeriod: conf.HealthCheckPeriod,
+	}
+
+	if err := dbConfig.Validate(); err != nil {
+		log.Fatal().Err(err).Msg("invalid database configuration")
+	}
+
+	ctx := context.Background()
+	dbPool, err := dbConfig.NewPool(ctx)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to create database connection pool")
+	}
+	defer dbPool.Close()
+
+	// Run database migrations
+	if err := database.RunMigrations(ctx, dbPool, "./sql/schema"); err != nil {
+		log.Fatal().Err(err).Msg("failed to run database migrations")
+	}
+	log.Info().Msg("Database migrations completed successfully")
+}
+
 func main() {
+	// Check for migrate-only flag
+	if len(os.Args) > 1 && os.Args[1] == "--migrate-only" {
+		runMigrationsOnly()
+		return
+	}
+
 	// Initialize logger
 	// logger.InitLogger()
 
@@ -79,6 +124,11 @@ func main() {
 	// Test database health
 	if err := dbService.Health(ctx); err != nil {
 		log.Fatal().Err(err).Msg("database health check failed")
+	}
+
+	// Run database migrations
+	if err := database.RunMigrations(ctx, dbPool, "./sql/schema"); err != nil {
+		log.Fatal().Err(err).Msg("failed to run database migrations")
 	}
 
 	// Initialize queries
@@ -174,7 +224,7 @@ func main() {
 			}
 		}
 		if len(origins) == 0 {
-			origins = []string{"https://example.com"}
+			origins = []string{"http://localhost:3000", "http://localhost:8080"}
 		}
 		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 			AllowOrigins:     origins,

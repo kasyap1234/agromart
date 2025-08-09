@@ -71,6 +71,11 @@ func main() {
 	}
 	log.Printf("[BOOT] DB ping OK")
 
+	// Run database migrations
+	if err := database.RunMigrations(ctx, pool, "apps/server/sql/schema"); err != nil {
+		log.Fatal("Failed to run database migrations: ", err)
+	}
+
 	// Initialize SQLC queries
 	queries := db.New(pool)
 
