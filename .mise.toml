@@ -1,0 +1,11 @@
+[tools]
+# Node.js version
+node = "20"
+
+# Go version
+golang = "1.24"
+
+[env]
+# Set environment variables
+NODE_ENV = "development"
+DATABASE_URL = "postgres://postgres:secret@localhost:5432/agromart?sslmode=disable"
