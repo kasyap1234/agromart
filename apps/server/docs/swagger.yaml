@@ -1,27 +1,23 @@
 basePath: /api
 definitions:
-  agromart2_internal_auth.LoginRequest:
+  handler.ForgotPasswordRequestDTO:
+    properties:
+      email:
+        type: string
+    type: object
+  handler.LoginRequestDTO:
     properties:
       email:
         type: string
       password:
-        minLength: 6
-        type: string
-    required:
-    - email
-    - password
-    type: object
-  apps_server_handler.ForgotPasswordRequestDTO:
-    properties:
-      email:
         type: string
     type: object
-  apps_server_handler.RefreshTokenRequestDTO:
+  handler.RefreshTokenRequestDTO:
     properties:
       refresh_token:
         type: string
     type: object
-  apps_server_handler.RegisterRequestDTO:
+  handler.RegisterRequestDTO:
     properties:
       company:
         type: string
@@ -34,21 +30,21 @@ definitions:
       phone:
         type: string
     type: object
-  apps_server_handler.ResetPasswordRequestDTO:
+  handler.ResetPasswordRequestDTO:
     properties:
       new_password:
         type: string
       token:
         type: string
     type: object
-  apps_server_handler.UpdatePasswordRequestDTO:
+  handler.UpdatePasswordRequestDTO:
     properties:
       current_password:
         type: string
       new_password:
         type: string
     type: object
-  apps_server_products.CreateProductRequest:
+  products.CreateProductRequest:
     properties:
       brand:
         type: string
@@ -73,7 +69,7 @@ definitions:
     - price
     - sku
     type: object
-  apps_server_products.ProductInputRequest:
+  products.ProductInputRequest:
     properties:
       brand:
         type: string
@@ -92,7 +88,72 @@ definitions:
       unit_id:
         type: string
     type: object
-  apps_server_suppliers.CreateSupplierRequest:
+  sales.CreateSalesOrderItemRequest:
+    properties:
+      batch_id:
+        type: string
+      discount_percent:
+        type: integer
+      notes:
+        type: string
+      product_id:
+        type: string
+      quantity_ordered:
+        minimum: 1
+        type: integer
+      tax_percent:
+        type: integer
+      unit_price:
+        minimum: 0
+        type: integer
+    required:
+    - product_id
+    - quantity_ordered
+    - unit_price
+    type: object
+  sales.CreateSalesOrderRequest:
+    properties:
+      customer_id:
+        type: string
+      expected_delivery_date:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/sales.CreateSalesOrderItemRequest'
+        type: array
+      location_id:
+        type: string
+      notes:
+        type: string
+    required:
+    - customer_id
+    - items
+    type: object
+  sales.ShipSalesOrderItemRequest:
+    properties:
+      item_id:
+        type: string
+      quantity_shipped:
+        minimum: 1
+        type: integer
+    required:
+    - item_id
+    - quantity_shipped
+    type: object
+  sales.UpdateSalesOrderStatusRequest:
+    properties:
+      status:
+        enum:
+        - PENDING
+        - APPROVED
+        - SHIPPED
+        - DELIVERED
+        - CANCELLED
+        type: string
+    required:
+    - status
+    type: object
+  suppliers.CreateSupplierRequest:
     properties:
       address:
         type: string
@@ -111,7 +172,7 @@ definitions:
     required:
     - name
     type: object
-  apps_server_suppliers.UpdateSupplierRequest:
+  suppliers.UpdateSupplierRequest:
     properties:
       address:
         type: string
@@ -314,7 +375,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/agromart2_internal_auth.LoginRequest'
+          $ref: '#/definitions/handler.LoginRequestDTO'
       produces:
       - application/json
       responses:
@@ -383,7 +444,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/apps_server_handler.ForgotPasswordRequestDTO'
+          $ref: '#/definitions/handler.ForgotPasswordRequestDTO'
       produces:
       - application/json
       responses:
@@ -407,7 +468,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/apps_server_handler.ResetPasswordRequestDTO'
+          $ref: '#/definitions/handler.ResetPasswordRequestDTO'
       produces:
       - application/json
       responses:
@@ -440,7 +501,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/apps_server_handler.RefreshTokenRequestDTO'
+          $ref: '#/definitions/handler.RefreshTokenRequestDTO'
       produces:
       - application/json
       responses:
@@ -473,7 +534,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/apps_server_handler.RegisterRequestDTO'
+          $ref: '#/definitions/handler.RegisterRequestDTO'
       produces:
       - application/json
       responses:
@@ -511,7 +572,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/apps_server_handler.UpdatePasswordRequestDTO'
+          $ref: '#/definitions/handler.UpdatePasswordRequestDTO'
       produces:
       - application/json
       responses:
@@ -588,7 +649,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/apps_server_products.CreateProductRequest'
+          $ref: '#/definitions/products.CreateProductRequest'
       produces:
       - application/json
       responses:
@@ -618,6 +679,47 @@ paths:
       tags:
       - products
   /products/{id}:
+    delete:
+      description: Deletes a product by ID
+      parameters:
+      - description: Product ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success message
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid id
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: invalid tenant/auth
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Delete product
+      tags:
+      - products
     get:
       description: Returns a product by ID
       parameters:
@@ -669,7 +771,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/apps_server_products.ProductInputRequest'
+          $ref: '#/definitions/products.ProductInputRequest'
       produces:
       - application/json
       responses:
@@ -746,6 +848,105 @@ paths:
       summary: Search products
       tags:
       - products
+  /reports/dashboard-stats:
+    get:
+      description: Returns key metrics for the dashboard
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Dashboard statistics
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Get dashboard statistics
+      tags:
+      - reports
+  /sales/orders:
+    get:
+      description: Get paginated list of sales orders for the current tenant
+      parameters:
+      - description: Filter by customer ID
+        in: query
+        name: customer_id
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Items per page (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sales orders list
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: List sales orders
+      tags:
+      - sales
+    post:
+      consumes:
+      - application/json
+      description: Create a new sales order with items
+      parameters:
+      - description: Sales order request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sales.CreateSalesOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Sales order created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Create sales order
+      tags:
+      - sales
   /sales/orders.csv:
     get:
       description: Streams CSV of aggregated sales orders within an optional date
@@ -784,6 +985,148 @@ paths:
       security:
       - Bearer: []
       summary: Export sales orders CSV
+      tags:
+      - sales
+  /sales/orders/{id}:
+    get:
+      description: Get sales order details by ID
+      parameters:
+      - description: Sales order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sales order details
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Get sales order
+      tags:
+      - sales
+  /sales/orders/{id}/ship:
+    post:
+      consumes:
+      - application/json
+      description: Update the shipped quantity for a sales order item
+      parameters:
+      - description: Sales order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Ship item request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sales.ShipSalesOrderItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Item shipped successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Ship sales order item
+      tags:
+      - sales
+  /sales/orders/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: Update the status of a sales order
+      parameters:
+      - description: Sales order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Status update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sales.UpdateSalesOrderStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Status updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Update sales order status
       tags:
       - sales
   /suppliers:
@@ -839,7 +1182,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/apps_server_suppliers.CreateSupplierRequest'
+          $ref: '#/definitions/suppliers.CreateSupplierRequest'
       produces:
       - application/json
       responses:
@@ -956,7 +1299,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/apps_server_suppliers.UpdateSupplierRequest'
+          $ref: '#/definitions/suppliers.UpdateSupplierRequest'
       produces:
       - application/json
       responses:
@@ -1042,7 +1385,7 @@ paths:
         minimum: 1
         name: page
         type: integer
-      - description: Items per page (1-100)
+      - description: 'Items per page (1-100) '
         in: query
         maximum: 100
         minimum: 1
@@ -1071,4 +1414,10 @@ paths:
       summary: List units
       tags:
       - products
+securityDefinitions:
+  Bearer:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

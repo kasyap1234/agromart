@@ -14,7 +14,11 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME} -h 127.0.0.1 || pg_isready -U ${DB_USER} -d ${DB_NAME} -h localhost || pg_isready -U ${DB_USER} -d ${DB_NAME} -h $${HOSTNAME}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USER} -d ${DB_NAME} -h 127.0.0.1 || pg_isready -U ${DB_USER} -d ${DB_NAME} -h localhost || pg_isready -U ${DB_USER} -d ${DB_NAME} -h $${HOSTNAME}",
+        ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -25,8 +29,6 @@ services:
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
-      args:
-        BUILD_TARGET: cmdapi
     image: agromart-backend:latest
     container_name: agromart-backend
     depends_on:
@@ -56,11 +58,20 @@ services:
       - "8080:8080"
     healthcheck:
       # cmd/api also serves /health via HealthHandler and /api/health, keep legacy path
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || wget -qO- http://localhost:8080/api/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:8080/health || wget -qO- http://localhost:8080/api/health || exit 1",
+        ]
       interval: 5s
       timeout: 3s
       retries: 30
-    command: ["/bin/sh", "-lc", "set -e; echo \"[ENTRY] Waiting db healthy and running migrations\"; migrate -path ${MIGRATIONS_PATH} -database postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable up || echo \"[ENTRY] migrate up returned non-zero (possibly already applied). Continuing\"; echo \"[ENTRY] Starting API (cmd/api with SEED_DEV=${SEED_DEV})\"; ./main"]
+    command:
+      [
+        "/bin/sh",
+        "-lc",
+        'set -e; echo "[ENTRY] Waiting db healthy and running migrations"; migrate -path ${MIGRATIONS_PATH} -database postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable up || echo "[ENTRY] migrate up returned non-zero (possibly already applied). Continuing"; echo "[ENTRY] Starting API with SEED_DEV=${SEED_DEV}"; ./main',
+      ]
 
   frontend:
     build:

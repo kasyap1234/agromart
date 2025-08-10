@@ -102,30 +102,31 @@ func seedAdmin(db *sql.DB) error {
 
 	// Ensure default tenant (UPSERT with all NOT NULL columns)
 	var tenantID string
-	err = db.QueryRowContext(ctx, `
-		INSERT INTO tenants(name, email, phone, is_active)
-		VALUES($1, $2, $3, TRUE)
-		ON CONFLICT (name) DO UPDATE SET
-			email = EXCLUDED.email,
-			phone = EXCLUDED.phone,
-			is_active = TRUE
-		RETURNING id::text
-	`, "default", "default@example.com", "0000000000").Scan(&tenantID)
-	if err != nil {
-		// As a fallback, try selecting if concurrent insert happened
-		if selErr := db.QueryRowContext(ctx, `SELECT id::text FROM tenants WHERE name = 'default' LIMIT 1`).Scan(&tenantID); selErr != nil {
-			return fmt.Errorf("ensure tenant: %w (fallback select err: %v)", err, selErr)
+	// First try to select existing tenant
+	err := db.QueryRowContext(ctx, `SELECT id::text FROM tenants WHERE name = 'default' LIMIT 1`).Scan(&tenantID)
+	if err == sql.ErrNoRows {
+		// If no tenant exists, create one
+		err = db.QueryRowContext(ctx, `
+			INSERT INTO tenants(name, email, phone, is_active)
+			VALUES($1, $2, $3, TRUE)
+			RETURNING id::text
+		`, "default", "default@example.com", "0000000000").Scan(&tenantID)
+		if err != nil {
+			return fmt.Errorf("insert tenant: %w", err)
 		}
+	} else if err != nil {
+		return fmt.Errorf("select tenant: %w", err)
 	}
 
 	const email = "admin@example.com"
-	const password = "password"
+	const password = "AdminPassword123!"
 
 	// Upsert user with deterministic email
 	var userID string
-	err := db.QueryRowContext(ctx, `SELECT id::text FROM users WHERE email = $1 LIMIT 1`, email).Scan(&userID)
+	err = db.QueryRowContext(ctx, `SELECT id::text FROM users WHERE email = $1 LIMIT 1`, email).Scan(&userID)
 	if err == sql.ErrNoRows {
-		pwHash := hashPasswordFallback(password)
+		// Use a pre-computed bcrypt hash for AdminPassword123!
+		pwHash := "$2a$10$WTqKIZuklMLl2kNKRPuuj.MdRhRpLy6Cv93NqzAYXWn/C8OWl.P6O"
 		// Your users DDL requires: name TEXT NOT NULL, email UNIQUE NOT NULL, password TEXT NOT NULL, phone TEXT NOT NULL, tenant_id UUID NOT NULL, role user_role NOT NULL
 		if err2 := db.QueryRowContext(ctx, `
 			INSERT INTO users(name, email, password, phone, tenant_id, role)

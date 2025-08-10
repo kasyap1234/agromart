@@ -1,18 +1,12 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { 
-  Card, 
-  CardHeader, 
-  CardTitle, 
-  CardContent
-} from "@/components/ui/card";
-import { 
-  Badge
-} from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   Table,
   TableBody,
   TableCell,
@@ -20,14 +14,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { 
-  Package, 
-  AlertTriangle, 
+import {
+  Package,
+  AlertTriangle,
   DollarSign,
   Clock,
   Plus,
   ArrowUp,
-  FileText
+  FileText,
 } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { formatDate } from "@/lib/date";
@@ -44,12 +38,18 @@ interface StatsCardProps {
   color?: "primary" | "warning" | "error" | "success";
 }
 
-function StatsCard({ title, value, icon: Icon, color = "primary" }: StatsCardProps) {
+function StatsCard({
+  title,
+  value,
+  icon: Icon,
+  color = "primary",
+}: StatsCardProps) {
   const colorClasses = {
     primary: "from-blue-50 to-blue-100 border-blue-200 text-blue-900",
     warning: "from-amber-50 to-amber-100 border-amber-200 text-amber-900",
     error: "from-rose-50 to-rose-100 border-rose-200 text-rose-900",
-    success: "from-emerald-50 to-emerald-100 border-emerald-200 text-emerald-900",
+    success:
+      "from-emerald-50 to-emerald-100 border-emerald-200 text-emerald-900",
   };
 
   const iconColorClasses = {
@@ -96,7 +96,7 @@ function LoadingSkeleton() {
           </Card>
         ))}
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -113,7 +113,7 @@ function LoadingSkeleton() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <div className="h-6 bg-neutral-200 rounded skeleton w-32"></div>
@@ -130,7 +130,7 @@ function LoadingSkeleton() {
           </CardContent>
         </Card>
       </div>
-      
+
       <Card>
         <CardHeader>
           <div className="h-6 bg-neutral-200 rounded skeleton w-32"></div>
@@ -138,7 +138,10 @@ function LoadingSkeleton() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="flex items-center p-4 bg-neutral-50 rounded-lg">
+              <div
+                key={i}
+                className="flex items-center p-4 bg-neutral-50 rounded-lg"
+              >
                 <div className="flex-shrink-0">
                   <div className="w-8 h-8 bg-neutral-200 rounded skeleton"></div>
                 </div>
@@ -184,54 +187,95 @@ interface RecentActivity {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
+
   // Fetch dashboard stats with optimized caching
-  const { data: dashboardStats, error: statsError, isLoading: statsLoading } = useSWR(
+  const {
+    data: dashboardStats,
+    error: statsError,
+    isLoading: statsLoading,
+  } = useSWR(
     "/reports/dashboard-stats",
     () => apiClient.reports.dashboardStats(),
-    { 
+    {
       revalidateOnFocus: false,
       revalidateIfStale: false,
-      dedupingInterval: 30000 // 30 seconds
-    }
+      dedupingInterval: 30000, // 30 seconds
+    },
   );
 
   // Fetch low stock items with limit
-  const { data: lowStockItems, error: lowStockError, isLoading: lowStockLoading } = useSWR(
+  const {
+    data: lowStockItems,
+    error: lowStockError,
+    isLoading: lowStockLoading,
+  } = useSWR(
     "/reports/low-stock",
     () => apiClient.reports.lowStock(5), // Limit to 5 items
-    { 
+    {
       revalidateOnFocus: false,
       revalidateIfStale: false,
-      dedupingInterval: 60000 // 1 minute
-    }
+      dedupingInterval: 60000, // 1 minute
+    },
   );
 
   // Fetch expiring batches with limit
-  const { data: expiringBatches, error: expiringError, isLoading: expiringLoading } = useSWR(
+  const {
+    data: expiringBatches,
+    error: expiringError,
+    isLoading: expiringLoading,
+  } = useSWR(
     "/reports/expiring-batches",
     () => apiClient.reports.expiringBatches(5), // Limit to 5 items
-    { 
+    {
       revalidateOnFocus: false,
       revalidateIfStale: false,
-      dedupingInterval: 60000 // 1 minute
-    }
+      dedupingInterval: 60000, // 1 minute
+    },
   );
 
   // Mock recent activity data (in a real app, this would come from an API)
   const recentActivity = [
-    { id: "1", type: "product_added", description: "Added new product \"Organic Rice\"", timestamp: new Date(Date.now() - 3600000).toISOString() },
-    { id: "2", type: "inventory_updated", description: "Updated inventory for \"Wheat Flour\"", timestamp: new Date(Date.now() - 7200000).toISOString() },
-    { id: "3", type: "order_created", description: "Created purchase order #PO-78945", timestamp: new Date(Date.now() - 10800000).toISOString() },
-    { id: "4", type: "product_added", description: "Added new product \"Fresh Vegetables\"", timestamp: new Date(Date.now() - 14400000).toISOString() },
-    { id: "5", type: "inventory_updated", description: "Reduced stock for \"Spices Mix\"", timestamp: new Date(Date.now() - 18000000).toISOString() },
+    {
+      id: "1",
+      type: "product_added",
+      description: 'Added new product "Organic Rice"',
+      timestamp: new Date(Date.now() - 3600000).toISOString(),
+    },
+    {
+      id: "2",
+      type: "inventory_updated",
+      description: 'Updated inventory for "Wheat Flour"',
+      timestamp: new Date(Date.now() - 7200000).toISOString(),
+    },
+    {
+      id: "3",
+      type: "order_created",
+      description: "Created purchase order #PO-78945",
+      timestamp: new Date(Date.now() - 10800000).toISOString(),
+    },
+    {
+      id: "4",
+      type: "product_added",
+      description: 'Added new product "Fresh Vegetables"',
+      timestamp: new Date(Date.now() - 14400000).toISOString(),
+    },
+    {
+      id: "5",
+      type: "inventory_updated",
+      description: 'Reduced stock for "Spices Mix"',
+      timestamp: new Date(Date.now() - 18000000).toISOString(),
+    },
   ];
 
   if (statsLoading || lowStockLoading || expiringLoading) {
     return (
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome to your AgroMart dashboard</p>
+          <p className="text-muted-foreground">
+            Welcome to your AgroMart dashboard
+          </p>
         </div>
         <LoadingSkeleton />
       </div>
@@ -241,17 +285,22 @@ export default function DashboardPage() {
   // Only treat lowStock errors as blocking; the others are optional
   if (lowStockError) {
     return (
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome to your AgroMart dashboard</p>
+          <p className="text-muted-foreground">
+            Welcome to your AgroMart dashboard
+          </p>
         </div>
         <Card>
           <CardContent className="p-12 text-center">
             <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Error loading dashboard</h3>
+            <h3 className="text-lg font-medium mb-2">
+              Error loading dashboard
+            </h3>
             <p className="text-muted-foreground">
-              There was an error loading your dashboard data. Please try refreshing the page.
+              There was an error loading your dashboard data. Please try
+              refreshing the page.
             </p>
           </CardContent>
         </Card>
@@ -269,10 +318,12 @@ export default function DashboardPage() {
   const expiring = (expiringBatches as ExpiringBatch[]) || [];
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome to your AgroMart dashboard</p>
+        <p className="text-muted-foreground">
+          Welcome to your AgroMart dashboard
+        </p>
       </div>
 
       {/* Stats Cards */}
@@ -308,8 +359,16 @@ export default function DashboardPage() {
         {/* Low Stock Items */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-4">
-            <CardTitle className="text-lg font-medium">Low Stock Items</CardTitle>
-            <Button variant="outline" size="sm">View All</Button>
+            <CardTitle className="text-lg font-medium">
+              Low Stock Items
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/reports/low-stock")}
+            >
+              View All
+            </Button>
           </CardHeader>
           <CardContent>
             {lowStock.length > 0 ? (
@@ -325,11 +384,17 @@ export default function DashboardPage() {
                     <TableRow key={index} className="hover:bg-muted/50">
                       <TableCell className="font-medium">
                         <div>{item.product_name}</div>
-                        <div className="text-sm text-muted-foreground">SKU: {item.product_sku}</div>
+                        <div className="text-sm text-muted-foreground">
+                          SKU: {item.product_sku}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Badge variant="destructive">{item.current_quantity} units</Badge>
-                        <div className="text-sm text-muted-foreground">Min: {item.min_stock_level}</div>
+                        <Badge variant="destructive">
+                          {item.current_quantity} units
+                        </Badge>
+                        <div className="text-sm text-muted-foreground">
+                          Min: {item.min_stock_level}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -338,7 +403,9 @@ export default function DashboardPage() {
             ) : (
               <div className="text-center py-6">
                 <Package className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No low stock items</p>
+                <p className="text-sm text-muted-foreground">
+                  No low stock items
+                </p>
               </div>
             )}
           </CardContent>
@@ -347,8 +414,16 @@ export default function DashboardPage() {
         {/* Expiring Batches */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-4">
-            <CardTitle className="text-lg font-medium">Expiring Batches (30 days)</CardTitle>
-            <Button variant="outline" size="sm">View All</Button>
+            <CardTitle className="text-lg font-medium">
+              Expiring Batches (30 days)
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/reports/expiring-batches")}
+            >
+              View All
+            </Button>
           </CardHeader>
           <CardContent>
             {expiring.length > 0 ? (
@@ -364,13 +439,23 @@ export default function DashboardPage() {
                     <TableRow key={index} className="hover:bg-muted/50">
                       <TableCell className="font-medium">
                         <div>{batch.product_name}</div>
-                        <div className="text-sm text-muted-foreground">Batch: {batch.batch_number}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Batch: {batch.batch_number}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Badge variant={batch.days_until_expiry <= 7 ? "destructive" : "secondary"}>
+                        <Badge
+                          variant={
+                            batch.days_until_expiry <= 7
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
                           {batch.days_until_expiry} days
                         </Badge>
-                        <div className="text-sm text-muted-foreground">{batch.quantity} units</div>
+                        <div className="text-sm text-muted-foreground">
+                          {batch.quantity} units
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -379,7 +464,9 @@ export default function DashboardPage() {
             ) : (
               <div className="text-center py-6">
                 <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No expiring batches</p>
+                <p className="text-sm text-muted-foreground">
+                  No expiring batches
+                </p>
               </div>
             )}
           </CardContent>
@@ -415,8 +502,12 @@ export default function DashboardPage() {
                     )}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{activity.description}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(activity.timestamp)}</p>
+                    <p className="text-sm font-medium">
+                      {activity.description}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(activity.timestamp)}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -431,33 +522,50 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-3">
-              <Button className="justify-start h-16 rounded-lg">
+              <Button
+                className="justify-start h-16 rounded-lg"
+                onClick={() => router.push("/products/new")}
+              >
                 <div className="bg-primary-500/10 text-primary-500 w-10 h-10 rounded-lg flex items-center justify-center mr-3">
                   <Plus className="w-5 h-5" />
                 </div>
                 <div className="text-left">
                   <div className="font-medium">Add Product</div>
-                  <div className="text-xs text-muted-foreground">Create a new product</div>
+                  <div className="text-xs text-muted-foreground">
+                    Create a new product
+                  </div>
                 </div>
               </Button>
-              
-              <Button variant="outline" className="justify-start h-16 rounded-lg">
+
+              <Button
+                variant="outline"
+                className="justify-start h-16 rounded-lg"
+                onClick={() => router.push("/inventory")}
+              >
                 <div className="bg-primary-500/10 text-primary-500 w-10 h-10 rounded-lg flex items-center justify-center mr-3">
                   <ArrowUp className="w-5 h-5" />
                 </div>
                 <div className="text-left">
                   <div className="font-medium">Add Inventory</div>
-                  <div className="text-xs text-muted-foreground">Increase stock levels</div>
+                  <div className="text-xs text-muted-foreground">
+                    Increase stock levels
+                  </div>
                 </div>
               </Button>
-              
-              <Button variant="outline" className="justify-start h-16 rounded-lg">
+
+              <Button
+                variant="outline"
+                className="justify-start h-16 rounded-lg"
+                onClick={() => router.push("/purchase-orders")}
+              >
                 <div className="bg-primary-500/10 text-primary-500 w-10 h-10 rounded-lg flex items-center justify-center mr-3">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div className="text-left">
                   <div className="font-medium">Create Purchase Order</div>
-                  <div className="text-xs text-muted-foreground">Order products from suppliers</div>
+                  <div className="text-xs text-muted-foreground">
+                    Order products from suppliers
+                  </div>
                 </div>
               </Button>
             </div>

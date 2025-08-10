@@ -6,6 +6,7 @@ import (
 	"time"
 
 	internalauth "agromart2/internal/auth"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -63,7 +64,7 @@ func (h *AuthHandler) Register(c echo.Context) error {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param payload body internalauth.LoginRequest true "Login payload"
+// @Param payload body handler.LoginRequestDTO true "Login payload"
 // @Success 200 {object} map[string]interface{} "user, token, refresh_token"
 // @Failure 400 {object} map[string]interface{} "invalid request body"
 // @Failure 401 {object} map[string]interface{} "invalid credentials"
@@ -494,8 +495,8 @@ func PasswordReset(s *internalauth.AuthService, c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"success": false,
 			"error": map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "failed to reset password",
+				"code":    http.StatusInternalServerError,
+				"message": "failed to reset password",
 			},
 		})
 	}
@@ -511,7 +512,7 @@ func PasswordReset(s *internalauth.AuthService, c echo.Context) error {
 // @Router /auth [get]
 func (h *AuthHandler) RegisterRoutes(e *echo.Echo) {
 	auth := e.Group("/api/auth")
-	
+
 	auth.POST("/register", h.Register)
 	auth.POST("/login", h.Login)
 	auth.POST("/refresh", h.RefreshToken)

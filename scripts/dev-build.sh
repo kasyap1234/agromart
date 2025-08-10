@@ -18,14 +18,14 @@ sleep 3
 echo "Running database migrations..."
 (
   cd "${REPO_ROOT}/apps/server"
-  go run ./cmd/api/main.go --migrate-only
+  go run main.go --migrate-only
 )
 
 # Build backend
 echo "Building backend..."
 (
   cd "${REPO_ROOT}/apps/server"
-  go build -o agromart-backend ./cmd/api/main.go
+  go build -o agromart-backend main.go
 )
 
 # Build frontend

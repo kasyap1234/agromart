@@ -286,7 +286,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/agromart2_internal_auth.LoginRequest"
+                            "$ref": "#/definitions/handler.LoginRequestDTO"
                         }
                     }
                 ],
@@ -389,7 +389,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apps_server_handler.ForgotPasswordRequestDTO"
+                            "$ref": "#/definitions/handler.ForgotPasswordRequestDTO"
                         }
                     }
                 ],
@@ -424,7 +424,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apps_server_handler.ResetPasswordRequestDTO"
+                            "$ref": "#/definitions/handler.ResetPasswordRequestDTO"
                         }
                     }
                 ],
@@ -473,7 +473,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apps_server_handler.RefreshTokenRequestDTO"
+                            "$ref": "#/definitions/handler.RefreshTokenRequestDTO"
                         }
                     }
                 ],
@@ -522,7 +522,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apps_server_handler.RegisterRequestDTO"
+                            "$ref": "#/definitions/handler.RegisterRequestDTO"
                         }
                     }
                 ],
@@ -583,7 +583,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apps_server_handler.UpdatePasswordRequestDTO"
+                            "$ref": "#/definitions/handler.UpdatePasswordRequestDTO"
                         }
                     }
                 ],
@@ -699,7 +699,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apps_server_products.CreateProductRequest"
+                            "$ref": "#/definitions/products.CreateProductRequest"
                         }
                     }
                 ],
@@ -861,6 +861,67 @@ const docTemplate = `{
                     }
                 }
             },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Deletes a product by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Delete product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "success message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "invalid id",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "invalid tenant/auth",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
             "patch": {
                 "security": [
                     {
@@ -892,7 +953,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apps_server_products.ProductInputRequest"
+                            "$ref": "#/definitions/products.ProductInputRequest"
                         }
                     }
                 ],
@@ -920,6 +981,158 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/reports/dashboard-stats": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns key metrics for the dashboard",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Get dashboard statistics",
+                "responses": {
+                    "200": {
+                        "description": "Dashboard statistics",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/sales/orders": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get paginated list of sales orders for the current tenant",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sales"
+                ],
+                "summary": "List sales orders",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by customer ID",
+                        "name": "customer_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default: 20, max: 100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sales orders list",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Create a new sales order with items",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sales"
+                ],
+                "summary": "Create sales order",
+                "parameters": [
+                    {
+                        "description": "Sales order request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/sales.CreateSalesOrderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Sales order created successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -980,6 +1193,219 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/sales/orders/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get sales order details by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sales"
+                ],
+                "summary": "Get sales order",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sales order ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sales order details",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/sales/orders/{id}/ship": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Update the shipped quantity for a sales order item",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sales"
+                ],
+                "summary": "Ship sales order item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sales order ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Ship item request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/sales.ShipSalesOrderItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Item shipped successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/sales/orders/{id}/status": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Update the status of a sales order",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sales"
+                ],
+                "summary": "Update sales order status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sales order ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/sales.UpdateSalesOrderStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status updated successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -1074,7 +1500,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apps_server_suppliers.CreateSupplierRequest"
+                            "$ref": "#/definitions/suppliers.CreateSupplierRequest"
                         }
                     }
                 ],
@@ -1267,7 +1693,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/apps_server_suppliers.UpdateSupplierRequest"
+                            "$ref": "#/definitions/suppliers.UpdateSupplierRequest"
                         }
                     }
                 ],
@@ -1384,7 +1810,7 @@ const docTemplate = `{
                         "maximum": 100,
                         "minimum": 1,
                         "type": "integer",
-                        "description": "Items per page (1-100)",
+                        "description": "Items per page (1-100) ",
                         "name": "limit",
                         "in": "query"
                     }
@@ -1416,31 +1842,26 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "agromart2_internal_auth.LoginRequest": {
+        "handler.ForgotPasswordRequestDTO": {
             "type": "object",
-            "required": [
-                "email",
-                "password"
-            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.LoginRequestDTO": {
+            "type": "object",
             "properties": {
                 "email": {
                     "type": "string"
                 },
                 "password": {
-                    "type": "string",
-                    "minLength": 6
-                }
-            }
-        },
-        "apps_server_handler.ForgotPasswordRequestDTO": {
-            "type": "object",
-            "properties": {
-                "email": {
                     "type": "string"
                 }
             }
         },
-        "apps_server_handler.RefreshTokenRequestDTO": {
+        "handler.RefreshTokenRequestDTO": {
             "type": "object",
             "properties": {
                 "refresh_token": {
@@ -1448,7 +1869,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apps_server_handler.RegisterRequestDTO": {
+        "handler.RegisterRequestDTO": {
             "type": "object",
             "properties": {
                 "company": {
@@ -1468,7 +1889,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apps_server_handler.ResetPasswordRequestDTO": {
+        "handler.ResetPasswordRequestDTO": {
             "type": "object",
             "properties": {
                 "new_password": {
@@ -1479,7 +1900,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apps_server_handler.UpdatePasswordRequestDTO": {
+        "handler.UpdatePasswordRequestDTO": {
             "type": "object",
             "properties": {
                 "current_password": {
@@ -1490,7 +1911,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apps_server_products.CreateProductRequest": {
+        "products.CreateProductRequest": {
             "type": "object",
             "required": [
                 "name",
@@ -1527,7 +1948,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apps_server_products.ProductInputRequest": {
+        "products.ProductInputRequest": {
             "type": "object",
             "properties": {
                 "brand": {
@@ -1556,7 +1977,101 @@ const docTemplate = `{
                 }
             }
         },
-        "apps_server_suppliers.CreateSupplierRequest": {
+        "sales.CreateSalesOrderItemRequest": {
+            "type": "object",
+            "required": [
+                "product_id",
+                "quantity_ordered",
+                "unit_price"
+            ],
+            "properties": {
+                "batch_id": {
+                    "type": "string"
+                },
+                "discount_percent": {
+                    "type": "integer"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "quantity_ordered": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "tax_percent": {
+                    "type": "integer"
+                },
+                "unit_price": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "sales.CreateSalesOrderRequest": {
+            "type": "object",
+            "required": [
+                "customer_id",
+                "items"
+            ],
+            "properties": {
+                "customer_id": {
+                    "type": "string"
+                },
+                "expected_delivery_date": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/sales.CreateSalesOrderItemRequest"
+                    }
+                },
+                "location_id": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                }
+            }
+        },
+        "sales.ShipSalesOrderItemRequest": {
+            "type": "object",
+            "required": [
+                "item_id",
+                "quantity_shipped"
+            ],
+            "properties": {
+                "item_id": {
+                    "type": "string"
+                },
+                "quantity_shipped": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "sales.UpdateSalesOrderStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "PENDING",
+                        "APPROVED",
+                        "SHIPPED",
+                        "DELIVERED",
+                        "CANCELLED"
+                    ]
+                }
+            }
+        },
+        "suppliers.CreateSupplierRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -1585,7 +2100,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apps_server_suppliers.UpdateSupplierRequest": {
+        "suppliers.UpdateSupplierRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -1616,6 +2131,14 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "Bearer": {
+            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`
