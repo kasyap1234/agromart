@@ -332,10 +332,6 @@ func main() {
 	// Password reset basics
 	authGroup.POST("/password/forgot", func(c echo.Context) error { return handler.PasswordForgot(authService, c) })
 	authGroup.POST("/password/reset", func(c echo.Context) error { return handler.PasswordReset(authService, c) })
-	// Me endpoint should be protected; wrap the handler invocation in RequireAuth
-	authGroup.GET("/me", authMiddleware.RequireAuth(func(c echo.Context) error {
-		return authHandler.Me(c)
-	}))
 
 	// Protected routes
 	protected := api.Group("")
