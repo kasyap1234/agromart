@@ -1,3 +1,5 @@
+"use client";
+
 import useSWR from "swr";
 import Link from "next/link";
 import { useState, useMemo, useCallback } from "react";
