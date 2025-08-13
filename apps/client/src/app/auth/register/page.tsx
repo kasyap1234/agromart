@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { ErrorIcon } from '@/components/icons/ErrorIcon';
 import { CheckIcon } from '@/components/icons/CheckIcon';
@@ -234,23 +235,22 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              <div className="flex items-center">
-                <input
+              <div className="flex items-start space-x-2">
+                <Checkbox
                   {...register('acceptTerms')}
                   id="acceptTerms"
-                  type="checkbox"
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
+                  className="mt-0.5"
                 />
-                <label htmlFor="acceptTerms" className="ml-2 block text-sm text-neutral-900">
+                <Label htmlFor="acceptTerms" className="text-sm font-normal leading-5">
                   I agree to the{' '}
-                  <Link href="/terms" className="text-primary-600 hover:text-primary-500">
+                  <Link href="/terms" className="text-primary-600 hover:text-primary-500 underline">
                     Terms and Conditions
                   </Link>{' '}
                   and{' '}
-                  <Link href="/privacy" className="text-primary-600 hover:text-primary-500">
+                  <Link href="/privacy" className="text-primary-600 hover:text-primary-500 underline">
                     Privacy Policy
                   </Link>
-                </label>
+                </Label>
               </div>
               {errors.acceptTerms && (
                 <p className="text-sm text-destructive">{errors.acceptTerms.message}</p>

@@ -1,69 +1,91 @@
-import { useEffect, useState } from 'react';
+import React from 'react';
+import { cn } from '@/lib/utils';
 
 interface PasswordStrengthMeterProps {
   password: string;
+  className?: string;
 }
 
-export function PasswordStrengthMeter({ password }: PasswordStrengthMeterProps) {
-  const [strength, setStrength] = useState(0);
-  const [label, setLabel] = useState('');
-  const [labelColor, setLabelColor] = useState('text-neutral-500');
+interface PasswordStrength {
+  score: number;
+  label: string;
+  color: string;
+  bgColor: string;
+}
 
-  useEffect(() => {
-    let score = 0;
-    
-    // Length check
-    if (password.length >= 8) score += 1;
-    if (password.length >= 12) score += 1;
-    
-    // Character variety
-    if (/[A-Z]/.test(password)) score += 1;
-    if (/[a-z]/.test(password)) score += 1;
-    if (/\d/.test(password)) score += 1;
-    if (/[^A-Za-z0-9]/.test(password)) score += 1;
-    
-    setStrength(Math.min(score, 5));
-    
-    // Set label and color
-    switch (score) {
-      case 0:
-        setLabel('Very Weak');
-        setLabelColor('text-error-500');
-        break;
-      case 1:
-      case 2:
-        setLabel('Weak');
-        setLabelColor('text-error-500');
-        break;
-      case 3:
-        setLabel('Medium');
-        setLabelColor('text-warning-500');
-        break;
-      case 4:
-        setLabel('Strong');
-        setLabelColor('text-success-500');
-        break;
-      case 5:
-        setLabel('Very Strong');
-        setLabelColor('text-success-600');
-        break;
-      default:
-        setLabel('');
-        setLabelColor('text-neutral-500');
-    }
-  }, [password]);
+const calculatePasswordStrength = (password: string): PasswordStrength => {
+  let score = 0;
+  
+  if (password.length >= 8) score += 1;
+  if (password.length >= 12) score += 1;
+  if (/[a-z]/.test(password)) score += 1;
+  if (/[A-Z]/.test(password)) score += 1;
+  if (/[0-9]/.test(password)) score += 1;
+  if (/[^A-Za-z0-9]/.test(password)) score += 1;
+  
+  if (score <= 2) {
+    return {
+      score,
+      label: 'Weak',
+      color: 'text-red-600',
+      bgColor: 'bg-red-500'
+    };
+  } else if (score <= 4) {
+    return {
+      score,
+      label: 'Medium',
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-500'
+    };
+  } else {
+    return {
+      score,
+      label: 'Strong',
+      color: 'text-green-600',
+      bgColor: 'bg-green-500'
+    };
+  }
+};
 
+export function PasswordStrengthMeter({ password, className }: PasswordStrengthMeterProps) {
+  const strength = calculatePasswordStrength(password);
+  const percentage = Math.min((strength.score / 6) * 100, 100);
+  
   return (
-    <div className="mt-2">
-      <div className="flex items-center justify-between text-sm">
-        <span className={labelColor}>{label}</span>
-        <span className="text-neutral-500">Strength: {strength}/5</span>
+    <div className={cn('space-y-2', className)}>
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">Password strength</span>
+        <span className={cn('text-sm font-medium', strength.color)}>
+          {strength.label}
+        </span>
       </div>
-      <div className="mt-1 w-full bg-neutral-200 rounded-full h-2">
-        <div 
-          className="bg-primary-600 h-2 rounded-full transition-all duration-300" 
-          style={{ width: `${strength * 20}%` }}
+      
+      <div className="w-full bg-muted rounded-full h-2">
+        <div
+          className={cn('h-2 rounded-full transition-all duration-300', strength.bgColor)}
+          style={{ width: `${percentage}%` }}
         />
+      </div>
+      
+      <div className="text-xs text-muted-foreground space-y-1">
+        <div className="grid grid-cols-2 gap-2">
+          <div className={cn('flex items-center', password.length >= 8 ? 'text-green-600' : 'text-muted-foreground')}>
+            <span className="mr-1">{password.length >= 8 ? '✓' : '○'}</span>
+            8+ characters
+          </div>
+          <div className={cn('flex items-center', /[A-Z]/.test(password) ? 'text-green-600' : 'text-muted-foreground')}>
+            <span className="mr-1">{/[A-Z]/.test(password) ? '✓' : '○'}</span>
+            Uppercase letter
+          </div>
+          <div className={cn('flex items-center', /[a-z]/.test(password) ? 'text-green-600' : 'text-muted-foreground')}>
+            <span className="mr-1">{/[a-z]/.test(password) ? '✓' : '○'}</span>
+            Lowercase letter
+          </div>
+          <div className={cn('flex items-center', /[0-9]/.test(password) ? 'text-green-600' : 'text-muted-foreground')}>
+            <span className="mr-1">{/[0-9]/.test(password) ? '✓' : '○'}</span>
+            Number
+          </div>
+        </div>
       </div>
     </div>
   );

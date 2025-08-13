@@ -1,13 +1,43 @@
+import React from 'react';
 
-import { SVGProps } from 'react';
+interface ErrorIconProps {
+  className?: string;
+  width?: number;
+  height?: number;
+}
 
-export function ErrorIcon(props: SVGProps<SVGSVGElement>) {
+export function ErrorIcon({ className = "", width = 24, height = 24 }: ErrorIconProps) {
   return (
-    <svg {...props} viewBox="0 0 20 20" fill="currentColor">
-      <path
-        fillRule="evenodd"
-        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
-        clipRule="evenodd"
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <line
+        x1="15"
+        y1="9"
+        x2="9"
+        y2="15"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <line
+        x1="9"
+        y1="9"
+        x2="15"
+        y2="15"
+        stroke="currentColor"
+        strokeWidth="2"
       />
     </svg>
   );

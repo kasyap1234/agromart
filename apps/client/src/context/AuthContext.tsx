@@ -163,10 +163,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
   
   if (!isClient) {
-    // Render children without AuthProvider during SSR
     return <>{children}</>;
   }
-
 
   return (
     <AuthContext.Provider value={value}>

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { ErrorIcon } from '@/components/icons/ErrorIcon';
 import { CheckIcon } from '@/components/icons/CheckIcon';
@@ -126,18 +127,15 @@ export default function LoginPage() {
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
+                <div className="flex items-center space-x-2">
+                  <Checkbox
                     id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
                     checked={remember}
-                    onChange={(e) => setRemember(e.target.checked)}
+                    onCheckedChange={setRemember}
                   />
-                  <label htmlFor="remember-me" className="ml-2 block text-sm text-neutral-900">
+                  <Label htmlFor="remember-me" className="text-sm font-normal">
                     Remember me
-                  </label>
+                  </Label>
                 </div>
 
                 <div className="text-sm">

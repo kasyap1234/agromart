@@ -33,3 +33,28 @@ export function debounce<T extends (...args: any[]) => any>(func: T, wait: numbe
     timeout = setTimeout(() => func(...args), wait);
   };
 }
+
+/**
+ * Formats a number as currency
+ * @param amount The amount to format
+ * @param currency The currency code (default: 'INR')
+ * @returns Formatted currency string
+ */
+export function formatCurrency(amount: number, currency: string = 'INR'): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+  }).format(amount);
+}
+
+/**
+ * Truncates text to a specified length
+ * @param text The text to truncate
+ * @param length The maximum length
+ * @returns Truncated text with ellipsis if needed
+ */
+export function truncateText(text: string, length: number): string {
+  if (text.length <= length) return text;
+  return text.substring(0, length) + '...';
+}

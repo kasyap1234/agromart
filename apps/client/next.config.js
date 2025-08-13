@@ -11,6 +11,14 @@ const nextConfig = {
       "zod",
       "@hookform/resolvers",
     ],
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
   images: {
     deviceSizes: [640, 750, 828, 1080, 1200],

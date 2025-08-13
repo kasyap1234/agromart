@@ -7,7 +7,6 @@ module.exports = {
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
     './src/**/*.{ts,tsx}',
   ],
-  prefix: "",
   theme: {
     container: {
       center: true,
@@ -20,8 +19,8 @@ module.exports = {
       colors: {
         // Custom agro-tech color palette + shadcn tokens
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "var(--color-primary)",
+          foreground: "var(--color-primary-foreground)",
           50: '#f0fdf4',
           100: '#dcfce7',
           200: '#bbf7d0',
@@ -35,8 +34,8 @@ module.exports = {
           950: '#052e16',
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: "var(--color-secondary)",
+          foreground: "var(--color-secondary-foreground)",
           50: '#fdf4ff',
           100: '#fae8ff',
           200: '#f5d0fe',
@@ -50,8 +49,8 @@ module.exports = {
           950: '#4a044e',
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: "var(--color-accent)",
+          foreground: "var(--color-accent-foreground)",
           50: '#fff7ed',
           100: '#ffedd5',
           200: '#fed7aa',
@@ -105,26 +104,43 @@ module.exports = {
           600: '#2563eb',
           700: '#1d4ed8',
         },
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        border: "var(--color-border)",
+        input: "var(--color-input)",
+        ring: "var(--color-ring)",
+        background: "var(--color-background)",
+        foreground: "var(--color-foreground)",
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: "var(--color-destructive)",
+          foreground: "var(--color-destructive-foreground)",
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "var(--color-muted)",
+          foreground: "var(--color-muted-foreground)",
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: "var(--color-popover)",
+          foreground: "var(--color-popover-foreground)",
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "var(--color-card)",
+          foreground: "var(--color-card-foreground)",
+        },
+        sidebar: {
+          DEFAULT: "var(--color-sidebar)",
+          foreground: "var(--color-sidebar-foreground)",
+          primary: "var(--color-sidebar-primary)",
+          "primary-foreground": "var(--color-sidebar-primary-foreground)",
+          accent: "var(--color-sidebar-accent)",
+          "accent-foreground": "var(--color-sidebar-accent-foreground)",
+          border: "var(--color-sidebar-border)",
+          ring: "var(--color-sidebar-ring)",
+        },
+        chart: {
+          1: "var(--color-chart-1)",
+          2: "var(--color-chart-2)",
+          3: "var(--color-chart-3)",
+          4: "var(--color-chart-4)",
+          5: "var(--color-chart-5)",
         },
       },
       fontFamily: {
@@ -180,10 +196,5 @@ module.exports = {
       },
     },
   },
-  plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/typography'),
-    require('@tailwindcss/aspect-ratio'),
-    require("tailwindcss-animate"),
-  ],
+  plugins: [],
 }
