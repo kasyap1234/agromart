@@ -1,5 +1,5 @@
 import React from 'react'
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,19 +12,16 @@ interface Props {
 }
 
 export default function LowStockItems({lowStock=[]}:Props) {
-  const router= useRouter();
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-4">
         <CardTitle className="text-lg font-medium">
           Low Stock Items
         </CardTitle>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push("/reports/low-stock")}
-        >
-          View All
+        <Button asChild variant="outline" size="sm">
+          <Link href="/reports/low-stock" aria-label="View all low stock items">
+            View All
+          </Link>
         </Button>
       </CardHeader>
       <CardContent>
@@ -37,8 +34,8 @@ export default function LowStockItems({lowStock=[]}:Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {lowStock.map((item: any, index: number) => (
-                <TableRow key={index} className="hover:bg-muted/50">
+              {lowStock.map((item: LowStockItem) => (
+                <TableRow key={item.product_sku} className="hover:bg-muted/50">
                   <TableCell className="font-medium">
                     <div>{item.product_name}</div>
                     <div className="text-sm text-muted-foreground">

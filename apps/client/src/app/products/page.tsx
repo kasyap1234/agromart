@@ -32,17 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "react-hot-toast";
 import { SearchIcon, PlusIcon, FilterIcon, Pencil, Trash2 } from "lucide-react";
 import { apiClient } from "@/lib/api";
-
-interface Product {
-  id: string;
-  sku: string;
-  name: string;
-  price: number;
-  brand?: string;
-  image_url?: string;
-  unit_id?: string;
-  price_per_unit?: number;
-}
+import { Product, PaginatedResponse } from "@/types";
 
 const fetcher = async (
   key: string, 
@@ -54,7 +44,7 @@ const fetcher = async (
     maxPrice?: number;
     brand?: string;
   }
-) => {
+): Promise<Product[]> => {
   const params: any = { page, limit };
   
   if (search && search.trim()) {
@@ -73,9 +63,8 @@ const fetcher = async (
     params.brand = filters.brand;
   }
   
-  const data = await apiClient.products.list(params);
-  const arr = (data as any)?.data ?? (data as any)?.items ?? data;
-  return Array.isArray(arr) ? arr as Product[] : [] as Product[];
+  const data: PaginatedResponse<Product> = await apiClient.products.list(params);
+  return data.data || [];
 };
 
 // Extract unique brands from products
@@ -174,7 +163,7 @@ export default function ProductsPage() {
           </div>
           <Button asChild>
             <Link href="/products/new">
-              <PlusIcon className="w-4 h-4 mr-2" />
+              <PlusIcon className="w-4 h-4 mr-2" aria-hidden="true" />
               Add Product
             </Link>
           </Button>
@@ -205,7 +194,7 @@ export default function ProductsPage() {
         </div>
         <Button asChild>
           <Link href="/products/new">
-            <PlusIcon className="w-4 h-4 mr-2" />
+            <PlusIcon className="w-4 h-4 mr-2" aria-hidden="true" />
             Add Product
           </Link>
         </Button>
@@ -217,9 +206,10 @@ export default function ProductsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="lg:col-span-2">
               <div className="relative">
-                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" aria-hidden="true" />
                 <Input
                   placeholder="Search products by name, SKU, or brand"
+                  aria-label="Search products"
                   onChange={(e) => handleSearchChange(e.target.value)}
                   className="pl-10"
                 />
@@ -228,7 +218,7 @@ export default function ProductsPage() {
             
             <div>
               <Select onValueChange={(value: string) => handleFiltersChange({ ...filters, brand: value || undefined })}>
-                <SelectTrigger>
+                <SelectTrigger aria-label="Filter by brand">
                   <SelectValue placeholder="All Brands" />
                 </SelectTrigger>
                 <SelectContent>
@@ -241,10 +231,15 @@ export default function ProductsPage() {
             </div>
             
             <div className="flex space-x-2">
-              <Button variant="outline" size="icon">
-                <FilterIcon className="w-4 h-4" />
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Open filters"
+                onClick={() => alert("Filter functionality coming soon!")}
+              >                
+                <FilterIcon className="w-4 h-4" aria-hidden="true" />
               </Button>
-              <Button variant="outline">Export</Button>
+              <Button variant="outline" aria-label="Export products">Export</Button>
             </div>
           </div>
         </CardContent>
@@ -303,26 +298,27 @@ export default function ProductsPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          ₹{product.price?.toFixed(2) || "0.00"}
+                          ₹{product.selling_price?.toFixed(2) || "0.00"}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-1">
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/products/${product.id}`}>
-                                <SearchIcon className="w-4 h-4" />
+                              <Link href={`/products/${product.id}`} aria-label={`View ${product.name}`}>
+                                <SearchIcon className="w-4 h-4" aria-hidden="true" />
                               </Link>
                             </Button>
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/products/${product.id}/edit`}>
-                                <Pencil className="w-4 h-4" />
+                              <Link href={`/products/${product.id}/edit`} aria-label={`Edit ${product.name}`}>
+                                <Pencil className="w-4 h-4" aria-hidden="true" />
                               </Link>
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="sm" 
+                              aria-label={`Delete ${product.name}`}
                               onClick={() => handleDelete(product.id, product.name)}
                             >
-                              <Trash2 className="w-4 h-4 text-red-500" />
+                              <Trash2 className="w-4 h-4 text-red-500" aria-hidden="true" />
                             </Button>
                           </div>
                         </TableCell>

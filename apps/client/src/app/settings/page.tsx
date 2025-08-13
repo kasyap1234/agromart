@@ -236,7 +236,12 @@ export default function SettingsPage() {
                       {profile.avatar_url ? (
                         <img
                           src={profile.avatar_url}
-                          alt="Avatar"
+                          alt="User avatar"
+                          width={80}
+                          height={80}
+                          loading="lazy"
+                          decoding="async"
+                          sizes="80px"
                           className="w-20 h-20 rounded-full object-cover"
                         />
                       ) : (
@@ -247,6 +252,7 @@ export default function SettingsPage() {
                       size="sm"
                       variant="outline"
                       className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full"
+                      aria-label="Upload avatar"
                       onClick={handleAvatarUpload}
                     >
                       <Camera className="h-3 w-3" />
@@ -325,7 +331,12 @@ export default function SettingsPage() {
                       {tenantSettings.logo_url ? (
                         <img
                           src={tenantSettings.logo_url}
-                          alt="Organization Logo"
+                          alt="Organization logo"
+                          width={80}
+                          height={80}
+                          loading="lazy"
+                          decoding="async"
+                          sizes="80px"
                           className="w-20 h-20 rounded-lg object-cover"
                         />
                       ) : (
@@ -336,6 +347,7 @@ export default function SettingsPage() {
                       size="sm"
                       variant="outline"
                       className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full"
+                      aria-label="Upload organization logo"
                       onClick={handleLogoUpload}
                     >
                       <Upload className="h-3 w-3" />
