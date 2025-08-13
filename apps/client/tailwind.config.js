@@ -18,8 +18,10 @@ module.exports = {
     },
     extend: {
       colors: {
-        // Custom agro-tech color palette
+        // Custom agro-tech color palette + shadcn tokens
         primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
           50: '#f0fdf4',
           100: '#dcfce7',
           200: '#bbf7d0',
@@ -33,6 +35,8 @@ module.exports = {
           950: '#052e16',
         },
         secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
           50: '#fdf4ff',
           100: '#fae8ff',
           200: '#f5d0fe',
@@ -46,6 +50,8 @@ module.exports = {
           950: '#4a044e',
         },
         accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
           50: '#fff7ed',
           100: '#ffedd5',
           200: '#fed7aa',
@@ -112,10 +118,7 @@ module.exports = {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
         },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
+        // accent DEFAULT/foreground provided above
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
