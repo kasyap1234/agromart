@@ -1,0 +1,19 @@
+{
+  "project": {
+    "name": "client",
+    "type": "app",
+    "path": "."
+  },
+  "ui": {
+    "library": "default",
+    "components": "src/components/ui",
+    "tailwind": {
+      "config": "tailwind.config.js",
+      "css": "src/styles/globals.css"
+    },
+    "aliases": {
+      "@/components": "src/components",
+      "@/lib": "src/lib"
+    }
+  }
+}

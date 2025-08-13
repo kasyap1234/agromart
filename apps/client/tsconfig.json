@@ -29,7 +29,8 @@
       "@/lib/*": ["./src/lib/*"],
       "@/utils/*": ["./src/utils/*"],
       "@/context/*": ["./src/context/*"],
-      "@/styles/*": ["./src/styles/*"]
+      "@/styles/*": ["./src/styles/*"],
+      "@/dashboard/*": ["./src/app/dashboard/*"],
     }
   },
   "include": [
