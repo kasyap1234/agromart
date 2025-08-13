@@ -1,6 +1,8 @@
-# Node/Next.js
+# -----------------------
+# Node / Next.js
+# -----------------------
 node_modules/
-.next/
+**/.next/
 .nextcache/
 *.log
 npm-debug.log*
@@ -9,7 +11,9 @@ yarn-error.log*
 pnpm-debug.log*
 coverage/
 
+# -----------------------
 # Go build
+# -----------------------
 bin/
 build/
 *.exe
@@ -20,14 +24,18 @@ build/
 *.test
 *.out
 
+# -----------------------
 # Database / Docker
+# -----------------------
 postgres-data/
 db_data/
 .docker/
 .dockerignore
 Dockerfile.*.local
 
-# Editor/OS
+# -----------------------
+# Editor / OS
+# -----------------------
 .DS_Store
 Thumbs.db
 .idea/
@@ -35,24 +43,34 @@ Thumbs.db
 *.swp
 *.swo
 
-# Keep env files tracked (do NOT ignore):
+# -----------------------
+# Environment files (keep tracked ones)
+# -----------------------
 !.env
 !apps/server/.env
 !apps/client/.env.local
 
+# -----------------------
 # Build caches
+# -----------------------
 .eslintcache
 .cache/
 .vercel/
 
-# sqlc local cache directories (if any), but keep generated Go files tracked
+# -----------------------
+# sqlc cache
+# -----------------------
 .sqlc/*
 !db/*.go
 
+# -----------------------
 # Test output
+# -----------------------
 junit.xml
 
+# -----------------------
 # Misc
+# -----------------------
 *.pid
 *.seed
 *.gz
@@ -60,5 +78,12 @@ junit.xml
 *.tar
 *.tgz
 
+# -----------------------
 # Ignore generated manifests
+# -----------------------
 manifest*
+
+# -----------------------
+# Qdrant local storage
+# -----------------------
+qdrant_storage/

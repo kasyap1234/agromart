@@ -14,7 +14,7 @@ export default function QuickActions() {
                 <div className="grid grid-cols-1 gap-3">
                     <Button asChild className="justify-start h-16 rounded-lg">
                         <Link href="/products/new" aria-label="Add product">
-                            <div className="bg-primary-500/10 text-primary-500 w-10 h-10 rounded-lg flex items-center justify-center mr-3">
+                            <div className="bg-primary/10 text-primary w-10 h-10 rounded-lg flex items-center justify-center mr-3">
                                 <Plus className="w-5 h-5" aria-hidden="true" />
                             </div>
                             <div className="text-left">
@@ -28,7 +28,7 @@ export default function QuickActions() {
 
                     <Button asChild variant="outline" className="justify-start h-16 rounded-lg">
                         <Link href="/inventory" aria-label="Add inventory">
-                            <div className="bg-primary-500/10 text-primary-500 w-10 h-10 rounded-lg flex items-center justify-center mr-3">
+                            <div className="bg-primary/10 text-primary w-10 h-10 rounded-lg flex items-center justify-center mr-3">
                                 <ArrowUp className="w-5 h-5" aria-hidden="true" />
                             </div>
                             <div className="text-left">
@@ -42,7 +42,7 @@ export default function QuickActions() {
 
                     <Button asChild variant="outline" className="justify-start h-16 rounded-lg">
                         <Link href="/purchase-orders" aria-label="Create purchase order">
-                            <div className="bg-primary-500/10 text-primary-500 w-10 h-10 rounded-lg flex items-center justify-center mr-3">
+                            <div className="bg-primary/10 text-primary w-10 h-10 rounded-lg flex items-center justify-center mr-3">
                                 <FileText className="w-5 h-5" aria-hidden="true" />
                             </div>
                             <div className="text-left">

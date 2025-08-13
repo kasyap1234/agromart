@@ -140,20 +140,9 @@ export const apiClient = {
 
   // Authentication
   auth: {
-    // Normalize responses to the app's expected shape and
-    // always hit the backend under /api/auth/*
     login: async (email: string, password: string): Promise<AuthResponse> => {
       const resp = await api.post("/auth/login", { email, password });
-      const d = resp.data as any;
-      return {
-        success: true,
-        data: {
-          user: d.user,
-          token: d.token,
-          refresh_token: d.refresh_token,
-        },
-        message: "Login successful",
-      } as AuthResponse;
+      return resp.data;
     },
 
     register: async (data: {
@@ -164,16 +153,7 @@ export const apiClient = {
       company_name: string;
     }): Promise<AuthResponse> => {
       const resp = await api.post("/auth/register", data);
-      const d = resp.data as any;
-      return {
-        success: true,
-        data: {
-          user: d.user,
-          token: d.token,
-          refresh_token: d.refresh_token,
-        },
-        message: "Registration successful",
-      } as AuthResponse;
+      return resp.data;
     },
 
     logout: () => api.post("/auth/logout").then((r) => r.data),
@@ -196,13 +176,17 @@ export const apiClient = {
     create: (data: {
       sku: string;
       name: string;
-      price: number;
+      selling_price: number;
       description?: string;
       image_url?: string;
       brand?: string;
       unit_id: string;
-      price_per_unit: number;
-      gst_percent?: number;
+      cost_price: number;
+      tax_rate?: number;
+      category?: string;
+      min_stock_level?: number;
+      max_stock_level?: number;
+      reorder_point?: number;
     }) => apiClient.post("/products", data),
 
     // Server supports PATCH for product updates; align client to avoid 405
@@ -210,13 +194,17 @@ export const apiClient = {
       id: string,
       data: Partial<{
         name: string;
-        price: number;
+        selling_price: number;
         description: string;
         image_url: string;
         brand: string;
         unit_id: string;
-        price_per_unit: number;
-        gst_percent: number;
+        cost_price: number;
+        tax_rate: number;
+        category: string;
+        min_stock_level: number;
+        max_stock_level: number;
+        reorder_point: number;
       }>,
     ) => apiClient.patch(`/products/${id}`, data),
 
@@ -335,10 +323,28 @@ export const apiClient = {
   sales: {
     exportCsv: (params?: { from?: string; to?: string }) =>
       apiClient.get("/sales/orders.csv", params),
+
+    orders: {
+      list: (params?: {
+        page?: number;
+        limit?: number;
+        status?: string;
+        customer_id?: string;
+      }) => apiClient.get("/sales/orders", params),
+
+      get: (id: string) => apiClient.get(`/sales/orders/${id}`),
+
+      create: (data: any) => apiClient.post("/sales/orders", data),
+
+      updateStatus: (id: string, status: string) =>
+        apiClient.put(`/sales/orders/${id}/status`, { status }),
+    },
   },
 
   // Batches
   batches: {
+    list: (params?: { page?: number; limit?: number }) =>
+      apiClient.get("/batches", params),
     create: (data: {
       product_id: string;
       batch_number: string;
@@ -348,17 +354,14 @@ export const apiClient = {
 
     get: (id: string) => apiClient.get(`/batches/${id}`),
 
-    // Backend lacks PUT /batches/:id; disable until implemented
     update: (
-      _id: string,
-      _data: {
+      id: string,
+      data: {
         batch_number: string;
         expiry_date: string;
         cost: number;
       },
-    ) => {
-      throw new Error("Batch update is not supported by the backend");
-    },
+    ) => apiClient.put(`/batches/${id}`, data),
 
     delete: (id: string) => apiClient.delete(`/batches/${id}`),
   },
@@ -374,6 +377,20 @@ export const apiClient = {
     inventoryValue: () => apiClient.get("/reports/inventory-value"),
 
     dashboardStats: () => apiClient.get("/reports/dashboard-stats"),
+  },
+
+  // Settings & Profile
+  settings: {
+    getTenant: () => apiClient.get("/settings/tenant"),
+    updateTenant: (data: any) => apiClient.put("/settings/tenant", data),
+    getNotifications: () => apiClient.get("/settings/notifications"),
+    updateNotifications: (data: any) =>
+      apiClient.put("/settings/notifications", data),
+  },
+
+  profile: {
+    get: () => apiClient.get("/users/me"),
+    update: (data: any) => apiClient.put("/users/me", data),
   },
 
   // Audit Logs
@@ -415,6 +432,7 @@ export const apiClient = {
 // Utility functions
 export const setAuthToken = (token: string) => {
   Cookies.set("auth_token", token, { expires: 7 }); // 7 days
+  api.defaults.headers.Authorization = `Bearer ${token}`;
 };
 
 export const setRefreshToken = (token: string) => {

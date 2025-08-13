@@ -65,13 +65,14 @@ export default function SuppliersPage() {
     },
     { 
       keepPreviousData: true,
-      revalidateOnFocus: false
+      revalidateOnFocus: false,
+      revalidateIfStale: false
     }
   );
 
   const suppliers = useMemo(() => {
     if (!data) return [];
-    return (data as any)?.data ?? data ?? [];
+    return Array.isArray(data) ? data : data?.data || [];
   }, [data]);
 
   const hasNextPage = suppliers.length === limit;

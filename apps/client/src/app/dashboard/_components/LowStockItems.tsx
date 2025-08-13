@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package } from 'lucide-react';
-import { LowStockItem } from '@/dashboard/types/types';
+import { LowStockItem } from '@/app/dashboard/types/types';
 
 interface Props {
   lowStock?: LowStockItem[];

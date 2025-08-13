@@ -1,8 +1,12 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
+import { apiClient } from '@/lib/api';
+import { useCustomers } from '@/hooks/useCustomers';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -83,7 +87,6 @@ interface CreateSalesOrderItemRequest {
 
 export default function SalesPage() {
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -105,72 +108,23 @@ export default function SalesPage() {
   const [limit] = useState(20);
   const [filterCustomerId, setFilterCustomerId] = useState('');
 
+  const { customers, isLoading: customersLoading } = useCustomers();
+
+  const { data: salesData, isLoading: salesLoading, mutate: mutateSales } = useSWR(
+    ["sales:orders", page, filterCustomerId],
+    () => apiClient.sales.orders.list({ page, limit, customer_id: filterCustomerId || undefined })
+  );
+
   useEffect(() => {
-    fetchSalesOrders();
-    fetchCustomers();
-    fetchProducts();
-  }, [page, filterCustomerId]);
-
-  const fetchSalesOrders = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Please login to continue');
-        return;
-      }
-
-      let url = `/api/sales/orders?page=${page}&limit=${limit}`;
-      if (filterCustomerId) {
-        url += `&customer_id=${filterCustomerId}`;
-      }
-
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch sales orders');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setSalesOrders(data.data || []);
-      } else {
-        throw new Error(data.error?.message || 'Failed to fetch sales orders');
-      }
-    } catch (error: any) {
-      console.error('Error fetching sales orders:', error);
-      toast.error(error.message || 'Failed to fetch sales orders');
-    } finally {
+    if (salesData) {
+      setSalesOrders(((salesData as any)?.data ?? salesData) as SalesOrder[]);
       setLoading(false);
     }
-  };
+  }, [salesData]);
 
-  const fetchCustomers = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+  const refreshSales = () => mutateSales();
 
-      const response = await fetch('/api/customers?limit=1000', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setCustomers(data.data || []);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching customers:', error);
-    }
-  };
+  // customers via hook
 
   const fetchProducts = async () => {
     try {
@@ -197,22 +151,8 @@ export default function SalesPage() {
 
   const fetchOrderDetails = async (orderId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await fetch(`/api/sales/orders/${orderId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setOrderItems(data.data.items || []);
-        }
-      }
+      const data = await apiClient.sales.orders.get(orderId);
+      setOrderItems(((data as any)?.data || data)?.items || []);
     } catch (error) {
       console.error('Error fetching order details:', error);
     }
@@ -266,12 +206,6 @@ export default function SalesPage() {
 
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Please login to continue');
-        return;
-      }
-
       const requestData: CreateSalesOrderRequest = {
         customer_id: customerId,
         expected_delivery_date: expectedDeliveryDate || undefined,
@@ -282,24 +216,14 @@ export default function SalesPage() {
           discount_percent: item.discount_percent || 0,
         })),
       };
-
-      const response = await fetch('/api/sales/orders', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
+      const data = await apiClient.sales.orders.create(requestData);
+      const ok = (data as any)?.success ?? true;
+      if (ok) {
         toast.success('Sales order created successfully');
         resetForm();
-        fetchSalesOrders();
+        refreshSales();
       } else {
-        throw new Error(data.error?.message || 'Failed to create sales order');
+        throw new Error((data as any)?.error?.message || 'Failed to create sales order');
       }
     } catch (error: any) {
       console.error('Error creating sales order:', error);
@@ -311,24 +235,13 @@ export default function SalesPage() {
 
   const updateOrderStatus = async (orderId: string, status: string) => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await fetch(`/api/sales/orders/${orderId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
+      const data = await apiClient.sales.orders.updateStatus(orderId, status);
+      const ok = (data as any)?.success ?? true;
+      if (ok) {
         toast.success('Order status updated successfully');
-        fetchSalesOrders();
+        refreshSales();
       } else {
-        throw new Error(data.error?.message || 'Failed to update status');
+        throw new Error((data as any)?.error?.message || 'Failed to update status');
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to update status');
@@ -337,30 +250,17 @@ export default function SalesPage() {
 
   const downloadCSV = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const params = new URLSearchParams();
-      const url = `/api/sales/orders.csv?${params.toString()}`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = 'sales_orders.csv';
-        link.click();
-        window.URL.revokeObjectURL(downloadUrl);
-        toast.success('CSV downloaded successfully');
-      } else {
-        throw new Error('Failed to download CSV');
-      }
+      // Attempt simple fetch; auth should be handled by cookies/interceptors
+      const response = await fetch('/api/sales/orders.csv');
+      if (!response.ok) throw new Error('Failed to download CSV');
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = 'sales_orders.csv';
+      link.click();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success('CSV downloaded successfully');
     } catch (error: any) {
       toast.error(error.message || 'Failed to download CSV');
     }
@@ -383,7 +283,7 @@ export default function SalesPage() {
     setShowOrderDetails(true);
   };
 
-  if (loading) {
+  if (salesLoading || customersLoading || loading) {
     return (
       <DashboardLayout title="Sales Orders">
         <div className="flex items-center justify-center py-8">
@@ -418,21 +318,21 @@ export default function SalesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex gap-4 items-end">
-              <div>
+              <div className="w-full sm:w-64">
                 <Label htmlFor="filterCustomer">Filter by Customer</Label>
-                <select
-                  id="filterCustomer"
-                  value={filterCustomerId}
-                  onChange={(e) => setFilterCustomerId(e.target.value)}
-                  className="w-48 p-2 border border-gray-300 rounded-md"
-                >
-                  <option value="">All customers</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
-                  ))}
-                </select>
+                <Select value={filterCustomerId} onValueChange={setFilterCustomerId}>
+                  <SelectTrigger id="filterCustomer" aria-label="Filter by customer">
+                    <SelectValue placeholder="All customers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All customers</SelectItem>
+                    {customers.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Button variant="outline" onClick={() => setFilterCustomerId('')}>
                 Clear Filter
@@ -507,19 +407,21 @@ export default function SalesPage() {
                       <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border rounded-lg">
                         <div>
                           <Label>Product *</Label>
-                          <select
+                          <Select
                             value={item.product_id}
-                            onChange={(e) => updateItem(index, 'product_id', e.target.value)}
-                            className="w-full p-2 border border-gray-300 rounded-md"
-                            required
+                            onValueChange={(val) => updateItem(index, 'product_id', val)}
                           >
-                            <option value="">Select product</option>
-                            {products.map((product) => (
-                              <option key={product.id} value={product.id}>
-                                {product.name} ({product.sku})
-                              </option>
-                            ))}
-                          </select>
+                            <SelectTrigger aria-label="Select product">
+                              <SelectValue placeholder="Select product" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {products.map((product) => (
+                                <SelectItem key={product.id} value={product.id}>
+                                  {product.name} ({product.sku})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         
                         <div>

@@ -118,7 +118,6 @@ module.exports = {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
         },
-        // accent DEFAULT/foreground provided above
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
@@ -146,6 +145,8 @@ module.exports = {
         'slide-up': 'slideUp 0.3s ease-out',
         'slide-down': 'slideDown 0.3s ease-out',
         'pulse-slow': 'pulse 3s infinite',
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
       },
       keyframes: {
         fadeIn: {

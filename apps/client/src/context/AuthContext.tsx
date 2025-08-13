@@ -19,6 +19,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
 
   const isAuthenticated = !!user && !!token;
 
@@ -60,7 +66,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     initAuth();
-  }, []);
+  }, [router]);
 
   const login = async (email: string, password: string, remember?: boolean): Promise<void> => {
     try {
@@ -120,7 +126,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error(response.message || 'Registration failed');
       }
     } catch (error: any) {
-      const message = error.response?.data?.message || error.message || 'Registration failed';
+      const message = error.response?.data?.message || error.message || 'Login failed';
       toast.error(message);
       throw error;
     } finally {
@@ -155,6 +161,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading,
     isAuthenticated,
   };
+  
+  if (!isClient) {
+    // Render children without AuthProvider during SSR
+    return <>{children}</>;
+  }
+
 
   return (
     <AuthContext.Provider value={value}>

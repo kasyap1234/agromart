@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ControlsProps {
   search: string;
@@ -28,11 +29,14 @@ export default function Controls({ search, setSearch, page, setPage, limit, setL
         className="w-full sm:w-80"
       />
       <div className="flex items-center gap-2">
-        <select value={limit} onChange={(e) => setLimit(Number(e.target.value))} className="input w-24">
-          {[10, 20, 50].map((n) => (
-            <option key={n} value={n}>{n}/page</option>
-          ))}
-        </select>
+        <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
+          <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {[10, 20, 50].map((n) => (
+              <SelectItem key={n} value={String(n)}>{n}/page</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button onClick={dec} variant="outline">Prev</Button>
         <span className="text-sm text-neutral-600">{pageInfo}</span>
         <Button onClick={inc} variant="outline">Next</Button>

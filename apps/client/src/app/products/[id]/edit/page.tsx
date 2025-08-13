@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import useSWR from 'swr';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
@@ -44,27 +45,27 @@ export default function EditProductPage() {
 
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
-  const [price, setPrice] = useState<number | ''>('');
+  const [price, setPrice] = useState&lt;number | ''&gt;('');
   const [brand, setBrand] = useState('');
   const [description, setDescription] = useState('');
   const [unitId, setUnitId] = useState('');
-  const [pricePerUnit, setPricePerUnit] = useState<number | ''>('');
-  const [gstPercent, setGstPercent] = useState<number | ''>('');
+  const [pricePerUnit, setPricePerUnit] = useState&lt;number | ''&gt;('');
+  const [gstPercent, setGstPercent] = useState&lt;number | ''&gt;('');
   const [submitting, setSubmitting] = useState(false);
 
-  const product = (productData as any)?.data || productData;
-  const units = (unitsData as any)?.data || unitsData;
+  const product = productData?.data || productData;
+  const units = Array.isArray(unitsData) ? unitsData : unitsData?.data || [];
 
   useEffect(() => {
     if (product) {
       setSku(product.sku || '');
       setName(product.name || '');
-      setPrice(product.price || '');
+      setPrice(product.selling_price || product.price || '');
       setBrand(product.brand || '');
       setDescription(product.description || '');
       setUnitId(product.unit_id || '');
-      setPricePerUnit(product.price_per_unit || '');
-      setGstPercent(product.gst_percent || '');
+      setPricePerUnit(product.cost_price || product.price_per_unit || '');
+      setGstPercent(product.tax_rate || product.gst_percent || '');
     }
   }, [product]);
 
@@ -84,12 +85,12 @@ export default function EditProductPage() {
       setSubmitting(true);
       await apiClient.products.update(String(id), {
         name,
-        price: Number(price),
+        selling_price: Number(price),
         description: description || undefined,
         brand: brand || undefined,
         unit_id: unitId,
-        price_per_unit: Number(pricePerUnit),
-        gst_percent: gstPercent === '' ? undefined : Number(gstPercent),
+        cost_price: Number(pricePerUnit),
+        tax_rate: gstPercent === '' ? undefined : Number(gstPercent),
       });
       toast.success('Product updated successfully');
       router.push(`/products/${id}`);
@@ -165,16 +166,16 @@ export default function EditProductPage() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Unit</label>
-            <select 
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              value={unitId} 
-              onChange={e => setUnitId(e.target.value)} 
-              required
-            >
-              {(units || []).map((u: Unit) => (
-                <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>
-              ))}
-            </select>
+            <Select value={unitId} onValueChange={setUnitId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select unit" />
+              </SelectTrigger>
+              <SelectContent>
+                {(units || []).map((u: Unit) => (
+                  <SelectItem key={u.id} value={u.id}>{u.name} ({u.abbreviation})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Price per unit</label>

@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ProductFiltersProps {
   search: string;
@@ -126,16 +127,17 @@ export default function ProductFilters({
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Brand
               </label>
-              <select
-                value={localFilters.brand || ''}
-                onChange={(e) => handleFilterChange('brand', e.target.value || undefined)}
-                className="input w-full"
-              >
-                <option value="">All Brands</option>
-                {brands.map(brand => (
-                  <option key={brand} value={brand}>{brand}</option>
-                ))}
-              </select>
+              <Select value={localFilters.brand || ''} onValueChange={(v) => handleFilterChange('brand', v || undefined)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Brands" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Brands</SelectItem>
+                  {brands.map(brand => (
+                    <SelectItem key={brand} value={brand}>{brand}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>

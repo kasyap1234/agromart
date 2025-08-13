@@ -1,5 +1,5 @@
 import React from "react";
-import { StatsCardProps } from "@/dashboard/types/types";
+import { StatsCardProps } from "@/app/dashboard/types/types";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function StatsCard({

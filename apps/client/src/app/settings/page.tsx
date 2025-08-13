@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
+import { apiClient } from '@/lib/api';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -117,11 +119,11 @@ export default function SettingsPage() {
   // Tenant settings state
   const [tenantSettings, setTenantSettings] = useState<TenantSettings>({
     id: '',
-    name: 'AgroMart Company',
-    email: 'contact@agromart.com',
-    phone: '+1-555-0123',
-    address: '123 Farm Street, Agriculture City, AC 12345',
-    registration_number: 'REG123456789',
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    registration_number: '',
     timezone: 'UTC',
     currency: 'USD',
     date_format: 'MM/DD/YYYY',
@@ -130,19 +132,39 @@ export default function SettingsPage() {
 
   // Notification settings state
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
-    email_notifications: true,
-    push_notifications: true,
-    low_stock_alerts: true,
-    order_updates: true,
+    email_notifications: false,
+    push_notifications: false,
+    low_stock_alerts: false,
+    order_updates: false,
     system_alerts: false,
-    weekly_reports: true,
+    weekly_reports: false,
   });
+
+  const { data: tenantResp, mutate: mutateTenant } = useSWR('settings:tenant', () => apiClient.settings.getTenant());
+  const { data: notifResp, mutate: mutateNotif } = useSWR('settings:notifications', () => apiClient.settings.getNotifications());
+
+  useEffect(() => {
+    if (tenantResp) {
+      const d = (tenantResp as any).data ?? tenantResp;
+      setTenantSettings((prev) => ({ ...prev, ...(d || {}) }));
+    }
+  }, [tenantResp]);
+
+  useEffect(() => {
+    if (notifResp) {
+      const d = (notifResp as any).data ?? notifResp;
+      setNotificationSettings((prev) => ({ ...prev, ...(d || {}) }));
+    }
+  }, [notifResp]);
 
   const handleSaveProfile = async () => {
     setLoading(true);
     try {
-      // TODO: Implement API call
-      console.log('Saving profile:', profile);
+      await apiClient.profile.update({
+        name: profile.name,
+        phone: profile.phone,
+        avatar_url: profile.avatar_url,
+      });
       toast.success('Profile updated successfully');
     } catch (error) {
       toast.error('Failed to update profile');
@@ -154,8 +176,8 @@ export default function SettingsPage() {
   const handleSaveTenantSettings = async () => {
     setLoading(true);
     try {
-      // TODO: Implement API call
-      console.log('Saving tenant settings:', tenantSettings);
+      await apiClient.settings.updateTenant(tenantSettings);
+      mutateTenant();
       toast.success('Organization settings updated successfully');
     } catch (error) {
       toast.error('Failed to update organization settings');
@@ -167,8 +189,8 @@ export default function SettingsPage() {
   const handleSaveNotifications = async () => {
     setLoading(true);
     try {
-      // TODO: Implement API call
-      console.log('Saving notification settings:', notificationSettings);
+      await apiClient.settings.updateNotifications(notificationSettings);
+      mutateNotif();
       toast.success('Notification preferences updated successfully');
     } catch (error) {
       toast.error('Failed to update notification preferences');

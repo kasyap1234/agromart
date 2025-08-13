@@ -9,15 +9,17 @@ import { toast } from 'react-hot-toast';
 import { Pencil, Trash2 } from "lucide-react";
 import { apiClient } from '@/lib/api';
 import Link from "next/link";
+import { Product } from '@/types';
+import { DetailItem } from '@/components/ui/DetailItem';
 
 export default function ProductDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const id = Array.isArray(params?.id) ? params?.id[0] : (params as any)?.id;
-  const { data, error, isLoading, mutate } = useSWR(id ? [`/products/${id}`] : null, () => apiClient.products.get(String(id)));
+  const { data, error, isLoading, mutate } = useSWR<Product>(id ? [`/products/${id}`] : null, () => apiClient.products.get(String(id)));
   const [deleting, setDeleting] = useState(false);
 
-  const product = (data as any)?.data || data;
+  const product = data?.data || data;
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
@@ -72,12 +74,12 @@ export default function ProductDetailsPage() {
         <div className="flex space-x-2">
           <Button asChild variant="outline">
             <Link href={`/products/${id}/edit`}>
-              <Pencil className="w-4 h-4 mr-2" />
+              <Pencil className="w-4 h-4 mr-2" aria-hidden="true" />
               Edit
             </Link>
           </Button>
           <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-            <Trash2 className="w-4 h-4 mr-2" />
+            <Trash2 className="w-4 h-4 mr-2" aria-hidden="true" />
             {deleting ? 'Deleting...' : 'Delete'}
           </Button>
         </div>
@@ -92,32 +94,17 @@ export default function ProductDetailsPage() {
             <div>
               <h3 className="text-lg font-medium mb-4">Basic Information</h3>
               <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-muted-foreground">SKU</p>
-                  <p className="font-medium">{product.sku}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Brand</p>
-                  <p className="font-medium">{product.brand || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Price</p>
-                  <p className="font-medium">₹{product.price?.toFixed(2) || "0.00"}</p>
-                </div>
+                <DetailItem label="SKU" value={product.sku} />
+                <DetailItem label="Brand" value={product.brand || '-'} />
+                <DetailItem label="Price" value={`₹${product.selling_price?.toFixed(2) || "0.00"}`} />
               </div>
             </div>
             
             <div>
               <h3 className="text-lg font-medium mb-4">Pricing Details</h3>
               <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-muted-foreground">Price per Unit</p>
-                  <p className="font-medium">₹{product.price_per_unit?.toFixed(2) || "0.00"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">GST Percentage</p>
-                  <p className="font-medium">{product.gst_percent || 0}%</p>
-                </div>
+                <DetailItem label="Cost Price" value={`₹${product.cost_price?.toFixed(2) || product.price_per_unit?.toFixed(2) || "0.00"}`} />
+                <DetailItem label="GST Percentage" value={`${product.tax_rate || product.gst_percent || 0}%`} />
               </div>
             </div>
             

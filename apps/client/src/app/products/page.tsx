@@ -64,7 +64,7 @@ const fetcher = async (
   }
   
   const data: PaginatedResponse<Product> = await apiClient.products.list(params);
-  return data.data || [];
+  return Array.isArray(data) ? data : data?.data || [];
 };
 
 // Extract unique brands from products
@@ -235,7 +235,7 @@ export default function ProductsPage() {
                 variant="outline"
                 size="icon"
                 aria-label="Open filters"
-                onClick={() => alert("Filter functionality coming soon!")}
+                onClick={() => toast("Filter panel coming soon", { icon: 'ℹ️' })}
               >                
                 <FilterIcon className="w-4 h-4" aria-hidden="true" />
               </Button>

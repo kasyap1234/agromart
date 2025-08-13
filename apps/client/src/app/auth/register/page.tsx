@@ -7,13 +7,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/context/AuthContext';
-import { RegisterRequest } from '@/types';
 import { PasswordStrengthMeter } from '@/components/ui/password-strength';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { ErrorIcon } from '@/components/icons/ErrorIcon';
+import { CheckIcon } from '@/components/icons/CheckIcon';
+import { RegisterIcon } from '@/components/icons/RegisterIcon';
 
 const registerSchema = z.object({
   first_name: z.string().min(2, 'First name must be at least 2 characters'),
@@ -54,14 +56,14 @@ export default function RegisterPage() {
     try {
       const { confirmPassword, acceptTerms, ...registerData } = data;
       await registerUser(registerData);
-    } catch (error) {
-      // Error is handled in the AuthContext
+    } catch (error: any) {
+      setApiError(error.message || 'Registration failed. Please try again.');
+      console.error(error);
     }
   };
 
   return (
     <div className="min-h-screen flex">
-      {/* Left side - Registration form */}
       <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
         <div className="mx-auto w-full max-w-sm lg:w-96">
           <div>
@@ -75,14 +77,10 @@ export default function RegisterPage() {
 
           <div className="mt-8">
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-              {/* Company Information */}
-              {/* API Error Message */}
               {apiError && (
                 <Card className="border-destructive bg-destructive/10">
                   <CardContent className="flex items-start space-x-2 p-4">
-                    <svg className="h-5 w-5 text-destructive mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
-                    </svg>
+                    <ErrorIcon className="h-5 w-5 text-destructive mt-0.5" />
                     <p className="text-sm font-medium text-destructive">{apiError}</p>
                   </CardContent>
                 </Card>
@@ -106,7 +104,6 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              {/* Personal Information */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="first_name">First Name</Label>
@@ -246,13 +243,13 @@ export default function RegisterPage() {
                 />
                 <label htmlFor="acceptTerms" className="ml-2 block text-sm text-neutral-900">
                   I agree to the{' '}
-                  <a href="#" className="text-primary-600 hover:text-primary-500">
+                  <Link href="/terms" className="text-primary-600 hover:text-primary-500">
                     Terms and Conditions
-                  </a>{' '}
+                  </Link>{' '}
                   and{' '}
-                  <a href="#" className="text-primary-600 hover:text-primary-500">
+                  <Link href="/privacy" className="text-primary-600 hover:text-primary-500">
                     Privacy Policy
-                  </a>
+                  </Link>
                 </label>
               </div>
               {errors.acceptTerms && (
@@ -291,20 +288,12 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Right side - Features */}
       <div className="hidden lg:block relative w-0 flex-1">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center">
           <div className="text-center text-white px-8">
             <div className="mb-8">
               <div className="w-20 h-20 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-10 h-10 text-white"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <RegisterIcon className="w-10 h-10 text-white" />
               </div>
               <h1 className="text-4xl font-bold mb-2">Join AgroMart</h1>
               <p className="text-primary-100 text-lg">Start your inventory management journey</p>
@@ -312,13 +301,7 @@ export default function RegisterPage() {
             <div className="space-y-4 text-left max-w-md">
               <div className="flex items-start space-x-3">
                 <div className="w-6 h-6 bg-primary-400 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                  <CheckIcon className="w-3 h-3 text-white" />
                 </div>
                 <div>
                   <h3 className="font-semibold">Quick Setup</h3>
@@ -329,13 +312,7 @@ export default function RegisterPage() {
               </div>
               <div className="flex items-start space-x-3">
                 <div className="w-6 h-6 bg-primary-400 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                  <CheckIcon className="w-3 h-3 text-white" />
                 </div>
                 <div>
                   <h3 className="font-semibold">Secure & Reliable</h3>
@@ -346,13 +323,7 @@ export default function RegisterPage() {
               </div>
               <div className="flex items-start space-x-3">
                 <div className="w-6 h-6 bg-primary-400 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                  <CheckIcon className="w-3 h-3 text-white" />
                 </div>
                 <div>
                   <h3 className="font-semibold">24/7 Support</h3>

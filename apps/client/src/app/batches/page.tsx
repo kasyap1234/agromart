@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
+import { apiClient } from '@/lib/api';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Edit, Trash2, Calendar, Package } from 'lucide-react';
+import { Loader2, Plus, Edit, Calendar, Package } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { format, parseISO, isBefore, addDays } from 'date-fns';
 
@@ -53,62 +56,31 @@ export default function BatchesPage() {
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
 
+  const { data: batchData, isLoading: batchesLoading, mutate: mutateBatches } = useSWR(
+    ["batches:list", page, limit],
+    () => apiClient.batches.list({ page, limit })
+  );
+
   useEffect(() => {
-    fetchBatches();
-    fetchProducts();
-  }, [page]);
-
-  const fetchBatches = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Please login to continue');
-        return;
-      }
-
-      const response = await fetch(`/api/batches?page=${page}&limit=${limit}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch batches');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setBatches(data.data || []);
-      } else {
-        throw new Error(data.error?.message || 'Failed to fetch batches');
-      }
-    } catch (error: any) {
-      console.error('Error fetching batches:', error);
-      toast.error(error.message || 'Failed to fetch batches');
-    } finally {
+    if (batchData) {
+      const batchesList = Array.isArray(batchData) ? batchData : batchData.data || [];
+      setBatches(batchesList);
       setLoading(false);
     }
-  };
+  }, [batchData]);
+
+  useEffect(() => {
+    fetchProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const refreshBatches = () => mutateBatches();
 
   const fetchProducts = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await fetch('/api/products?limit=1000', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setProducts(data.data || []);
-        }
-      }
+      const resp = await apiClient.products.list({ page: 1, limit: 1000 });
+      const list = Array.isArray(resp) ? resp : resp.data || [];
+      setProducts(list);
     } catch (error) {
       console.error('Error fetching products:', error);
     }
@@ -133,12 +105,6 @@ export default function BatchesPage() {
 
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Please login to continue');
-        return;
-      }
-
       const requestData: CreateBatchRequest = {
         product_id: productId,
         batch_number: batchNumber,
@@ -146,30 +112,21 @@ export default function BatchesPage() {
         cost: parseInt(cost),
       };
 
-      const url = editingBatch ? `/api/batches/${editingBatch.id}` : '/api/batches';
-      const method = editingBatch ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      const data = await response.json();
+      const data = editingBatch 
+        ? await apiClient.batches.update(editingBatch.id, requestData)
+        : await apiClient.batches.create(requestData);
       
-      if (data.success) {
+      if (data) {
         toast.success(editingBatch ? 'Batch updated successfully' : 'Batch created successfully');
         resetForm();
-        fetchBatches();
+        refreshBatches();
       } else {
-        throw new Error(data.error?.message || 'Failed to save batch');
+        throw new Error('Failed to save batch');
       }
     } catch (error: any) {
       console.error('Error saving batch:', error);
-      toast.error(error.message || 'Failed to save batch');
+      const message = error?.response?.data?.message || error?.message || 'Failed to save batch';
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -198,7 +155,7 @@ export default function BatchesPage() {
     }
   };
 
-  if (loading) {
+  if (loading || batchesLoading) {
     return (
       <DashboardLayout title="Batches">
         <div className="flex items-center justify-center py-8">
@@ -240,20 +197,18 @@ export default function BatchesPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="product">Product</Label>
-                    <select
-                      id="product"
-                      value={productId}
-                      onChange={(e) => setProductId(e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      required
-                    >
-                      <option value="">Select a product</option>
-                      {products.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.name} ({product.sku})
-                        </option>
-                      ))}
-                    </select>
+                    <Select value={productId} onValueChange={setProductId}>
+                      <SelectTrigger id="product" aria-label="Select product">
+                        <SelectValue placeholder="Select a product" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name} ({product.sku})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   
                   <div>
