@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface ControlsProps {
   search: string;
@@ -19,11 +21,11 @@ export default function Controls({ search, setSearch, page, setPage, limit, setL
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <input
+      <Input
         placeholder="Search products by name or SKU"
         value={search}
         onChange={onChange}
-        className="input w-full sm:w-80"
+        className="w-full sm:w-80"
       />
       <div className="flex items-center gap-2">
         <select value={limit} onChange={(e) => setLimit(Number(e.target.value))} className="input w-24">
@@ -31,9 +33,9 @@ export default function Controls({ search, setSearch, page, setPage, limit, setL
             <option key={n} value={n}>{n}/page</option>
           ))}
         </select>
-        <button onClick={dec} className="btn">Prev</button>
+        <Button onClick={dec} variant="outline">Prev</Button>
         <span className="text-sm text-neutral-600">{pageInfo}</span>
-        <button onClick={inc} className="btn">Next</button>
+        <Button onClick={inc} variant="outline">Next</Button>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function GlobalError({
   error,
@@ -26,15 +27,12 @@ export default function GlobalError({
             </p>
 
             <div className="mt-6 space-x-3">
-              <button
-                onClick={() => reset()}
-                className="btn-primary"
-              >
+              <Button onClick={() => reset()}>
                 Try again
-              </button>
-              <Link href="/dashboard" className="btn-secondary">
-                Go to dashboard
-              </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/dashboard">Go to dashboard</Link>
+              </Button>
             </div>
 
             {error?.digest && (

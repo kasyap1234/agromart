@@ -2,6 +2,7 @@
 
 import useSWR from 'swr';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { apiClient } from '@/lib/api';
 import { useState, useMemo } from 'react';
@@ -84,9 +85,9 @@ export default function CustomerPurchaseOrdersPage() {
     <DashboardLayout title="Customer Sales Orders">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Sales Orders</h1>
-        <Link href="/sales/new" className="btn btn-primary">
-          Create Sale
-        </Link>
+        <Button asChild>
+          <Link href="/sales/new">Create Sale</Link>
+        </Button>
       </div>
 
       {/* Filters */}
@@ -112,15 +113,15 @@ export default function CustomerPurchaseOrdersPage() {
           </div>
           
           <div className="flex space-x-2">
-            <button
+            <Button
               onClick={() => {
                 setStatusFilter('');
                 setPage(1);
               }}
-              className="btn btn-secondary"
+              variant="outline"
             >
               Clear Filters
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -220,20 +221,20 @@ export default function CustomerPurchaseOrdersPage() {
               </div>
               
               <div className="flex space-x-2">
-                <button
+                <Button
                   onClick={() => setPage(page - 1)}
                   disabled={!hasPrevPage}
-                  className={`btn ${!hasPrevPage ? 'btn-disabled' : ''}`}
+                  variant="outline"
                 >
                   Previous
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => setPage(page + 1)}
                   disabled={!hasNextPage}
-                  className={`btn ${!hasNextPage ? 'btn-disabled' : ''}`}
+                  variant="outline"
                 >
                   Next
-                </button>
+                </Button>
               </div>
               
               <div className="text-sm text-neutral-700">

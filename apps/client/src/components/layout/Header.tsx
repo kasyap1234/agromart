@@ -19,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface HeaderProps {
   title?: string;
@@ -39,6 +40,7 @@ export default function Header({ title }: HeaderProps) {
 
         {/* Right side items */}
         <div className="flex items-center space-x-4">
+          <ThemeToggle />
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">
             <span className="sr-only">View notifications</span>

@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface ProductFiltersProps {
   search: string;
@@ -55,11 +57,11 @@ export default function ProductFilters({
       {/* Search Bar */}
       <div className="p-4 border-b border-neutral-200">
         <div className="relative">
-          <input
+          <Input
             placeholder="Search products by name, SKU, or brand"
             value={search}
             onChange={handleSearchChange}
-            className="input w-full pl-10"
+            className="w-full pl-10"
           />
           <svg 
             className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" 
@@ -74,9 +76,9 @@ export default function ProductFilters({
 
       {/* Filter Toggle */}
       <div className="p-4 border-b border-neutral-200">
-        <button
+        <Button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center text-sm font-medium text-primary-600 hover:text-primary-500"
+          variant="ghost"
         >
           <FunnelIcon className="w-4 h-4 mr-2" />
           {isExpanded ? 'Hide Filters' : 'Show Filters'}
@@ -85,7 +87,7 @@ export default function ProductFilters({
               Active
             </span>
           )}
-        </button>
+        </Button>
       </div>
 
       {/* Expanded Filters */}
@@ -99,21 +101,21 @@ export default function ProductFilters({
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <input
+                  <Input
                     type="number"
                     placeholder="Min"
                     value={localFilters.minPrice || ''}
                     onChange={(e) => handleFilterChange('minPrice', e.target.value ? Number(e.target.value) : undefined)}
-                    className="input w-full"
+                    className="w-full"
                   />
                 </div>
                 <div>
-                  <input
+                  <Input
                     type="number"
                     placeholder="Max"
                     value={localFilters.maxPrice || ''}
                     onChange={(e) => handleFilterChange('maxPrice', e.target.value ? Number(e.target.value) : undefined)}
-                    className="input w-full"
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -144,23 +146,23 @@ export default function ProductFilters({
         <div className="p-4 flex justify-between">
           <div>
             {hasActiveFilters && (
-              <button
+              <Button
                 onClick={clearFilters}
-                className="flex items-center text-sm font-medium text-neutral-600 hover:text-neutral-900"
+                variant="ghost"
               >
                 <XMarkIcon className="w-4 h-4 mr-1" />
                 Clear Filters
-              </button>
+              </Button>
             )}
           </div>
           <div className="flex space-x-2">
             {isExpanded && (
-              <button
+              <Button
                 onClick={applyFilters}
-                className="btn btn-primary"
+                
               >
                 Apply Filters
-              </button>
+              </Button>
             )}
           </div>
         </div>

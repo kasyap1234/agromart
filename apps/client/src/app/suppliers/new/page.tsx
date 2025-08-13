@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { apiClient } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 
@@ -34,22 +37,22 @@ export default function NewSupplierPage() {
       <form onSubmit={onSubmit} className="max-w-lg space-y-4">
         <div>
           <label className="block text-sm font-medium">Name</label>
-          <input className="input mt-1 w-full" value={name} onChange={(e) => setName(e.target.value)} required />
+          <Input className="mt-1 w-full" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
         <div>
           <label className="block text-sm font-medium">Email</label>
-          <input className="input mt-1 w-full" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input className="mt-1 w-full" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div>
           <label className="block text-sm font-medium">Phone</label>
-          <input className="input mt-1 w-full" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input className="mt-1 w-full" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
         <div>
           <label className="block text-sm font-medium">Address</label>
-          <textarea className="input mt-1 w-full" rows={3} value={address} onChange={(e) => setAddress(e.target.value)} />
+          <Textarea className="mt-1 w-full" rows={3} value={address} onChange={(e) => setAddress(e.target.value)} />
         </div>
         <div>
-          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
+          <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
         </div>
       </form>
     </DashboardLayout>
