@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function NotFound() {
   return (
@@ -12,12 +13,12 @@ export default function NotFound() {
           Sorry, we couldn’t find the page you’re looking for.
         </p>
         <div className="mt-8 flex items-center justify-center gap-x-3">
-          <Link href="/" className="btn-secondary">
-            Go back home
-          </Link>
-          <Link href="/dashboard" className="btn-primary">
-            Go to dashboard
-          </Link>
+          <Button asChild variant="outline">
+            <Link href="/">Go back home</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/dashboard">Go to dashboard</Link>
+          </Button>
         </div>
       </div>
     </main>
