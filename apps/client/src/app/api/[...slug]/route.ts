@@ -1,30 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import axios from 'axios';
+import { cookies } from 'next/headers';
 
 const DEFAULT_BACKEND = 'http://localhost:8080';
 
-const getBackendUrl = () => {
+async function getBackendUrl() {
+  // In Next.js 15, we can get the host from headers in a server component
+  // For API routes, we'll use environment variables
   const baseURL = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_BACKEND).replace(/\/$/, '');
   return baseURL.endsWith('/api') ? baseURL : `${baseURL}/api`;
-};
+}
 
-async function handleRequest(req: NextRequest, { params }: { params: { slug: string[] } }) {
+async function handleRequest(request: NextRequest, { params }: { params: Promise<{ slug: string[] }> }) {
   try {
-    const { slug } = params;
-    const method = req.method;
-    const backendUrl = getBackendUrl();
+    const { slug } = await params;
+    const method = request.method;
+    const backendUrl = await getBackendUrl();
 
-    // Skip the health endpoint as it's handled separately
-    if (slug[0] === 'health') {
-      return NextResponse.json({ message: 'Health endpoint not proxied' }, { status: 404 });
-    }
+    // Health endpoint is now handled by a separate route file
 
     // Construct the target URL
     const path = slug.join('/');
     const url = `${backendUrl}/${path}`;
 
     // Get query parameters
-    const searchParams = req.nextUrl.searchParams;
+    const searchParams = request.nextUrl.searchParams;
     const queryString = searchParams.toString();
     const fullUrl = queryString ? `${url}?${queryString}` : url;
 
@@ -34,33 +33,33 @@ async function handleRequest(req: NextRequest, { params }: { params: { slug: str
     };
 
     // Forward important headers from the original request
-    const authHeader = req.headers.get('authorization');
+    const authHeader = request.headers.get('authorization');
     if (authHeader) {
       headers['Authorization'] = authHeader;
     }
 
-    const debugClient = req.headers.get('x-debug-client');
+    const debugClient = request.headers.get('x-debug-client');
     if (debugClient) {
       headers['X-Debug-Client'] = debugClient;
     }
 
-    const userAgent = req.headers.get('user-agent');
+    const userAgent = request.headers.get('user-agent');
     if (userAgent) {
       headers['User-Agent'] = userAgent;
     }
 
     // Get request body for POST/PUT/PATCH requests
-    let data: any = undefined;
+    let body: any = undefined;
     if (['POST', 'PUT', 'PATCH'].includes(method)) {
       try {
-        const text = await req.text();
+        const text = await request.text();
         if (text) {
-          data = JSON.parse(text);
+          body = JSON.parse(text);
         }
       } catch (e) {
         // If JSON parsing fails, try to get text again
         try {
-          data = await req.text();
+          body = await request.text();
           headers['Content-Type'] = 'text/plain';
         } catch (textError) {
           console.error('[API] Failed to read request body:', textError);
@@ -70,55 +69,42 @@ async function handleRequest(req: NextRequest, { params }: { params: { slug: str
 
     console.log(`[API Proxy] ${method} /${path} -> ${fullUrl}`, {
       hasAuth: !!authHeader,
-      hasData: !!data,
+      hasData: !!body,
     });
 
-    // Make the request to the backend
-    const response = await axios({
-      method: method.toLowerCase() as any,
-      url: fullUrl,
-      data,
+    // Make the request to the backend using fetch (recommended for Next.js 15)
+    const response = await fetch(fullUrl, {
+      method,
       headers,
-      timeout: 30000,
-      validateStatus: () => true, // Don't throw on HTTP error status codes
+      body: body ? JSON.stringify(body) : undefined,
+      // Don't set cache headers to ensure fresh data
+      cache: 'no-store',
     });
+
+    const responseData = await response.json().catch(() => ({}));
 
     console.log(`[API Proxy] Response ${response.status} for ${method} /${path}`);
 
-    // Forward the response
-    return NextResponse.json(response.data, {
+    // Forward the response with proper status
+    return NextResponse.json(responseData, {
       status: response.status,
       headers: {
         'Content-Type': 'application/json',
-        // Forward some response headers if they exist
-        ...(response.headers['x-request-id'] && { 'X-Request-Id': response.headers['x-request-id'] }),
-        ...(response.headers['x-error-handler'] && { 'X-Error-Handler': response.headers['x-error-handler'] }),
       },
     });
 
   } catch (error: any) {
     console.error('[API Proxy] Error:', {
-      url: `${getBackendUrl()}/${params.slug.join('/')}`,
-      method: req.method,
       message: error?.message,
-      responseData: error?.response?.data,
-      responseStatus: error?.response?.status,
+      cause: error?.cause,
     });
 
-    // If it's an axios error with a response, return the backend's response
-    if (error?.response) {
-      return NextResponse.json(
-        error.response.data || { message: 'Backend error' },
-        { status: error.response.status }
-      );
-    }
-
-    // For network errors or other issues
+    // Return appropriate error response
     return NextResponse.json(
       {
         message: 'Proxy error: Unable to connect to backend server',
         error: error?.message || 'Unknown error',
-        backend_url: getBackendUrl(),
+        backend_url: await getBackendUrl(),
       },
       { status: 502 }
     );

@@ -7,31 +7,33 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addInventoryQuantity = `-- name: AddInventoryQuantity :exec
-INSERT INTO inventory (tenant_id, product_id, batch_id, quantity)
-VALUES ($1, $2, $3, $4)
-ON CONFLICT (tenant_id, product_id, batch_id)
-DO UPDATE SET quantity = inventory.quantity + $4
+INSERT INTO inventory (tenant_id, product_id, batch_id, location_id, quantity)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (tenant_id, product_id, batch_id, location_id)
+DO UPDATE SET quantity = inventory.quantity + $5
 `
 
 type AddInventoryQuantityParams struct {
-	TenantID  uuid.UUID      `json:"tenant_id"`
-	ProductID uuid.UUID      `json:"product_id"`
-	BatchID   uuid.UUID      `json:"batch_id"`
-	Quantity  pgtype.Numeric `json:"quantity"`
+	TenantID   uuid.UUID `json:"tenant_id"`
+	ProductID  uuid.UUID `json:"product_id"`
+	BatchID    uuid.UUID `json:"batch_id"`
+	LocationID uuid.UUID `json:"location_id"`
+	Quantity   string    `json:"quantity"`
 }
 
 func (q *Queries) AddInventoryQuantity(ctx context.Context, arg AddInventoryQuantityParams) error {
-	_, err := q.db.Exec(ctx, addInventoryQuantity,
+	_, err := q.db.ExecContext(ctx, addInventoryQuantity,
 		arg.TenantID,
 		arg.ProductID,
 		arg.BatchID,
+		arg.LocationID,
 		arg.Quantity,
 	)
 	return err
@@ -43,32 +45,34 @@ WHERE tenant_id = $1
 `
 
 func (q *Queries) CountProductsByTenant(ctx context.Context, tenantID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countProductsByTenant, tenantID)
+	row := q.db.QueryRowContext(ctx, countProductsByTenant, tenantID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
 const createInventoryLog = `-- name: CreateInventoryLog :exec
-INSERT INTO inventory_log (tenant_id, product_id, batch_id, transaction_type, quantity_change, reference_id, notes)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO inventory_log (tenant_id, product_id, batch_id, location_id, transaction_type, quantity_change, reference_id, notes)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type CreateInventoryLogParams struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	ProductID       uuid.UUID      `json:"product_id"`
 	BatchID         uuid.UUID      `json:"batch_id"`
+	LocationID      uuid.UUID      `json:"location_id"`
 	TransactionType string         `json:"transaction_type"`
-	QuantityChange  pgtype.Numeric `json:"quantity_change"`
-	ReferenceID     pgtype.UUID    `json:"reference_id"`
-	Notes           pgtype.Text    `json:"notes"`
+	QuantityChange  string         `json:"quantity_change"`
+	ReferenceID     uuid.NullUUID  `json:"reference_id"`
+	Notes           sql.NullString `json:"notes"`
 }
 
 func (q *Queries) CreateInventoryLog(ctx context.Context, arg CreateInventoryLogParams) error {
-	_, err := q.db.Exec(ctx, createInventoryLog,
+	_, err := q.db.ExecContext(ctx, createInventoryLog,
 		arg.TenantID,
 		arg.ProductID,
 		arg.BatchID,
+		arg.LocationID,
 		arg.TransactionType,
 		arg.QuantityChange,
 		arg.ReferenceID,
@@ -103,19 +107,19 @@ type GetExpiringBatchesParams struct {
 }
 
 type GetExpiringBatchesRow struct {
-	BatchID         uuid.UUID      `json:"batch_id"`
-	BatchNumber     string         `json:"batch_number"`
-	ExpiryDate      time.Time      `json:"expiry_date"`
-	ProductID       uuid.UUID      `json:"product_id"`
-	ProductName     string         `json:"product_name"`
-	ProductSku      string         `json:"product_sku"`
-	Quantity        pgtype.Numeric `json:"quantity"`
-	DaysUntilExpiry interface{}    `json:"days_until_expiry"`
+	BatchID         uuid.UUID   `json:"batch_id"`
+	BatchNumber     string      `json:"batch_number"`
+	ExpiryDate      time.Time   `json:"expiry_date"`
+	ProductID       uuid.UUID   `json:"product_id"`
+	ProductName     string      `json:"product_name"`
+	ProductSku      string      `json:"product_sku"`
+	Quantity        string      `json:"quantity"`
+	DaysUntilExpiry interface{} `json:"days_until_expiry"`
 }
 
 // Return integer days_until_expiry. Filter using a DATE upper bound so $2 remains a date.
 func (q *Queries) GetExpiringBatches(ctx context.Context, arg GetExpiringBatchesParams) ([]GetExpiringBatchesRow, error) {
-	rows, err := q.db.Query(ctx, getExpiringBatches, arg.TenantID, arg.Column2)
+	rows, err := q.db.QueryContext(ctx, getExpiringBatches, arg.TenantID, arg.Column2)
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +141,75 @@ func (q *Queries) GetExpiringBatches(ctx context.Context, arg GetExpiringBatches
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getInventoryByLocation = `-- name: GetInventoryByLocation :many
+SELECT
+    i.id,
+    p.name AS product_name,
+    p.sku,
+    b.batch_number,
+    b.expiry_date,
+    i.quantity,
+    i.available_quantity,
+    u.abbreviation AS unit_abbreviation
+FROM inventory i
+JOIN products p ON i.product_id = p.id
+JOIN batches b ON i.batch_id = b.id
+JOIN units u ON p.unit_id = u.id
+WHERE i.tenant_id = $1 AND i.location_id = $2
+ORDER BY p.name, b.expiry_date
+`
+
+type GetInventoryByLocationParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	LocationID uuid.UUID `json:"location_id"`
+}
+
+type GetInventoryByLocationRow struct {
+	ID                uuid.UUID      `json:"id"`
+	ProductName       string         `json:"product_name"`
+	Sku               string         `json:"sku"`
+	BatchNumber       string         `json:"batch_number"`
+	ExpiryDate        time.Time      `json:"expiry_date"`
+	Quantity          string         `json:"quantity"`
+	AvailableQuantity sql.NullString `json:"available_quantity"`
+	UnitAbbreviation  string         `json:"unit_abbreviation"`
+}
+
+func (q *Queries) GetInventoryByLocation(ctx context.Context, arg GetInventoryByLocationParams) ([]GetInventoryByLocationRow, error) {
+	rows, err := q.db.QueryContext(ctx, getInventoryByLocation, arg.TenantID, arg.LocationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetInventoryByLocationRow{}
+	for rows.Next() {
+		var i GetInventoryByLocationRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductName,
+			&i.Sku,
+			&i.BatchNumber,
+			&i.ExpiryDate,
+			&i.Quantity,
+			&i.AvailableQuantity,
+			&i.UnitAbbreviation,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -144,31 +217,45 @@ func (q *Queries) GetExpiringBatches(ctx context.Context, arg GetExpiringBatches
 }
 
 const getInventoryByProductBatch = `-- name: GetInventoryByProductBatch :one
-SELECT id, tenant_id, product_id, batch_id, quantity FROM inventory
-WHERE tenant_id = $1 AND product_id = $2 AND batch_id = $3
+SELECT id, tenant_id, product_id, batch_id, location_id, quantity, reserved_quantity, available_quantity, min_stock_level, max_stock_level, last_counted_at, created_at, updated_at FROM inventory
+WHERE tenant_id = $1 AND product_id = $2 AND batch_id = $3 AND location_id = $4
 `
 
 type GetInventoryByProductBatchParams struct {
-	TenantID  uuid.UUID `json:"tenant_id"`
-	ProductID uuid.UUID `json:"product_id"`
-	BatchID   uuid.UUID `json:"batch_id"`
+	TenantID   uuid.UUID `json:"tenant_id"`
+	ProductID  uuid.UUID `json:"product_id"`
+	BatchID    uuid.UUID `json:"batch_id"`
+	LocationID uuid.UUID `json:"location_id"`
 }
 
 func (q *Queries) GetInventoryByProductBatch(ctx context.Context, arg GetInventoryByProductBatchParams) (Inventory, error) {
-	row := q.db.QueryRow(ctx, getInventoryByProductBatch, arg.TenantID, arg.ProductID, arg.BatchID)
+	row := q.db.QueryRowContext(ctx, getInventoryByProductBatch,
+		arg.TenantID,
+		arg.ProductID,
+		arg.BatchID,
+		arg.LocationID,
+	)
 	var i Inventory
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
 		&i.ProductID,
 		&i.BatchID,
+		&i.LocationID,
 		&i.Quantity,
+		&i.ReservedQuantity,
+		&i.AvailableQuantity,
+		&i.MinStockLevel,
+		&i.MaxStockLevel,
+		&i.LastCountedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getInventoryLogByBatch = `-- name: GetInventoryLogByBatch :many
-SELECT id, tenant_id, product_id, batch_id, transaction_type, quantity_change, transaction_date, notes, reference_id FROM inventory_log
+SELECT id, tenant_id, product_id, batch_id, location_id, transaction_type, quantity_change, transaction_date, notes, reference_id FROM inventory_log
 WHERE tenant_id = $1 AND batch_id = $2
 ORDER BY transaction_date DESC
 LIMIT $3 OFFSET $4
@@ -182,7 +269,7 @@ type GetInventoryLogByBatchParams struct {
 }
 
 func (q *Queries) GetInventoryLogByBatch(ctx context.Context, arg GetInventoryLogByBatchParams) ([]InventoryLog, error) {
-	rows, err := q.db.Query(ctx, getInventoryLogByBatch,
+	rows, err := q.db.QueryContext(ctx, getInventoryLogByBatch,
 		arg.TenantID,
 		arg.BatchID,
 		arg.Limit,
@@ -200,6 +287,7 @@ func (q *Queries) GetInventoryLogByBatch(ctx context.Context, arg GetInventoryLo
 			&i.TenantID,
 			&i.ProductID,
 			&i.BatchID,
+			&i.LocationID,
 			&i.TransactionType,
 			&i.QuantityChange,
 			&i.TransactionDate,
@@ -210,6 +298,9 @@ func (q *Queries) GetInventoryLogByBatch(ctx context.Context, arg GetInventoryLo
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -217,7 +308,7 @@ func (q *Queries) GetInventoryLogByBatch(ctx context.Context, arg GetInventoryLo
 }
 
 const getInventoryLogByProduct = `-- name: GetInventoryLogByProduct :many
-SELECT id, tenant_id, product_id, batch_id, transaction_type, quantity_change, transaction_date, notes, reference_id FROM inventory_log
+SELECT id, tenant_id, product_id, batch_id, location_id, transaction_type, quantity_change, transaction_date, notes, reference_id FROM inventory_log
 WHERE tenant_id = $1 AND product_id = $2
 ORDER BY transaction_date DESC
 LIMIT $3 OFFSET $4
@@ -231,7 +322,7 @@ type GetInventoryLogByProductParams struct {
 }
 
 func (q *Queries) GetInventoryLogByProduct(ctx context.Context, arg GetInventoryLogByProductParams) ([]InventoryLog, error) {
-	rows, err := q.db.Query(ctx, getInventoryLogByProduct,
+	rows, err := q.db.QueryContext(ctx, getInventoryLogByProduct,
 		arg.TenantID,
 		arg.ProductID,
 		arg.Limit,
@@ -249,6 +340,7 @@ func (q *Queries) GetInventoryLogByProduct(ctx context.Context, arg GetInventory
 			&i.TenantID,
 			&i.ProductID,
 			&i.BatchID,
+			&i.LocationID,
 			&i.TransactionType,
 			&i.QuantityChange,
 			&i.TransactionDate,
@@ -258,6 +350,9 @@ func (q *Queries) GetInventoryLogByProduct(ctx context.Context, arg GetInventory
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -273,7 +368,7 @@ WHERE i.tenant_id = $1
 `
 
 func (q *Queries) GetInventoryValue(ctx context.Context, tenantID uuid.UUID) (interface{}, error) {
-	row := q.db.QueryRow(ctx, getInventoryValue, tenantID)
+	row := q.db.QueryRowContext(ctx, getInventoryValue, tenantID)
 	var total_value interface{}
 	err := row.Scan(&total_value)
 	return total_value, err
@@ -289,8 +384,8 @@ HAVING SUM(i.quantity) <= $2
 `
 
 type GetLowStockReportParams struct {
-	TenantID uuid.UUID      `json:"tenant_id"`
-	Quantity pgtype.Numeric `json:"quantity"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	Quantity string    `json:"quantity"`
 }
 
 type GetLowStockReportRow struct {
@@ -301,7 +396,7 @@ type GetLowStockReportRow struct {
 }
 
 func (q *Queries) GetLowStockReport(ctx context.Context, arg GetLowStockReportParams) ([]GetLowStockReportRow, error) {
-	rows, err := q.db.Query(ctx, getLowStockReport, arg.TenantID, arg.Quantity)
+	rows, err := q.db.QueryContext(ctx, getLowStockReport, arg.TenantID, arg.Quantity)
 	if err != nil {
 		return nil, err
 	}
@@ -319,6 +414,9 @@ func (q *Queries) GetLowStockReport(ctx context.Context, arg GetLowStockReportPa
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -326,9 +424,10 @@ func (q *Queries) GetLowStockReport(ctx context.Context, arg GetLowStockReportPa
 }
 
 const getProductInventoryDetails = `-- name: GetProductInventoryDetails :many
-SELECT b.batch_number, b.expiry_date, i.quantity
+SELECT b.batch_number, b.expiry_date, i.quantity, l.name as location_name
 FROM inventory i
 JOIN batches b ON i.batch_id = b.id
+JOIN locations l ON i.location_id = l.id
 WHERE i.tenant_id = $1 AND i.product_id = $2
 ORDER BY b.expiry_date ASC
 `
@@ -339,13 +438,14 @@ type GetProductInventoryDetailsParams struct {
 }
 
 type GetProductInventoryDetailsRow struct {
-	BatchNumber string         `json:"batch_number"`
-	ExpiryDate  time.Time      `json:"expiry_date"`
-	Quantity    pgtype.Numeric `json:"quantity"`
+	BatchNumber  string    `json:"batch_number"`
+	ExpiryDate   time.Time `json:"expiry_date"`
+	Quantity     string    `json:"quantity"`
+	LocationName string    `json:"location_name"`
 }
 
 func (q *Queries) GetProductInventoryDetails(ctx context.Context, arg GetProductInventoryDetailsParams) ([]GetProductInventoryDetailsRow, error) {
-	rows, err := q.db.Query(ctx, getProductInventoryDetails, arg.TenantID, arg.ProductID)
+	rows, err := q.db.QueryContext(ctx, getProductInventoryDetails, arg.TenantID, arg.ProductID)
 	if err != nil {
 		return nil, err
 	}
@@ -353,10 +453,18 @@ func (q *Queries) GetProductInventoryDetails(ctx context.Context, arg GetProduct
 	items := []GetProductInventoryDetailsRow{}
 	for rows.Next() {
 		var i GetProductInventoryDetailsRow
-		if err := rows.Scan(&i.BatchNumber, &i.ExpiryDate, &i.Quantity); err != nil {
+		if err := rows.Scan(
+			&i.BatchNumber,
+			&i.ExpiryDate,
+			&i.Quantity,
+			&i.LocationName,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -376,7 +484,26 @@ type GetProductQuantityParams struct {
 }
 
 func (q *Queries) GetProductQuantity(ctx context.Context, arg GetProductQuantityParams) (interface{}, error) {
-	row := q.db.QueryRow(ctx, getProductQuantity, arg.TenantID, arg.ProductID)
+	row := q.db.QueryRowContext(ctx, getProductQuantity, arg.TenantID, arg.ProductID)
+	var total_quantity interface{}
+	err := row.Scan(&total_quantity)
+	return total_quantity, err
+}
+
+const getProductQuantityByLocation = `-- name: GetProductQuantityByLocation :one
+SELECT COALESCE(SUM(quantity), 0) AS total_quantity
+FROM inventory
+WHERE tenant_id = $1 AND product_id = $2 AND location_id = $3
+`
+
+type GetProductQuantityByLocationParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	ProductID  uuid.UUID `json:"product_id"`
+	LocationID uuid.UUID `json:"location_id"`
+}
+
+func (q *Queries) GetProductQuantityByLocation(ctx context.Context, arg GetProductQuantityByLocationParams) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, getProductQuantityByLocation, arg.TenantID, arg.ProductID, arg.LocationID)
 	var total_quantity interface{}
 	err := row.Scan(&total_quantity)
 	return total_quantity, err
@@ -407,17 +534,17 @@ type ListAllInventoryParams struct {
 }
 
 type ListAllInventoryRow struct {
-	ID               uuid.UUID      `json:"id"`
-	ProductName      string         `json:"product_name"`
-	Sku              string         `json:"sku"`
-	BatchNumber      string         `json:"batch_number"`
-	ExpiryDate       time.Time      `json:"expiry_date"`
-	Quantity         pgtype.Numeric `json:"quantity"`
-	UnitAbbreviation string         `json:"unit_abbreviation"`
+	ID               uuid.UUID `json:"id"`
+	ProductName      string    `json:"product_name"`
+	Sku              string    `json:"sku"`
+	BatchNumber      string    `json:"batch_number"`
+	ExpiryDate       time.Time `json:"expiry_date"`
+	Quantity         string    `json:"quantity"`
+	UnitAbbreviation string    `json:"unit_abbreviation"`
 }
 
 func (q *Queries) ListAllInventory(ctx context.Context, arg ListAllInventoryParams) ([]ListAllInventoryRow, error) {
-	rows, err := q.db.Query(ctx, listAllInventory, arg.TenantID, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listAllInventory, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -438,31 +565,62 @@ func (q *Queries) ListAllInventory(ctx context.Context, arg ListAllInventoryPara
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return items, nil
 }
 
+const receiveInventory = `-- name: ReceiveInventory :exec
+INSERT INTO inventory (tenant_id, product_id, batch_id, location_id, quantity)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (tenant_id, product_id, batch_id, location_id)
+DO UPDATE SET quantity = inventory.quantity + $5
+`
+
+type ReceiveInventoryParams struct {
+	TenantID   uuid.UUID `json:"tenant_id"`
+	ProductID  uuid.UUID `json:"product_id"`
+	BatchID    uuid.UUID `json:"batch_id"`
+	LocationID uuid.UUID `json:"location_id"`
+	Quantity   string    `json:"quantity"`
+}
+
+func (q *Queries) ReceiveInventory(ctx context.Context, arg ReceiveInventoryParams) error {
+	_, err := q.db.ExecContext(ctx, receiveInventory,
+		arg.TenantID,
+		arg.ProductID,
+		arg.BatchID,
+		arg.LocationID,
+		arg.Quantity,
+	)
+	return err
+}
+
 const reduceInventoryQuantity = `-- name: ReduceInventoryQuantity :exec
 UPDATE inventory
 SET quantity = quantity - $1
-WHERE tenant_id = $2 AND product_id = $3 AND batch_id = $4
+WHERE tenant_id = $2 AND product_id = $3 AND batch_id = $4 AND location_id = $5
 `
 
 type ReduceInventoryQuantityParams struct {
-	Quantity  pgtype.Numeric `json:"quantity"`
-	TenantID  uuid.UUID      `json:"tenant_id"`
-	ProductID uuid.UUID      `json:"product_id"`
-	BatchID   uuid.UUID      `json:"batch_id"`
+	Quantity   string    `json:"quantity"`
+	TenantID   uuid.UUID `json:"tenant_id"`
+	ProductID  uuid.UUID `json:"product_id"`
+	BatchID    uuid.UUID `json:"batch_id"`
+	LocationID uuid.UUID `json:"location_id"`
 }
 
 func (q *Queries) ReduceInventoryQuantity(ctx context.Context, arg ReduceInventoryQuantityParams) error {
-	_, err := q.db.Exec(ctx, reduceInventoryQuantity,
+	_, err := q.db.ExecContext(ctx, reduceInventoryQuantity,
 		arg.Quantity,
 		arg.TenantID,
 		arg.ProductID,
 		arg.BatchID,
+		arg.LocationID,
 	)
 	return err
 }
@@ -470,22 +628,49 @@ func (q *Queries) ReduceInventoryQuantity(ctx context.Context, arg ReduceInvento
 const setInventoryQuantity = `-- name: SetInventoryQuantity :exec
 UPDATE inventory
 SET quantity = $1
-WHERE tenant_id = $2 AND product_id = $3 AND batch_id = $4
+WHERE tenant_id = $2 AND product_id = $3 AND batch_id = $4 AND location_id = $5
 `
 
 type SetInventoryQuantityParams struct {
-	Quantity  pgtype.Numeric `json:"quantity"`
-	TenantID  uuid.UUID      `json:"tenant_id"`
-	ProductID uuid.UUID      `json:"product_id"`
-	BatchID   uuid.UUID      `json:"batch_id"`
+	Quantity   string    `json:"quantity"`
+	TenantID   uuid.UUID `json:"tenant_id"`
+	ProductID  uuid.UUID `json:"product_id"`
+	BatchID    uuid.UUID `json:"batch_id"`
+	LocationID uuid.UUID `json:"location_id"`
 }
 
 func (q *Queries) SetInventoryQuantity(ctx context.Context, arg SetInventoryQuantityParams) error {
-	_, err := q.db.Exec(ctx, setInventoryQuantity,
+	_, err := q.db.ExecContext(ctx, setInventoryQuantity,
 		arg.Quantity,
 		arg.TenantID,
 		arg.ProductID,
 		arg.BatchID,
+		arg.LocationID,
+	)
+	return err
+}
+
+const transferInventory = `-- name: TransferInventory :exec
+UPDATE inventory
+SET quantity = quantity - $1, updated_at = NOW()
+WHERE tenant_id = $2 AND product_id = $3 AND batch_id = $4 AND location_id = $5
+`
+
+type TransferInventoryParams struct {
+	Quantity   string    `json:"quantity"`
+	TenantID   uuid.UUID `json:"tenant_id"`
+	ProductID  uuid.UUID `json:"product_id"`
+	BatchID    uuid.UUID `json:"batch_id"`
+	LocationID uuid.UUID `json:"location_id"`
+}
+
+func (q *Queries) TransferInventory(ctx context.Context, arg TransferInventoryParams) error {
+	_, err := q.db.ExecContext(ctx, transferInventory,
+		arg.Quantity,
+		arg.TenantID,
+		arg.ProductID,
+		arg.BatchID,
+		arg.LocationID,
 	)
 	return err
 }

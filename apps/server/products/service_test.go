@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"agromart/db"
+	"agromart2/db"
 )
 
 // MockQueries is a mock implementation of the database queries

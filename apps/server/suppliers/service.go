@@ -2,10 +2,10 @@ package suppliers
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"agromart2/db"
-	"agromart2/internal/utils"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
@@ -52,12 +52,12 @@ func (s *SupplierService) CreateSupplier(ctx context.Context, params CreateSuppl
 	args := db.CreateSupplierParams{
 		TenantID:      params.TenantID,
 		Name:          params.Name,
-		ContactPerson: utils.P.Text(params.ContactPerson),
-		Email:         utils.P.Text(params.Email),
-		Phone:         utils.P.Text(params.Phone),
-		Address:       utils.P.Text(params.Address),
-		TaxID:         utils.P.Text(params.TaxID),
-		PaymentMode:   utils.P.Text(params.PaymentMode),
+		ContactPerson: sql.NullString{String: params.ContactPerson, Valid: params.ContactPerson != ""},
+		Email:         sql.NullString{String: params.Email, Valid: params.Email != ""},
+		Phone:         sql.NullString{String: params.Phone, Valid: params.Phone != ""},
+		Address:       sql.NullString{String: params.Address, Valid: params.Address != ""},
+		TaxID:         sql.NullString{String: params.TaxID, Valid: params.TaxID != ""},
+		PaymentMode:   sql.NullString{String: params.PaymentMode, Valid: params.PaymentMode != ""},
 	}
 
 	supplier, err := s.q.CreateSupplier(ctx, args)
@@ -125,13 +125,13 @@ func (s *SupplierService) UpdateSupplier(ctx context.Context, params UpdateSuppl
 		ID:            params.ID,
 		TenantID:      params.TenantID,
 		Name:          params.Name,
-		ContactPerson: utils.P.Text(params.ContactPerson),
-		Email:         utils.P.Text(params.Email),
-		Phone:         utils.P.Text(params.Phone),
-		Address:       utils.P.Text(params.Address),
-		TaxID:         utils.P.Text(params.TaxID),
-		PaymentMode:   utils.P.Text(params.PaymentMode),
-		IsActive:      utils.P.Bool(params.IsActive),
+		ContactPerson: sql.NullString{String: params.ContactPerson, Valid: params.ContactPerson != ""},
+		Email:         sql.NullString{String: params.Email, Valid: params.Email != ""},
+		Phone:         sql.NullString{String: params.Phone, Valid: params.Phone != ""},
+		Address:       sql.NullString{String: params.Address, Valid: params.Address != ""},
+		TaxID:         sql.NullString{String: params.TaxID, Valid: params.TaxID != ""},
+		PaymentMode:   sql.NullString{String: params.PaymentMode, Valid: params.PaymentMode != ""},
+		IsActive:      sql.NullBool{Bool: params.IsActive, Valid: true},
 	}
 
 	supplier, err := s.q.UpdateSupplier(ctx, args)

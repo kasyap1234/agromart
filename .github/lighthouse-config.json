@@ -1,0 +1,22 @@
+{
+  "ci": {
+    "collect": {
+      "numberOfRuns": 3,
+      "startServerCommand": "cd apps/client && npm run dev",
+      "startServerReadyPattern": "ready - started server on",
+      "url": ["http://localhost:3000"]
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": "warning",
+        "categories:accessibility": "warning",
+        "categories:best-practices": "warning",
+        "categories:seo": "warning",
+        "categories:pwa": "warning"
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}

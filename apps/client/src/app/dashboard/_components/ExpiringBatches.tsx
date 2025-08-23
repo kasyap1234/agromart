@@ -69,9 +69,9 @@ export default function ExpiringBatches({ expiring = [] }: Props) {
             </TableBody>
           </Table>
         ) : (
-          <div className="text-center py-6">
-            <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">
+          <div className="text-center py-8 text-muted-foreground">
+            <Clock className="w-8 h-8 mx-auto mb-2" />
+            <p className="text-sm">
               No expiring batches
             </p>
           </div>

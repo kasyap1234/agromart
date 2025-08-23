@@ -2,12 +2,12 @@ package batches
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"agromart2/db"
-	"agromart2/internal/pgconv"
 )
 
 type Service struct {
@@ -29,7 +29,7 @@ func (s *Service) CreateBatch(ctx context.Context, tenantID uuid.UUID, productID
 		ProductID:   productID,
 		BatchNumber: batchNumber,
 		ExpiryDate:  expiryDate,
-		Cost:        pgconv.NumericFromInt(cost),
+		Cost:        strconv.Itoa(cost),
 	}
 	
 	batch, err := s.q.CreateBatch(ctx, args)
@@ -62,7 +62,7 @@ func (s *Service) UpdateBatch(ctx context.Context, tenantID uuid.UUID, batchID u
 		TenantID:    tenantID,
 		BatchNumber: batchNumber,
 		ExpiryDate:  expiryDate,
-		Cost:        pgconv.NumericFromInt(cost),
+		Cost:        strconv.Itoa(cost),
 	}
 	
 	batch, err := s.q.UpdateBatch(ctx, args)

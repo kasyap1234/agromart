@@ -28,6 +28,7 @@ import {
   SidebarFooter
 } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/context/AuthContext';
 
 interface NavigationItem {
   name: string;
@@ -35,12 +36,13 @@ interface NavigationItem {
   icon: React.ComponentType<{ className?: string }>;
   current?: boolean;
   badge?: string;
-  permission?: () => boolean;
+  permission?: boolean;
 }
 
 export default function AppSidebar() {
   const pathname = usePathname();
   const { canManageProducts, canManageInventory, canViewReports, canManageUsers } = usePermissions();
+  const { user } = useAuth();
 
   const navigation: NavigationItem[] = [
     {
@@ -136,18 +138,18 @@ export default function AppSidebar() {
   ];
 
   const filteredNavigation = navigation.filter(item =>
-    !item.permission || item.permission()
+    item.permission === undefined || item.permission
   );
 
   return (
-    <Sidebar className="w-64 border-r">
-      <SidebarHeader className="px-6 py-4 border-b">
+    <Sidebar className="w-64 border-r bg-sidebar text-sidebar-foreground">
+      <SidebarHeader className="px-6 py-4 border-b border-sidebar-border">
         <div className="flex items-center">
           <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
             <Package className="w-5 h-5 text-white" />
           </div>
           <div className="ml-3">
-            <h1 className="text-xl font-bold text-foreground">AgroMart</h1>
+            <h1 className="text-xl font-bold text-sidebar-foreground">AgroMart</h1>
             <p className="text-xs text-muted-foreground">Inventory System</p>
           </div>
         </div>
@@ -183,17 +185,17 @@ export default function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t p-4">
+      <SidebarFooter className="border-t border-sidebar-border p-4">
         <div className="flex items-center">
           <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-            <span className="text-primary font-medium text-sm">U</span>
+            <span className="text-primary font-medium text-sm">{user?.first_name?.[0]?.toUpperCase() || 'U'}</span>
           </div>
           <div className="ml-3 flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">
-              User Account
+            <p className="text-sm font-medium text-sidebar-foreground truncate">
+              {user?.first_name} {user?.last_name}
             </p>
-            <p className="text-xs text-muted-foreground truncate">
-              Online
+            <p className="text-xs text-muted-foreground truncate capitalize">
+              {user?.role}
             </p>
           </div>
         </div>

@@ -145,7 +145,7 @@ export default function LogsPage() {
   };
 
   // Check permissions
-  if (!canViewReports()) {
+  if (!canViewReports) {
     return (
       <DashboardLayout title="Audit Logs">
         <Card>

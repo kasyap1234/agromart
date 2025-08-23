@@ -79,6 +79,7 @@ func (l *Logger) ErrorWithErr(msg string, err error) {
 	l.logger.Error().Err(err).Msg(msg)
 }
 
+
 // Fatal logs a fatal message and exits
 func (l *Logger) Fatal(msg string) {
 	l.logger.Fatal().Msg(msg)

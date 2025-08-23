@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countExpiringBatchesWithinDays = `-- name: CountExpiringBatchesWithinDays :one
@@ -33,7 +32,7 @@ type CountExpiringBatchesWithinDaysParams struct {
 
 // Pass an upper bound date (e.g., CURRENT_DATE + interval '30 days') from Go layer.
 func (q *Queries) CountExpiringBatchesWithinDays(ctx context.Context, arg CountExpiringBatchesWithinDaysParams) (interface{}, error) {
-	row := q.db.QueryRow(ctx, countExpiringBatchesWithinDays, arg.TenantID, arg.Column2)
+	row := q.db.QueryRowContext(ctx, countExpiringBatchesWithinDays, arg.TenantID, arg.Column2)
 	var expiring_batches_count interface{}
 	err := row.Scan(&expiring_batches_count)
 	return expiring_batches_count, err
@@ -54,7 +53,7 @@ type CountOpenPurchaseOrdersParams struct {
 }
 
 func (q *Queries) CountOpenPurchaseOrders(ctx context.Context, arg CountOpenPurchaseOrdersParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countOpenPurchaseOrders, arg.TenantID, arg.OrderDate, arg.OrderDate_2)
+	row := q.db.QueryRowContext(ctx, countOpenPurchaseOrders, arg.TenantID, arg.OrderDate, arg.OrderDate_2)
 	var open_purchase_orders_count int64
 	err := row.Scan(&open_purchase_orders_count)
 	return open_purchase_orders_count, err
@@ -75,7 +74,7 @@ type CountOpenSalesOrdersParams struct {
 }
 
 func (q *Queries) CountOpenSalesOrders(ctx context.Context, arg CountOpenSalesOrdersParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countOpenSalesOrders, arg.TenantID, arg.OrderDate, arg.OrderDate_2)
+	row := q.db.QueryRowContext(ctx, countOpenSalesOrders, arg.TenantID, arg.OrderDate, arg.OrderDate_2)
 	var open_sales_orders_count int64
 	err := row.Scan(&open_sales_orders_count)
 	return open_sales_orders_count, err
@@ -95,7 +94,7 @@ WHERE i.tenant_id = $1
 // Inventory value already exists in inventory.sql as GetInventoryValue.
 // Using a different name here for completeness if needed elsewhere.
 func (q *Queries) GetInventoryValueAnalytics(ctx context.Context, tenantID uuid.UUID) (interface{}, error) {
-	row := q.db.QueryRow(ctx, getInventoryValueAnalytics, tenantID)
+	row := q.db.QueryRowContext(ctx, getInventoryValueAnalytics, tenantID)
 	var total_value interface{}
 	err := row.Scan(&total_value)
 	return total_value, err
@@ -124,12 +123,12 @@ type GetPurchasesTimeSeriesParams struct {
 }
 
 type GetPurchasesTimeSeriesRow struct {
-	Period    pgtype.Interval `json:"period"`
-	TotalCost interface{}     `json:"total_cost"`
+	Period    int64       `json:"period"`
+	TotalCost interface{} `json:"total_cost"`
 }
 
 func (q *Queries) GetPurchasesTimeSeries(ctx context.Context, arg GetPurchasesTimeSeriesParams) ([]GetPurchasesTimeSeriesRow, error) {
-	rows, err := q.db.Query(ctx, getPurchasesTimeSeries,
+	rows, err := q.db.QueryContext(ctx, getPurchasesTimeSeries,
 		arg.Grp,
 		arg.TenantID,
 		arg.FromDate,
@@ -146,6 +145,9 @@ func (q *Queries) GetPurchasesTimeSeries(ctx context.Context, arg GetPurchasesTi
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -171,7 +173,7 @@ type GetRevenueInPeriodParams struct {
 }
 
 func (q *Queries) GetRevenueInPeriod(ctx context.Context, arg GetRevenueInPeriodParams) (interface{}, error) {
-	row := q.db.QueryRow(ctx, getRevenueInPeriod, arg.TenantID, arg.OrderDate, arg.OrderDate_2)
+	row := q.db.QueryRowContext(ctx, getRevenueInPeriod, arg.TenantID, arg.OrderDate, arg.OrderDate_2)
 	var revenue_in_period interface{}
 	err := row.Scan(&revenue_in_period)
 	return revenue_in_period, err
@@ -200,13 +202,13 @@ type GetSalesTimeSeriesParams struct {
 }
 
 type GetSalesTimeSeriesRow struct {
-	Period  pgtype.Interval `json:"period"`
-	Revenue interface{}     `json:"revenue"`
+	Period  int64       `json:"period"`
+	Revenue interface{} `json:"revenue"`
 }
 
 // grp is 'day' or 'month'
 func (q *Queries) GetSalesTimeSeries(ctx context.Context, arg GetSalesTimeSeriesParams) ([]GetSalesTimeSeriesRow, error) {
-	rows, err := q.db.Query(ctx, getSalesTimeSeries,
+	rows, err := q.db.QueryContext(ctx, getSalesTimeSeries,
 		arg.Grp,
 		arg.TenantID,
 		arg.FromDate,
@@ -223,6 +225,9 @@ func (q *Queries) GetSalesTimeSeries(ctx context.Context, arg GetSalesTimeSeries
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -245,12 +250,12 @@ FROM (
 `
 
 type GetStockoutRiskCountParams struct {
-	TenantID uuid.UUID      `json:"tenant_id"`
-	Quantity pgtype.Numeric `json:"quantity"`
+	TenantID uuid.UUID `json:"tenant_id"`
+	Quantity string    `json:"quantity"`
 }
 
 func (q *Queries) GetStockoutRiskCount(ctx context.Context, arg GetStockoutRiskCountParams) (interface{}, error) {
-	row := q.db.QueryRow(ctx, getStockoutRiskCount, arg.TenantID, arg.Quantity)
+	row := q.db.QueryRowContext(ctx, getStockoutRiskCount, arg.TenantID, arg.Quantity)
 	var stockout_risk_count interface{}
 	err := row.Scan(&stockout_risk_count)
 	return stockout_risk_count, err
@@ -292,7 +297,7 @@ type GetTopProductsByRevenueRow struct {
 }
 
 func (q *Queries) GetTopProductsByRevenue(ctx context.Context, arg GetTopProductsByRevenueParams) ([]GetTopProductsByRevenueRow, error) {
-	rows, err := q.db.Query(ctx, getTopProductsByRevenue,
+	rows, err := q.db.QueryContext(ctx, getTopProductsByRevenue,
 		arg.TenantID,
 		arg.OrderDate,
 		arg.OrderDate_2,
@@ -314,6 +319,9 @@ func (q *Queries) GetTopProductsByRevenue(ctx context.Context, arg GetTopProduct
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

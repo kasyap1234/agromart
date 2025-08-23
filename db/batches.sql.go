@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createBatch = `-- name: CreateBatch :one
@@ -20,15 +19,15 @@ RETURNING id, tenant_id, product_id, batch_number, expiry_date, cost, created_at
 `
 
 type CreateBatchParams struct {
-	TenantID    uuid.UUID      `json:"tenant_id"`
-	ProductID   uuid.UUID      `json:"product_id"`
-	BatchNumber string         `json:"batch_number"`
-	ExpiryDate  time.Time      `json:"expiry_date"`
-	Cost        pgtype.Numeric `json:"cost"`
+	TenantID    uuid.UUID `json:"tenant_id"`
+	ProductID   uuid.UUID `json:"product_id"`
+	BatchNumber string    `json:"batch_number"`
+	ExpiryDate  time.Time `json:"expiry_date"`
+	Cost        string    `json:"cost"`
 }
 
 func (q *Queries) CreateBatch(ctx context.Context, arg CreateBatchParams) (Batch, error) {
-	row := q.db.QueryRow(ctx, createBatch,
+	row := q.db.QueryRowContext(ctx, createBatch,
 		arg.TenantID,
 		arg.ProductID,
 		arg.BatchNumber,
@@ -59,7 +58,7 @@ type DeleteBatchParams struct {
 }
 
 func (q *Queries) DeleteBatch(ctx context.Context, arg DeleteBatchParams) error {
-	_, err := q.db.Exec(ctx, deleteBatch, arg.ID, arg.TenantID)
+	_, err := q.db.ExecContext(ctx, deleteBatch, arg.ID, arg.TenantID)
 	return err
 }
 
@@ -74,7 +73,7 @@ type GetBatchByIDParams struct {
 }
 
 func (q *Queries) GetBatchByID(ctx context.Context, arg GetBatchByIDParams) (Batch, error) {
-	row := q.db.QueryRow(ctx, getBatchByID, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, getBatchByID, arg.ID, arg.TenantID)
 	var i Batch
 	err := row.Scan(
 		&i.ID,
@@ -101,7 +100,7 @@ type ListBatchesParams struct {
 }
 
 func (q *Queries) ListBatches(ctx context.Context, arg ListBatchesParams) ([]Batch, error) {
-	rows, err := q.db.Query(ctx, listBatches, arg.TenantID, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listBatches, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -122,6 +121,9 @@ func (q *Queries) ListBatches(ctx context.Context, arg ListBatchesParams) ([]Bat
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -136,15 +138,15 @@ RETURNING id, tenant_id, product_id, batch_number, expiry_date, cost, created_at
 `
 
 type UpdateBatchParams struct {
-	ID          uuid.UUID      `json:"id"`
-	BatchNumber string         `json:"batch_number"`
-	ExpiryDate  time.Time      `json:"expiry_date"`
-	Cost        pgtype.Numeric `json:"cost"`
-	TenantID    uuid.UUID      `json:"tenant_id"`
+	ID          uuid.UUID `json:"id"`
+	BatchNumber string    `json:"batch_number"`
+	ExpiryDate  time.Time `json:"expiry_date"`
+	Cost        string    `json:"cost"`
+	TenantID    uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateBatch(ctx context.Context, arg UpdateBatchParams) (Batch, error) {
-	row := q.db.QueryRow(ctx, updateBatch,
+	row := q.db.QueryRowContext(ctx, updateBatch,
 		arg.ID,
 		arg.BatchNumber,
 		arg.ExpiryDate,

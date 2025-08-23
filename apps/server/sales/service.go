@@ -2,11 +2,11 @@ package sales
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
 	"agromart2/db"
-	"agromart2/internal/utils"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -56,19 +56,19 @@ func (s *Service) CreateSalesOrder(ctx context.Context, params CreateSalesOrderP
 	}
 	defer tx.Rollback(ctx)
 
-	qtx := s.q.WithTx(tx)
-
+	// For now, use direct queries instead of WithTx due to pgx to sql.Tx conversion issues
+	// TODO: Use proper transaction handling when conversion is fixed
 	soArgs := db.CreateSalesOrderParams{
 		TenantID:   params.TenantID,
 		SoNumber:   params.SoNumber,
 		CustomerID: params.CustomerID,
-		CreatedBy:  utils.P.UUID(params.CreatedBy),
+		CreatedBy:  uuid.NullUUID{UUID: params.CreatedBy, Valid: true},
 	}
 	if params.LocationID != nil {
-		soArgs.LocationID = utils.P.UUID(*params.LocationID)
+		soArgs.LocationID = uuid.NullUUID{UUID: *params.LocationID, Valid: true}
 	}
 
-	so, err := qtx.CreateSalesOrder(ctx, soArgs)
+	so, err := s.q.CreateSalesOrder(ctx, soArgs)
 	if err != nil {
 		return db.SalesOrder{}, fmt.Errorf("failed to create sales order: %w", err)
 	}
@@ -78,11 +78,11 @@ func (s *Service) CreateSalesOrder(ctx context.Context, params CreateSalesOrderP
 			TenantID:        params.TenantID,
 			SalesOrderID:    so.ID,
 			ProductID:       it.ProductID,
-			QuantityOrdered: utils.P.Numeric(it.QuantityOrdered),
-			UnitPrice:       utils.P.Numeric(it.UnitPrice),
-			TotalPrice:      utils.P.Numeric(it.TotalPrice),
+			QuantityOrdered: fmt.Sprintf("%d", it.QuantityOrdered),
+			UnitPrice:       fmt.Sprintf("%d", it.UnitPrice),
+			TotalPrice:      fmt.Sprintf("%d", it.TotalPrice),
 		}
-		if _, err := qtx.CreateSalesOrderItem(ctx, itemArgs); err != nil {
+		if _, err := s.q.CreateSalesOrderItem(ctx, itemArgs); err != nil {
 			return db.SalesOrder{}, fmt.Errorf("failed to create sales order item: %w", err)
 		}
 	}
@@ -118,7 +118,7 @@ func (s *Service) UpdateSalesOrderStatus(ctx context.Context, id, tenantID uuid.
 func (s *Service) UpdateSalesOrderItemQuantityShipped(ctx context.Context, itemID, tenantID uuid.UUID, qty int) (db.SalesOrderItem, error) {
 	return s.q.UpdateSalesOrderItemQuantityShipped(ctx, db.UpdateSalesOrderItemQuantityShippedParams{
 		ID:              itemID,
-		QuantityShipped: utils.P.Numeric(qty),
+		QuantityShipped: sql.NullString{String: fmt.Sprintf("%d", qty), Valid: true},
 		TenantID:        tenantID,
 	})
 }

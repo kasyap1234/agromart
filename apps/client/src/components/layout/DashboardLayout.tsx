@@ -24,7 +24,7 @@ function DashboardLayout({ children, title }: DashboardLayoutProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     );
@@ -35,7 +35,7 @@ function DashboardLayout({ children, title }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen bg-neutral-50">
+    <div className="flex h-screen bg-neutral-50 dark:bg-neutral-900">
       {/* Sidebar */}
       <Sidebar />
 

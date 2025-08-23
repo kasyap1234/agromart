@@ -7,9 +7,9 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const checkCustomerExists = `-- name: CheckCustomerExists :one
@@ -25,7 +25,7 @@ type CheckCustomerExistsParams struct {
 }
 
 func (q *Queries) CheckCustomerExists(ctx context.Context, arg CheckCustomerExistsParams) (bool, error) {
-	row := q.db.QueryRow(ctx, checkCustomerExists, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, checkCustomerExists, arg.ID, arg.TenantID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -37,7 +37,7 @@ WHERE tenant_id = $1
 `
 
 func (q *Queries) CountCustomers(ctx context.Context, tenantID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countCustomers, tenantID)
+	row := q.db.QueryRowContext(ctx, countCustomers, tenantID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -50,17 +50,17 @@ RETURNING id, tenant_id, name, contact_person, email, phone, address, payment_mo
 `
 
 type CreateCustomerParams struct {
-	TenantID      uuid.UUID   `json:"tenant_id"`
-	Name          string      `json:"name"`
-	ContactPerson pgtype.Text `json:"contact_person"`
-	Email         pgtype.Text `json:"email"`
-	Phone         pgtype.Text `json:"phone"`
-	Address       pgtype.Text `json:"address"`
-	PaymentMode   pgtype.Text `json:"payment_mode"`
+	TenantID      uuid.UUID      `json:"tenant_id"`
+	Name          string         `json:"name"`
+	ContactPerson sql.NullString `json:"contact_person"`
+	Email         sql.NullString `json:"email"`
+	Phone         sql.NullString `json:"phone"`
+	Address       sql.NullString `json:"address"`
+	PaymentMode   sql.NullString `json:"payment_mode"`
 }
 
 func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error) {
-	row := q.db.QueryRow(ctx, createCustomer,
+	row := q.db.QueryRowContext(ctx, createCustomer,
 		arg.TenantID,
 		arg.Name,
 		arg.ContactPerson,
@@ -98,7 +98,7 @@ type DeactivateCustomerParams struct {
 }
 
 func (q *Queries) DeactivateCustomer(ctx context.Context, arg DeactivateCustomerParams) error {
-	_, err := q.db.Exec(ctx, deactivateCustomer, arg.ID, arg.TenantID)
+	_, err := q.db.ExecContext(ctx, deactivateCustomer, arg.ID, arg.TenantID)
 	return err
 }
 
@@ -113,7 +113,7 @@ type GetCustomerByIDParams struct {
 }
 
 func (q *Queries) GetCustomerByID(ctx context.Context, arg GetCustomerByIDParams) (Customer, error) {
-	row := q.db.QueryRow(ctx, getCustomerByID, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, getCustomerByID, arg.ID, arg.TenantID)
 	var i Customer
 	err := row.Scan(
 		&i.ID,
@@ -142,7 +142,7 @@ type GetCustomerByNameParams struct {
 }
 
 func (q *Queries) GetCustomerByName(ctx context.Context, arg GetCustomerByNameParams) (Customer, error) {
-	row := q.db.QueryRow(ctx, getCustomerByName, arg.TenantID, arg.Name)
+	row := q.db.QueryRowContext(ctx, getCustomerByName, arg.TenantID, arg.Name)
 	var i Customer
 	err := row.Scan(
 		&i.ID,
@@ -174,7 +174,7 @@ type ListActiveCustomersParams struct {
 }
 
 func (q *Queries) ListActiveCustomers(ctx context.Context, arg ListActiveCustomersParams) ([]Customer, error) {
-	rows, err := q.db.Query(ctx, listActiveCustomers, arg.TenantID, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listActiveCustomers, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -198,6 +198,9 @@ func (q *Queries) ListActiveCustomers(ctx context.Context, arg ListActiveCustome
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -219,7 +222,7 @@ type ListCustomersParams struct {
 }
 
 func (q *Queries) ListCustomers(ctx context.Context, arg ListCustomersParams) ([]Customer, error) {
-	rows, err := q.db.Query(ctx, listCustomers, arg.TenantID, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listCustomers, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -243,6 +246,9 @@ func (q *Queries) ListCustomers(ctx context.Context, arg ListCustomersParams) ([
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -265,7 +271,7 @@ type SearchCustomersParams struct {
 }
 
 func (q *Queries) SearchCustomers(ctx context.Context, arg SearchCustomersParams) ([]Customer, error) {
-	rows, err := q.db.Query(ctx, searchCustomers,
+	rows, err := q.db.QueryContext(ctx, searchCustomers,
 		arg.TenantID,
 		arg.Name,
 		arg.Limit,
@@ -295,6 +301,9 @@ func (q *Queries) SearchCustomers(ctx context.Context, arg SearchCustomersParams
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -309,19 +318,19 @@ RETURNING id, tenant_id, name, contact_person, email, phone, address, payment_mo
 `
 
 type UpdateCustomerParams struct {
-	ID            uuid.UUID   `json:"id"`
-	Name          string      `json:"name"`
-	ContactPerson pgtype.Text `json:"contact_person"`
-	Email         pgtype.Text `json:"email"`
-	Phone         pgtype.Text `json:"phone"`
-	Address       pgtype.Text `json:"address"`
-	PaymentMode   pgtype.Text `json:"payment_mode"`
-	IsActive      pgtype.Bool `json:"is_active"`
-	TenantID      uuid.UUID   `json:"tenant_id"`
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	ContactPerson sql.NullString `json:"contact_person"`
+	Email         sql.NullString `json:"email"`
+	Phone         sql.NullString `json:"phone"`
+	Address       sql.NullString `json:"address"`
+	PaymentMode   sql.NullString `json:"payment_mode"`
+	IsActive      sql.NullBool   `json:"is_active"`
+	TenantID      uuid.UUID      `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (Customer, error) {
-	row := q.db.QueryRow(ctx, updateCustomer,
+	row := q.db.QueryRowContext(ctx, updateCustomer,
 		arg.ID,
 		arg.Name,
 		arg.ContactPerson,

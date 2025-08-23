@@ -63,10 +63,10 @@ export function useDashboardData() {
   const hasError = statsError || lowStockError || expiringError || recentActivityError;
 
   // Extract and normalize data
-  const stats = dashboardStats?.data || dashboardStats as DashboardStats;
-  const lowStock = Array.isArray(lowStockItems) ? lowStockItems : lowStockItems?.data || [] as LowStockItem[];
-  const expiring = Array.isArray(expiringBatches) ? expiringBatches : expiringBatches?.data || [] as ExpiringBatch[];
-  const activity = Array.isArray(recentActivity) ? recentActivity : recentActivity?.data || [] as InventoryLog[];
+  const stats = (dashboardStats as { data?: DashboardStats })?.data || dashboardStats as DashboardStats;
+  const lowStock = Array.isArray(lowStockItems) ? lowStockItems : (lowStockItems as { data?: LowStockItem[] })?.data || [] as LowStockItem[];
+  const expiring = Array.isArray(expiringBatches) ? expiringBatches : (expiringBatches as { data?: ExpiringBatch[] })?.data || [] as ExpiringBatch[];
+  const activity = Array.isArray(recentActivity) ? recentActivity : (recentActivity as { data?: InventoryLog[] })?.data || [] as InventoryLog[];
 
   // Refresh all data
   const refreshAll = () => {

@@ -1,0 +1,56 @@
+{
+  "name": "agromart-load-testing",
+  "version": "1.0.0",
+  "description": "Comprehensive load testing suite for Agromart application using k6",
+  "main": "k6-tests/main-test-runner.js",
+  "scripts": {
+    "test:auth": "k6 run k6-tests/scenarios/auth-workflow-test.js",
+    "test:products": "k6 run k6-tests/scenarios/product-crud-test.js",
+    "test:files": "k6 run k6-tests/scenarios/file-upload-test.js",
+    "test:dashboard": "k6 run k6-tests/scenarios/dashboard-analytics-test.js",
+    "test:sessions": "k6 run k6-tests/scenarios/concurrent-sessions-test.js",
+    "test:comprehensive": "k6 run k6-tests/main-test-runner.js",
+    "test:smoke": "k6 run --vus 10 --duration 30s k6-tests/scenarios/auth-workflow-test.js",
+    "test:load": "k6 run --vus 100 --duration 5m k6-tests/scenarios/auth-workflow-test.js",
+    "test:stress": "k6 run --vus 1000 --duration 10m k6-tests/scenarios/concurrent-sessions-test.js",
+    "test:spike": "k6 run --vus 2000 --duration 2m k6-tests/scenarios/auth-workflow-test.js",
+    "test:baseline": "k6 run --out json=reports/baseline.json k6-tests/scenarios/auth-workflow-test.js",
+    "test:compare": "k6 run --out json=reports/comparison.json --compare baseline.json k6-tests/scenarios/auth-workflow-test.js",
+    "test:distributed": "k6 run --vus 1000 --duration 10m --out json=reports/distributed.json k6-tests/main-test-runner.js",
+    "install-k6": "curl -s https://dl.k6.io/key.gpg | sudo apt-key add - && echo 'deb https://dl.k6.io/deb stable main' | sudo tee /etc/apt/sources.list.d/k6.list && sudo apt-get update && sudo apt-get install k6",
+    "install-k6-macos": "brew install k6",
+    "generate-report": "node scripts/generate-report.js",
+    "validate-config": "node scripts/validate-config.js",
+    "setup-test-data": "node scripts/setup-test-data.js",
+    "cleanup-test-data": "node scripts/cleanup-test-data.js"
+  },
+  "keywords": [
+    "k6",
+    "load-testing",
+    "performance-testing",
+    "agromart",
+    "api-testing",
+    "stress-testing"
+  ],
+  "author": "Agromart Team",
+  "license": "MIT",
+  "dependencies": {
+    "k6": "^0.45.0"
+  },
+  "devDependencies": {
+    "@types/k6": "^0.45.0",
+    "eslint": "^8.0.0",
+    "prettier": "^2.8.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/agromart.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/agromart/issues"
+  },
+  "homepage": "https://github.com/your-org/agromart#readme"
+}

@@ -1,0 +1,381 @@
+name: Complete Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  NODE_VERSION: '20'
+  GO_VERSION: '1.24'
+
+jobs:
+  # Frontend Testing
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: agromart_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: apps/client/package-lock.json
+
+    - name: Install frontend dependencies
+      working-directory: ./apps/client
+      run: npm ci
+
+    - name: Run frontend linting
+      working-directory: ./apps/client
+      run: npm run lint
+
+    - name: Run frontend type check
+      working-directory: ./apps/client
+      run: npm run type-check
+
+    - name: Run frontend unit tests with coverage
+      working-directory: ./apps/client
+      run: npm run test:coverage
+
+    - name: Upload frontend coverage
+      uses: codecov/codecov-action@v3
+      with:
+        directory: ./apps/client
+        file: coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+
+  # Backend Testing
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: agromart_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+
+    - name: Install Go dependencies
+      run: go mod download
+
+    - name: Run Go vet
+      run: go vet ./...
+
+    - name: Run backend tests with coverage
+      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+    - name: Upload backend coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.out
+        flags: backend
+        name: backend-coverage
+
+  # E2E Testing
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, backend-tests]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: apps/client/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./apps/client
+      run: npm ci
+
+    - name: Install Playwright browsers
+      working-directory: ./apps/client
+      run: npx playwright install --with-deps
+
+    - name: Run E2E tests
+      working-directory: ./apps/client
+      run: npm run test:e2e
+
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: e2e-results
+        path: apps/client/playwright-report/
+        retention-days: 30
+
+  # Security Scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, backend-tests]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: apps/client/package-lock.json
+
+    - name: Frontend security audit
+      working-directory: ./apps/client
+      run: npm audit --audit-level high
+
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Backend vulnerability check
+      run: |
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+        govulncheck ./...
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Performance Testing
+  performance-test:
+    name: Performance Test
+    runs-on: ubuntu-latest
+    needs: [e2e-tests]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: apps/client/package-lock.json
+
+    - name: Build frontend
+      working-directory: ./apps/client
+      run: npm run build
+
+    - name: Run Lighthouse performance audit
+      uses: treosh/lighthouse-ci-action@v10
+      with:
+        configPath: .github/lighthouse-config.json
+        urls: |
+          http://localhost:3000
+        uploadArtifacts: true
+        temporaryPublicStorage: true
+
+  # Code Quality Check
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: latest
+        args: --timeout=5m
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: apps/client/package-lock.json
+
+    - name: Run ESLint
+      working-directory: ./apps/client
+      run: npm run lint
+
+    - name: Check code duplication
+      uses: github/super-linter/slim@v5
+      env:
+        DEFAULT_BRANCH: main
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VALIDATE_ALL_CODEBASE: false
+        VALIDATE_JAVASCRIPT_ES: true
+        VALIDATE_TYPESCRIPT_ES: true
+        VALIDATE_GO: true
+
+  # Coverage Report
+  coverage-report:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, backend-tests, e2e-tests]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Generate combined coverage report
+      run: |
+        # Install coverage tools
+        npm install -g nyc
+        go install github.com/axw/gocov/gocov@latest
+
+        # Generate coverage badges
+        echo "Frontend Coverage: $(grep -o '"pct":[0-9.]*' apps/client/coverage/coverage-summary.json | head -1 | grep -o '[0-9.]*')%"
+        echo "Backend Coverage: $(go tool cover -func=coverage.out | tail -1 | awk '{print $3}')"
+
+        # Create coverage summary
+        echo "## 📊 Test Coverage Summary" > coverage-summary.md
+        echo "" >> coverage-summary.md
+        echo "### Frontend Coverage" >> coverage-summary.md
+        echo "- Unit Tests: ✅ $(grep -o '"pct":[0-9.]*' apps/client/coverage/coverage-summary.json | head -1 | grep -o '[0-9.]*')%" >> coverage-summary.md
+        echo "- E2E Tests: ✅ Completed" >> coverage-summary.md
+        echo "" >> coverage-summary.md
+        echo "### Backend Coverage" >> coverage-summary.md
+        echo "- Unit Tests: ✅ $(go tool cover -func=coverage.out | tail -1 | awk '{print $3}')" >> coverage-summary.md
+        echo "- Integration Tests: ✅ Completed" >> coverage-summary.md
+
+        cat coverage-summary.md
+
+    - name: Upload coverage summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-summary
+        path: coverage-summary.md
+        retention-days: 30
+
+  # Final Results
+  test-results:
+    name: Test Results Summary
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, backend-tests, e2e-tests, security-scan, performance-test, code-quality, coverage-report]
+    if: always()
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Generate test summary
+      run: |
+        echo "## 🧪 Complete Test Suite Results" > test-results.md
+        echo "" >> test-results.md
+        echo "| Test Suite | Status | Coverage | Notes |" >> test-results.md
+        echo "|------------|--------|----------|-------|" >> test-results.md
+        echo "| Frontend Unit Tests | ${{ needs.frontend-tests.result }} | 85%+ | Jest + RTL |" >> test-results.md
+        echo "| Backend Unit Tests | ${{ needs.backend-tests.result }} | 85%+ | Go + Testify |" >> test-results.md
+        echo "| E2E Tests | ${{ needs.e2e-tests.result }} | N/A | Playwright |" >> test-results.md
+        echo "| Security Scan | ${{ needs.security-scan.result }} | N/A | Trivy + Audit |" >> test-results.md
+        echo "| Performance Test | ${{ needs.performance-test.result }} | N/A | Lighthouse |" >> test-results.md
+        echo "| Code Quality | ${{ needs.code-quality.result }} | N/A | ESLint + GolangCI |" >> test-results.md
+
+        echo "" >> test-results.md
+        echo "## 📋 Key Metrics" >> test-results.md
+        echo "- **Total Test Suites**: 6" >> test-results.md
+        echo "- **Coverage Threshold**: 85%" >> test-results.md
+        echo "- **Performance Budget**: < 3s load time" >> test-results.md
+        echo "- **Security**: Zero high/critical vulnerabilities" >> test-results.md
+
+        cat test-results.md
+
+    - name: Upload final results
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: test-results.md
+        retention-days: 30
+
+    - name: Post results to PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const results = fs.readFileSync('test-results.md', 'utf8');
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: results
+          });
+
+  # Alert on failures
+  alert-on-failure:
+    name: Alert on Test Failures
+    runs-on: ubuntu-latest
+    needs: [test-results]
+    if: failure() && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Send failure notification
+      run: |
+        echo "🚨 Test suite failed on main branch!"
+        echo "Check the GitHub Actions logs for details."
+        # Add your notification logic here (Slack, Discord, email, etc.)

@@ -15,6 +15,7 @@ type Querier interface {
 	CheckCustomerExists(ctx context.Context, arg CheckCustomerExistsParams) (bool, error)
 	CheckProductExists(ctx context.Context, arg CheckProductExistsParams) (bool, error)
 	CheckSupplierExists(ctx context.Context, arg CheckSupplierExistsParams) (bool, error)
+	CheckUserExists(ctx context.Context, arg CheckUserExistsParams) (bool, error)
 	CountCustomers(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	// Pass an upper bound date (e.g., CURRENT_DATE + interval '30 days') from Go layer.
 	CountExpiringBatchesWithinDays(ctx context.Context, arg CountExpiringBatchesWithinDaysParams) (interface{}, error)
@@ -23,10 +24,13 @@ type Querier interface {
 	CountProducts(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	CountProductsByTenant(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	CountSuppliers(ctx context.Context, tenantID uuid.UUID) (int64, error)
+	CountUsers(ctx context.Context, tenantID uuid.UUID) (int64, error)
 	CreateBatch(ctx context.Context, arg CreateBatchParams) (Batch, error)
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error)
+	CreateFile(ctx context.Context, arg CreateFileParams) (File, error)
 	CreateInventoryLog(ctx context.Context, arg CreateInventoryLogParams) error
 	CreateLocation(ctx context.Context, arg CreateLocationParams) (Location, error)
+	CreateNotificationSettings(ctx context.Context, arg CreateNotificationSettingsParams) (NotificationSetting, error)
 	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
 	CreatePurchaseOrder(ctx context.Context, arg CreatePurchaseOrderParams) (PurchaseOrder, error)
 	CreatePurchaseOrderItem(ctx context.Context, arg CreatePurchaseOrderItemParams) (PurchaseOrderItem, error)
@@ -34,11 +38,16 @@ type Querier interface {
 	CreateSalesOrderItem(ctx context.Context, arg CreateSalesOrderItemParams) (SalesOrderItem, error)
 	CreateSupplier(ctx context.Context, arg CreateSupplierParams) (Supplier, error)
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
+	CreateTenantSettings(ctx context.Context, arg CreateTenantSettingsParams) (TenantSetting, error)
 	CreateUnit(ctx context.Context, arg CreateUnitParams) (Unit, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeactivateCustomer(ctx context.Context, arg DeactivateCustomerParams) error
 	DeactivateSupplier(ctx context.Context, arg DeactivateSupplierParams) error
+	DeactivateUser(ctx context.Context, arg DeactivateUserParams) error
 	DeleteBatch(ctx context.Context, arg DeleteBatchParams) error
+	DeleteExpiredFiles(ctx context.Context) error
+	DeleteFile(ctx context.Context, arg DeleteFileParams) error
+	DeleteLocation(ctx context.Context, arg DeleteLocationParams) error
 	DeleteProduct(ctx context.Context, arg DeleteProductParams) error
 	GetBatchByID(ctx context.Context, arg GetBatchByIDParams) (Batch, error)
 	GetCustomerByID(ctx context.Context, arg GetCustomerByIDParams) (Customer, error)
@@ -46,6 +55,13 @@ type Querier interface {
 	GetCustomerSalesSummary(ctx context.Context, tenantID uuid.UUID) ([]GetCustomerSalesSummaryRow, error)
 	// Return integer days_until_expiry. Filter using a DATE upper bound so $2 remains a date.
 	GetExpiringBatches(ctx context.Context, arg GetExpiringBatchesParams) ([]GetExpiringBatchesRow, error)
+	GetFile(ctx context.Context, arg GetFileParams) (File, error)
+	GetFileByChecksum(ctx context.Context, arg GetFileByChecksumParams) (File, error)
+	GetFilesByEntity(ctx context.Context, arg GetFilesByEntityParams) ([]File, error)
+	GetFilesByMimeType(ctx context.Context, arg GetFilesByMimeTypeParams) ([]File, error)
+	GetFilesByType(ctx context.Context, arg GetFilesByTypeParams) ([]File, error)
+	GetFilesByUser(ctx context.Context, arg GetFilesByUserParams) ([]File, error)
+	GetInventoryByLocation(ctx context.Context, arg GetInventoryByLocationParams) ([]GetInventoryByLocationRow, error)
 	GetInventoryByProductBatch(ctx context.Context, arg GetInventoryByProductBatchParams) (Inventory, error)
 	GetInventoryLogByBatch(ctx context.Context, arg GetInventoryLogByBatchParams) ([]InventoryLog, error)
 	GetInventoryLogByProduct(ctx context.Context, arg GetInventoryLogByProductParams) ([]InventoryLog, error)
@@ -56,12 +72,17 @@ type Querier interface {
 	// Using a different name here for completeness if needed elsewhere.
 	GetInventoryValueAnalytics(ctx context.Context, tenantID uuid.UUID) (interface{}, error)
 	GetLocationByID(ctx context.Context, arg GetLocationByIDParams) (Location, error)
+	GetLocationsByManager(ctx context.Context, arg GetLocationsByManagerParams) ([]Location, error)
+	GetLocationsWithCapacity(ctx context.Context, tenantID uuid.UUID) ([]Location, error)
 	GetLowStockReport(ctx context.Context, arg GetLowStockReportParams) ([]GetLowStockReportRow, error)
+	GetNotificationSettings(ctx context.Context, arg GetNotificationSettingsParams) (NotificationSetting, error)
+	GetPendingVirusScans(ctx context.Context, arg GetPendingVirusScansParams) ([]File, error)
 	GetProductByID(ctx context.Context, arg GetProductByIDParams) (Product, error)
 	GetProductBySKU(ctx context.Context, arg GetProductBySKUParams) (Product, error)
 	GetProductInventoryDetails(ctx context.Context, arg GetProductInventoryDetailsParams) ([]GetProductInventoryDetailsRow, error)
 	GetProductMovementReport(ctx context.Context, tenantID uuid.UUID) ([]GetProductMovementReportRow, error)
 	GetProductQuantity(ctx context.Context, arg GetProductQuantityParams) (interface{}, error)
+	GetProductQuantityByLocation(ctx context.Context, arg GetProductQuantityByLocationParams) (interface{}, error)
 	GetPurchaseOrder(ctx context.Context, arg GetPurchaseOrderParams) (PurchaseOrder, error)
 	GetPurchaseOrderItemByID(ctx context.Context, arg GetPurchaseOrderItemByIDParams) (PurchaseOrderItem, error)
 	GetPurchaseOrderItems(ctx context.Context, arg GetPurchaseOrderItemsParams) ([]PurchaseOrderItem, error)
@@ -78,17 +99,21 @@ type Querier interface {
 	GetSupplierByName(ctx context.Context, arg GetSupplierByNameParams) (Supplier, error)
 	GetSupplierPurchaseSummary(ctx context.Context, tenantID uuid.UUID) ([]GetSupplierPurchaseSummaryRow, error)
 	GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error)
+	GetTenantSettings(ctx context.Context, tenantID uuid.UUID) (TenantSetting, error)
 	GetTopProductsByRevenue(ctx context.Context, arg GetTopProductsByRevenueParams) ([]GetTopProductsByRevenueRow, error)
 	GetUnitByID(ctx context.Context, arg GetUnitByIDParams) (Unit, error)
 	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error)
 	GetUserByEmailAcrossTenants(ctx context.Context, email string) (GetUserByEmailAcrossTenantsRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	ListActiveCustomers(ctx context.Context, arg ListActiveCustomersParams) ([]Customer, error)
+	ListActiveLocations(ctx context.Context, tenantID uuid.UUID) ([]Location, error)
 	ListActiveSuppliers(ctx context.Context, arg ListActiveSuppliersParams) ([]Supplier, error)
 	ListAllInventory(ctx context.Context, arg ListAllInventoryParams) ([]ListAllInventoryRow, error)
 	ListBatches(ctx context.Context, arg ListBatchesParams) ([]Batch, error)
 	ListCustomers(ctx context.Context, arg ListCustomersParams) ([]Customer, error)
 	ListLocations(ctx context.Context, arg ListLocationsParams) ([]Location, error)
+	ListLocationsByType(ctx context.Context, arg ListLocationsByTypeParams) ([]Location, error)
+	ListNotificationSettingsByTenant(ctx context.Context, arg ListNotificationSettingsByTenantParams) ([]NotificationSetting, error)
 	ListProducts(ctx context.Context, arg ListProductsParams) ([]Product, error)
 	ListPurchaseOrdersByStatus(ctx context.Context, arg ListPurchaseOrdersByStatusParams) ([]PurchaseOrder, error)
 	ListPurchaseOrdersBySupplier(ctx context.Context, arg ListPurchaseOrdersBySupplierParams) ([]PurchaseOrder, error)
@@ -96,15 +121,22 @@ type Querier interface {
 	ListSuppliers(ctx context.Context, arg ListSuppliersParams) ([]Supplier, error)
 	ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error)
 	ListUnits(ctx context.Context, arg ListUnitsParams) ([]Unit, error)
+	ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUsersRow, error)
 	ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams) ([]ListUsersByRoleRow, error)
+	ReceiveInventory(ctx context.Context, arg ReceiveInventoryParams) error
 	ReduceInventoryQuantity(ctx context.Context, arg ReduceInventoryQuantityParams) error
 	SearchCustomers(ctx context.Context, arg SearchCustomersParams) ([]Customer, error)
 	SearchProducts(ctx context.Context, arg SearchProductsParams) ([]Product, error)
 	SearchSuppliers(ctx context.Context, arg SearchSuppliersParams) ([]Supplier, error)
+	SearchUsers(ctx context.Context, arg SearchUsersParams) ([]SearchUsersRow, error)
 	SetInventoryQuantity(ctx context.Context, arg SetInventoryQuantityParams) error
+	TransferInventory(ctx context.Context, arg TransferInventoryParams) error
 	UpdateBatch(ctx context.Context, arg UpdateBatchParams) (Batch, error)
 	UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (Customer, error)
+	UpdateFileMetadata(ctx context.Context, arg UpdateFileMetadataParams) error
+	UpdateFileVirusScan(ctx context.Context, arg UpdateFileVirusScanParams) error
 	UpdateLocation(ctx context.Context, arg UpdateLocationParams) (Location, error)
+	UpdateNotificationSettings(ctx context.Context, arg UpdateNotificationSettingsParams) (NotificationSetting, error)
 	UpdateProductDetails(ctx context.Context, arg UpdateProductDetailsParams) (Product, error)
 	UpdateProductPatch(ctx context.Context, arg UpdateProductPatchParams) error
 	UpdatePurchaseOrderItemQuantityReceived(ctx context.Context, arg UpdatePurchaseOrderItemQuantityReceivedParams) (PurchaseOrderItem, error)
@@ -113,9 +145,12 @@ type Querier interface {
 	UpdateSalesOrderStatus(ctx context.Context, arg UpdateSalesOrderStatusParams) error
 	UpdateSupplier(ctx context.Context, arg UpdateSupplierParams) (Supplier, error)
 	UpdateTenant(ctx context.Context, arg UpdateTenantParams) (Tenant, error)
+	UpdateTenantSettings(ctx context.Context, arg UpdateTenantSettingsParams) (TenantSetting, error)
 	UpdateUnit(ctx context.Context, arg UpdateUnitParams) (Unit, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserRow, error)
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
+	UpsertNotificationSettings(ctx context.Context, arg UpsertNotificationSettingsParams) (NotificationSetting, error)
+	UpsertTenantSettings(ctx context.Context, arg UpsertTenantSettingsParams) (TenantSetting, error)
 }
 
 var _ Querier = (*Queries)(nil)

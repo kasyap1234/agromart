@@ -7,9 +7,9 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const checkSupplierExists = `-- name: CheckSupplierExists :one
@@ -25,7 +25,7 @@ type CheckSupplierExistsParams struct {
 }
 
 func (q *Queries) CheckSupplierExists(ctx context.Context, arg CheckSupplierExistsParams) (bool, error) {
-	row := q.db.QueryRow(ctx, checkSupplierExists, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, checkSupplierExists, arg.ID, arg.TenantID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -37,7 +37,7 @@ WHERE tenant_id = $1
 `
 
 func (q *Queries) CountSuppliers(ctx context.Context, tenantID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countSuppliers, tenantID)
+	row := q.db.QueryRowContext(ctx, countSuppliers, tenantID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -46,22 +46,22 @@ func (q *Queries) CountSuppliers(ctx context.Context, tenantID uuid.UUID) (int64
 const createSupplier = `-- name: CreateSupplier :one
 INSERT INTO suppliers (tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active
+RETURNING id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active, logo_url
 `
 
 type CreateSupplierParams struct {
-	TenantID      uuid.UUID   `json:"tenant_id"`
-	Name          string      `json:"name"`
-	ContactPerson pgtype.Text `json:"contact_person"`
-	Email         pgtype.Text `json:"email"`
-	Phone         pgtype.Text `json:"phone"`
-	Address       pgtype.Text `json:"address"`
-	TaxID         pgtype.Text `json:"tax_id"`
-	PaymentMode   pgtype.Text `json:"payment_mode"`
+	TenantID      uuid.UUID      `json:"tenant_id"`
+	Name          string         `json:"name"`
+	ContactPerson sql.NullString `json:"contact_person"`
+	Email         sql.NullString `json:"email"`
+	Phone         sql.NullString `json:"phone"`
+	Address       sql.NullString `json:"address"`
+	TaxID         sql.NullString `json:"tax_id"`
+	PaymentMode   sql.NullString `json:"payment_mode"`
 }
 
 func (q *Queries) CreateSupplier(ctx context.Context, arg CreateSupplierParams) (Supplier, error) {
-	row := q.db.QueryRow(ctx, createSupplier,
+	row := q.db.QueryRowContext(ctx, createSupplier,
 		arg.TenantID,
 		arg.Name,
 		arg.ContactPerson,
@@ -83,6 +83,7 @@ func (q *Queries) CreateSupplier(ctx context.Context, arg CreateSupplierParams) 
 		&i.TaxID,
 		&i.PaymentMode,
 		&i.IsActive,
+		&i.LogoUrl,
 	)
 	return i, err
 }
@@ -99,12 +100,12 @@ type DeactivateSupplierParams struct {
 }
 
 func (q *Queries) DeactivateSupplier(ctx context.Context, arg DeactivateSupplierParams) error {
-	_, err := q.db.Exec(ctx, deactivateSupplier, arg.ID, arg.TenantID)
+	_, err := q.db.ExecContext(ctx, deactivateSupplier, arg.ID, arg.TenantID)
 	return err
 }
 
 const getSupplierByID = `-- name: GetSupplierByID :one
-SELECT id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active FROM suppliers
+SELECT id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active, logo_url FROM suppliers
 WHERE id = $1 AND tenant_id = $2
 `
 
@@ -114,7 +115,7 @@ type GetSupplierByIDParams struct {
 }
 
 func (q *Queries) GetSupplierByID(ctx context.Context, arg GetSupplierByIDParams) (Supplier, error) {
-	row := q.db.QueryRow(ctx, getSupplierByID, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, getSupplierByID, arg.ID, arg.TenantID)
 	var i Supplier
 	err := row.Scan(
 		&i.ID,
@@ -127,12 +128,13 @@ func (q *Queries) GetSupplierByID(ctx context.Context, arg GetSupplierByIDParams
 		&i.TaxID,
 		&i.PaymentMode,
 		&i.IsActive,
+		&i.LogoUrl,
 	)
 	return i, err
 }
 
 const getSupplierByName = `-- name: GetSupplierByName :one
-SELECT id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active FROM suppliers
+SELECT id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active, logo_url FROM suppliers
 WHERE tenant_id = $1 AND name = $2
 `
 
@@ -142,7 +144,7 @@ type GetSupplierByNameParams struct {
 }
 
 func (q *Queries) GetSupplierByName(ctx context.Context, arg GetSupplierByNameParams) (Supplier, error) {
-	row := q.db.QueryRow(ctx, getSupplierByName, arg.TenantID, arg.Name)
+	row := q.db.QueryRowContext(ctx, getSupplierByName, arg.TenantID, arg.Name)
 	var i Supplier
 	err := row.Scan(
 		&i.ID,
@@ -155,12 +157,13 @@ func (q *Queries) GetSupplierByName(ctx context.Context, arg GetSupplierByNamePa
 		&i.TaxID,
 		&i.PaymentMode,
 		&i.IsActive,
+		&i.LogoUrl,
 	)
 	return i, err
 }
 
 const listActiveSuppliers = `-- name: ListActiveSuppliers :many
-SELECT id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active FROM suppliers
+SELECT id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active, logo_url FROM suppliers
 WHERE tenant_id = $1 AND (is_active IS NULL OR is_active = true)
 ORDER BY name
 LIMIT $2 OFFSET $3
@@ -173,7 +176,7 @@ type ListActiveSuppliersParams struct {
 }
 
 func (q *Queries) ListActiveSuppliers(ctx context.Context, arg ListActiveSuppliersParams) ([]Supplier, error) {
-	rows, err := q.db.Query(ctx, listActiveSuppliers, arg.TenantID, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listActiveSuppliers, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -192,10 +195,14 @@ func (q *Queries) ListActiveSuppliers(ctx context.Context, arg ListActiveSupplie
 			&i.TaxID,
 			&i.PaymentMode,
 			&i.IsActive,
+			&i.LogoUrl,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -204,7 +211,7 @@ func (q *Queries) ListActiveSuppliers(ctx context.Context, arg ListActiveSupplie
 }
 
 const listSuppliers = `-- name: ListSuppliers :many
-SELECT id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active FROM suppliers
+SELECT id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active, logo_url FROM suppliers
 WHERE tenant_id = $1
 ORDER BY name
 LIMIT $2 OFFSET $3
@@ -217,7 +224,7 @@ type ListSuppliersParams struct {
 }
 
 func (q *Queries) ListSuppliers(ctx context.Context, arg ListSuppliersParams) ([]Supplier, error) {
-	rows, err := q.db.Query(ctx, listSuppliers, arg.TenantID, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listSuppliers, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -236,10 +243,14 @@ func (q *Queries) ListSuppliers(ctx context.Context, arg ListSuppliersParams) ([
 			&i.TaxID,
 			&i.PaymentMode,
 			&i.IsActive,
+			&i.LogoUrl,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -248,7 +259,7 @@ func (q *Queries) ListSuppliers(ctx context.Context, arg ListSuppliersParams) ([
 }
 
 const searchSuppliers = `-- name: SearchSuppliers :many
-SELECT id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active FROM suppliers
+SELECT id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active, logo_url FROM suppliers
 WHERE tenant_id = $1 AND name ILIKE $2
 ORDER BY name
 LIMIT $3 OFFSET $4
@@ -262,7 +273,7 @@ type SearchSuppliersParams struct {
 }
 
 func (q *Queries) SearchSuppliers(ctx context.Context, arg SearchSuppliersParams) ([]Supplier, error) {
-	rows, err := q.db.Query(ctx, searchSuppliers,
+	rows, err := q.db.QueryContext(ctx, searchSuppliers,
 		arg.TenantID,
 		arg.Name,
 		arg.Limit,
@@ -286,10 +297,14 @@ func (q *Queries) SearchSuppliers(ctx context.Context, arg SearchSuppliersParams
 			&i.TaxID,
 			&i.PaymentMode,
 			&i.IsActive,
+			&i.LogoUrl,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -301,24 +316,24 @@ const updateSupplier = `-- name: UpdateSupplier :one
 UPDATE suppliers
 SET name = $2, contact_person = $3, email = $4, phone = $5, address = $6, tax_id = $7, payment_mode = $8, is_active = $9
 WHERE id = $1 AND tenant_id = $10
-RETURNING id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active
+RETURNING id, tenant_id, name, contact_person, email, phone, address, tax_id, payment_mode, is_active, logo_url
 `
 
 type UpdateSupplierParams struct {
-	ID            uuid.UUID   `json:"id"`
-	Name          string      `json:"name"`
-	ContactPerson pgtype.Text `json:"contact_person"`
-	Email         pgtype.Text `json:"email"`
-	Phone         pgtype.Text `json:"phone"`
-	Address       pgtype.Text `json:"address"`
-	TaxID         pgtype.Text `json:"tax_id"`
-	PaymentMode   pgtype.Text `json:"payment_mode"`
-	IsActive      pgtype.Bool `json:"is_active"`
-	TenantID      uuid.UUID   `json:"tenant_id"`
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	ContactPerson sql.NullString `json:"contact_person"`
+	Email         sql.NullString `json:"email"`
+	Phone         sql.NullString `json:"phone"`
+	Address       sql.NullString `json:"address"`
+	TaxID         sql.NullString `json:"tax_id"`
+	PaymentMode   sql.NullString `json:"payment_mode"`
+	IsActive      sql.NullBool   `json:"is_active"`
+	TenantID      uuid.UUID      `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateSupplier(ctx context.Context, arg UpdateSupplierParams) (Supplier, error) {
-	row := q.db.QueryRow(ctx, updateSupplier,
+	row := q.db.QueryRowContext(ctx, updateSupplier,
 		arg.ID,
 		arg.Name,
 		arg.ContactPerson,
@@ -342,6 +357,7 @@ func (q *Queries) UpdateSupplier(ctx context.Context, arg UpdateSupplierParams) 
 		&i.TaxID,
 		&i.PaymentMode,
 		&i.IsActive,
+		&i.LogoUrl,
 	)
 	return i, err
 }

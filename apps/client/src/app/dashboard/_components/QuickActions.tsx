@@ -12,7 +12,7 @@ export default function QuickActions() {
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-1 gap-3">
-                    <Button asChild className="justify-start h-16 rounded-lg">
+                    <Button asChild className="justify-start h-16 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-200">
                         <Link href="/products/new" aria-label="Add product">
                             <div className="bg-primary/10 text-primary w-10 h-10 rounded-lg flex items-center justify-center mr-3">
                                 <Plus className="w-5 h-5" aria-hidden="true" />
@@ -26,7 +26,7 @@ export default function QuickActions() {
                         </Link>
                     </Button>
 
-                    <Button asChild variant="outline" className="justify-start h-16 rounded-lg">
+                    <Button asChild variant="outline" className="justify-start h-16 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-200">
                         <Link href="/inventory" aria-label="Add inventory">
                             <div className="bg-primary/10 text-primary w-10 h-10 rounded-lg flex items-center justify-center mr-3">
                                 <ArrowUp className="w-5 h-5" aria-hidden="true" />
@@ -40,7 +40,7 @@ export default function QuickActions() {
                         </Link>
                     </Button>
 
-                    <Button asChild variant="outline" className="justify-start h-16 rounded-lg">
+                    <Button asChild variant="outline" className="justify-start h-16 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-200">
                         <Link href="/purchase-orders" aria-label="Create purchase order">
                             <div className="bg-primary/10 text-primary w-10 h-10 rounded-lg flex items-center justify-center mr-3">
                                 <FileText className="w-5 h-5" aria-hidden="true" />

@@ -1,38 +1,72 @@
 -- name: AddInventoryQuantity :exec
-INSERT INTO inventory (tenant_id, product_id, batch_id, quantity)
-VALUES ($1, $2, $3, $4)
-ON CONFLICT (tenant_id, product_id, batch_id)
-DO UPDATE SET quantity = inventory.quantity + $4;
+INSERT INTO inventory (tenant_id, product_id, batch_id, location_id, quantity)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (tenant_id, product_id, batch_id, location_id)
+DO UPDATE SET quantity = inventory.quantity + $5;
 
 -- name: ReduceInventoryQuantity :exec
 UPDATE inventory
 SET quantity = quantity - $1
-WHERE tenant_id = $2 AND product_id = $3 AND batch_id = $4;
+WHERE tenant_id = $2 AND product_id = $3 AND batch_id = $4 AND location_id = $5;
 
 -- name: GetProductQuantity :one
 SELECT COALESCE(SUM(quantity), 0) AS total_quantity
 FROM inventory
 WHERE tenant_id = $1 AND product_id = $2;
 
+-- name: GetProductQuantityByLocation :one
+SELECT COALESCE(SUM(quantity), 0) AS total_quantity
+FROM inventory
+WHERE tenant_id = $1 AND product_id = $2 AND location_id = $3;
+
 -- name: GetProductInventoryDetails :many
-SELECT b.batch_number, b.expiry_date, i.quantity
+SELECT b.batch_number, b.expiry_date, i.quantity, l.name as location_name
 FROM inventory i
 JOIN batches b ON i.batch_id = b.id
+JOIN locations l ON i.location_id = l.id
 WHERE i.tenant_id = $1 AND i.product_id = $2
 ORDER BY b.expiry_date ASC;
 
 -- name: CreateInventoryLog :exec
-INSERT INTO inventory_log (tenant_id, product_id, batch_id, transaction_type, quantity_change, reference_id, notes)
-VALUES ($1, $2, $3, $4, $5, $6, $7);
+INSERT INTO inventory_log (tenant_id, product_id, batch_id, location_id, transaction_type, quantity_change, reference_id, notes)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 
 -- name: GetInventoryByProductBatch :one
 SELECT * FROM inventory
-WHERE tenant_id = $1 AND product_id = $2 AND batch_id = $3;
+WHERE tenant_id = $1 AND product_id = $2 AND batch_id = $3 AND location_id = $4;
 
 -- name: SetInventoryQuantity :exec
 UPDATE inventory
 SET quantity = $1
-WHERE tenant_id = $2 AND product_id = $3 AND batch_id = $4;
+WHERE tenant_id = $2 AND product_id = $3 AND batch_id = $4 AND location_id = $5;
+
+-- name: GetInventoryByLocation :many
+SELECT
+    i.id,
+    p.name AS product_name,
+    p.sku,
+    b.batch_number,
+    b.expiry_date,
+    i.quantity,
+    i.available_quantity,
+    u.abbreviation AS unit_abbreviation
+FROM inventory i
+JOIN products p ON i.product_id = p.id
+JOIN batches b ON i.batch_id = b.id
+JOIN units u ON p.unit_id = u.id
+WHERE i.tenant_id = $1 AND i.location_id = $2
+ORDER BY p.name, b.expiry_date;
+
+-- name: TransferInventory :exec
+UPDATE inventory
+SET quantity = quantity - $1, updated_at = NOW()
+WHERE tenant_id = $2 AND product_id = $3 AND batch_id = $4 AND location_id = $5;
+
+-- name: ReceiveInventory :exec
+INSERT INTO inventory (tenant_id, product_id, batch_id, location_id, quantity)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (tenant_id, product_id, batch_id, location_id)
+DO UPDATE SET quantity = inventory.quantity + $5;
 
 -- name: ListAllInventory :many
 SELECT

@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 
-	"agromart/db"
+	"agromart2/db"
 )
 
 // MockQueries is a mock implementation of the database queries

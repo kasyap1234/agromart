@@ -4,10 +4,12 @@ import useSWR from "swr";
 import Link from "next/link";
 import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { PlusIcon, Eye } from "lucide-react";
+import { PlusIcon, Eye, Pencil, Trash2 } from "lucide-react";
 import { apiClient } from "@/lib/api";
+import { toast } from "react-hot-toast";
 import { DataTable, Column } from "@/components/common/DataTable";
 import { EmptyState } from "@/components/common/EmptyState";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 interface Supplier {
   id: string;
@@ -22,6 +24,8 @@ export default function SuppliersPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState("");
+  const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const { data, error, isLoading, mutate } = useSWR(
     ["suppliers", page, limit, search],
@@ -39,8 +43,27 @@ export default function SuppliersPage() {
 
   const suppliers = useMemo(() => {
     if (!data) return [];
-    return Array.isArray(data) ? data : data?.data || [];
+    return Array.isArray(data) ? data : (data as any)?.data || [];
   }, [data]);
+
+  const handleDelete = async (supplier: Supplier) => {
+    try {
+      await apiClient.suppliers.delete(supplier.id);
+      toast.success('Supplier deleted successfully');
+      mutate(); // Refresh the list
+    } catch (err: any) {
+      const message = err?.response?.data?.message || err?.message || 'Failed to delete supplier';
+      toast.error(message);
+    } finally {
+      setDeletingSupplier(null);
+      setShowDeleteDialog(false);
+    }
+  };
+
+  const openDeleteDialog = (supplier: Supplier) => {
+    setDeletingSupplier(supplier);
+    setShowDeleteDialog(true);
+  };
 
   const columns: Column<Supplier>[] = [
     {
@@ -74,12 +97,29 @@ export default function SuppliersPage() {
   ];
 
   const renderActions = (supplier: Supplier) => (
-    <Button variant="ghost" size="sm" asChild>
-      <Link href={`/suppliers/${supplier.id}`}>
-        <Eye className="w-4 h-4 mr-2" />
-        View
-      </Link>
-    </Button>
+    <div className="flex space-x-1">
+      <Button variant="ghost" size="sm" asChild>
+        <Link href={`/suppliers/${supplier.id}`}>
+          <Eye className="w-4 h-4 mr-2" />
+          View
+        </Link>
+      </Button>
+      <Button variant="ghost" size="sm" asChild>
+        <Link href={`/suppliers/${supplier.id}/edit`}>
+          <Pencil className="w-4 h-4 mr-2" />
+          Edit
+        </Link>
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => openDeleteDialog(supplier)}
+        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+      >
+        <Trash2 className="w-4 h-4 mr-2" />
+        Delete
+      </Button>
+    </div>
   );
 
   const emptyState = (
@@ -128,6 +168,17 @@ export default function SuppliersPage() {
         }}
         actions={renderActions}
         emptyState={emptyState}
+      />
+
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Delete Supplier"
+        description={`Are you sure you want to delete "${deletingSupplier?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={() => deletingSupplier && handleDelete(deletingSupplier)}
       />
     </div>
   );

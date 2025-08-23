@@ -2,11 +2,11 @@ package purchase_orders
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
 	"agromart2/db"
-	"agromart2/internal/utils"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
@@ -66,21 +66,20 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, params C
 	}
 	defer tx.Rollback(ctx)
 
-	qtx := s.q.WithTx(tx)
-
+	// For now, use direct queries instead of WithTx due to pgx to sql.Tx conversion issues
 	// Create purchase order
 	poArgs := db.CreatePurchaseOrderParams{
 		TenantID:   params.TenantID,
 		PoNumber:   params.PONumber,
 		SupplierID: params.SupplierID,
-		CreatedBy:  utils.P.UUID(params.CreatedBy),
+		CreatedBy:  uuid.NullUUID{UUID: params.CreatedBy, Valid: true},
 	}
 
 	if params.LocationID != nil {
-		poArgs.LocationID = utils.P.UUID(*params.LocationID)
+		poArgs.LocationID = uuid.NullUUID{UUID: *params.LocationID, Valid: true}
 	}
 
-	po, err := qtx.CreatePurchaseOrder(ctx, poArgs)
+	po, err := s.q.CreatePurchaseOrder(ctx, poArgs)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create purchase order")
 		return db.PurchaseOrder{}, fmt.Errorf("failed to create purchase order: %w", err)
@@ -92,12 +91,12 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx context.Context, params C
 			TenantID:        params.TenantID,
 			PurchaseOrderID: po.ID,
 			ProductID:       item.ProductID,
-			QuantityOrdered: utils.P.Numeric(item.QuantityOrdered),
-			UnitCost:        utils.P.Numeric(item.UnitCost),
-			TotalCost:       utils.P.Numeric(item.TotalCost),
+			QuantityOrdered: fmt.Sprintf("%d", item.QuantityOrdered),
+			UnitCost:        fmt.Sprintf("%d", item.UnitCost),
+			TotalCost:       fmt.Sprintf("%d", item.TotalCost),
 		}
 
-		_, err := qtx.CreatePurchaseOrderItem(ctx, itemArgs)
+		_, err := s.q.CreatePurchaseOrderItem(ctx, itemArgs)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to create purchase order item")
 			return db.PurchaseOrder{}, fmt.Errorf("failed to create purchase order item: %w", err)
@@ -148,7 +147,7 @@ func (s *PurchaseOrderService) GetPurchaseOrderItems(ctx context.Context, purcha
 func (s *PurchaseOrderService) UpdatePurchaseOrderStatus(ctx context.Context, params UpdatePurchaseOrderStatusParams) error {
 	args := db.UpdatePurchaseOrderStatusParams{
 		Status:     params.Status,
-		ApprovedBy: utils.P.UUID(params.ApprovedBy),
+		ApprovedBy: uuid.NullUUID{UUID: params.ApprovedBy, Valid: true},
 		ID:         params.ID,
 		TenantID:   params.TenantID,
 	}
@@ -202,7 +201,7 @@ func (s *PurchaseOrderService) ListPurchaseOrdersBySupplier(ctx context.Context,
 func (s *PurchaseOrderService) UpdatePurchaseOrderItemQuantityReceived(ctx context.Context, itemID, tenantID uuid.UUID, quantityReceived int) (db.PurchaseOrderItem, error) {
 	args := db.UpdatePurchaseOrderItemQuantityReceivedParams{
 		ID:               itemID,
-		QuantityReceived: utils.P.Numeric(quantityReceived),
+		QuantityReceived: sql.NullString{String: fmt.Sprintf("%d", quantityReceived), Valid: true},
 		TenantID:         tenantID,
 	}
 
@@ -262,14 +261,13 @@ func (s *PurchaseOrderService) ReceivePurchaseOrder(ctx context.Context, purchas
 	}
 	defer tx.Rollback(ctx)
 
-	qtx := s.q.WithTx(tx)
-
+	// For now, use direct queries instead of WithTx due to pgx to sql.Tx conversion issues
 	// Update each item's received quantity
 	for _, item := range items {
 		// Update purchase order item
-		_, err := qtx.UpdatePurchaseOrderItemQuantityReceived(ctx, db.UpdatePurchaseOrderItemQuantityReceivedParams{
+		_, err := s.q.UpdatePurchaseOrderItemQuantityReceived(ctx, db.UpdatePurchaseOrderItemQuantityReceivedParams{
 			ID:               item.ItemID,
-			QuantityReceived: utils.P.Numeric(item.QuantityReceived),
+			QuantityReceived: sql.NullString{String: fmt.Sprintf("%d", item.QuantityReceived), Valid: true},
 			TenantID:         tenantID,
 		})
 		if err != nil {
@@ -278,25 +276,25 @@ func (s *PurchaseOrderService) ReceivePurchaseOrder(ctx context.Context, purchas
 
 		// Add to inventory if batch ID is provided
 		if item.BatchID != nil {
-			err = qtx.AddInventoryQuantity(ctx, db.AddInventoryQuantityParams{
+			err = s.q.AddInventoryQuantity(ctx, db.AddInventoryQuantityParams{
 				TenantID:  tenantID,
 				ProductID: item.ProductID,
 				BatchID:   *item.BatchID,
-				Quantity:  utils.P.Numeric(item.QuantityReceived),
+				Quantity:  fmt.Sprintf("%d", item.QuantityReceived),
 			})
 			if err != nil {
 				return fmt.Errorf("failed to add inventory: %w", err)
 			}
 
 			// Log inventory change
-			err = qtx.CreateInventoryLog(ctx, db.CreateInventoryLogParams{
+			err = s.q.CreateInventoryLog(ctx, db.CreateInventoryLogParams{
 				TenantID:        tenantID,
 				ProductID:       item.ProductID,
 				BatchID:         *item.BatchID,
 				TransactionType: "PURCHASE_RECEIVE",
-				QuantityChange:  utils.P.Numeric(item.QuantityReceived),
-				ReferenceID:     utils.P.UUID(purchaseOrderID),
-				Notes:           utils.P.Text(fmt.Sprintf("Received from PO: %s", purchaseOrderID)),
+				QuantityChange:  fmt.Sprintf("%d", item.QuantityReceived),
+				ReferenceID:     uuid.NullUUID{UUID: purchaseOrderID, Valid: true},
+				Notes:           sql.NullString{String: fmt.Sprintf("Received from PO: %s", purchaseOrderID), Valid: true},
 			})
 			if err != nil {
 				return fmt.Errorf("failed to log inventory change: %w", err)
@@ -305,9 +303,9 @@ func (s *PurchaseOrderService) ReceivePurchaseOrder(ctx context.Context, purchas
 	}
 
 	// Update purchase order status to RECEIVED
-	err = qtx.UpdatePurchaseOrderStatus(ctx, db.UpdatePurchaseOrderStatusParams{
+	err = s.q.UpdatePurchaseOrderStatus(ctx, db.UpdatePurchaseOrderStatusParams{
 		Status:     "RECEIVED",
-		ApprovedBy: utils.P.UUID(userID),
+		ApprovedBy: uuid.NullUUID{UUID: userID, Valid: true},
 		ID:         purchaseOrderID,
 		TenantID:   tenantID,
 	})

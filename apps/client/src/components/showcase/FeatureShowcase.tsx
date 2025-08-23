@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 export default function FeatureShowcase() {
-  const { addToast } = useToast();
+  const { toast } = useToast();
 
   const features = [
     {
@@ -90,10 +90,10 @@ export default function FeatureShowcase() {
       info: 'Here\'s some helpful information for you.'
     };
 
-    addToast({
-      type,
+    toast({
+      title: type.charAt(0).toUpperCase() + type.slice(1),
       description: messages[type],
-      duration: 3000
+      variant: type === 'error' ? 'destructive' : 'default'
     });
   };
 

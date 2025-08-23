@@ -2,15 +2,15 @@ package products
 
 import (
 	"context"
+	"database/sql"
+	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"agromart2/db"
-	"net/http"
 	"agromart2/internal/database"
 	"agromart2/internal/errors"
-	"agromart2/internal/pgconv"
-	"agromart2/internal/utils"
 	"github.com/rs/zerolog/log"
 )
 
@@ -83,18 +83,18 @@ func (s *ProductService) CreateProduct(ctx context.Context, params CreateProduct
 		Str("unit_id", params.UnitID.String()).
 		Msg("[DEV] products.CreateProduct params (pgconv)")
 
-	// Use explicit pgconv to ensure non-null mapping for provided ints/strings
+	// Use direct conversions for database/sql types
 	args := db.CreateProductParams{
 		TenantID:     params.TenantID,
 		Sku:          params.SKU,
 		Name:         params.Name,
-		Price:        pgconv.NumericFromInt(params.Price),
-		Description:  pgconv.TextFromString(params.Description),
-		ImageUrl:     pgconv.TextFromString(params.ImageURL),
-		Brand:        pgconv.TextFromString(params.Brand),
+		Price:        strconv.Itoa(params.Price),
+		Description:  sql.NullString{String: params.Description, Valid: params.Description != ""},
+		ImageUrl:     sql.NullString{String: params.ImageURL, Valid: params.ImageURL != ""},
+		Brand:        sql.NullString{String: params.Brand, Valid: params.Brand != ""},
 		UnitID:       params.UnitID,
-		PricePerUnit: pgconv.NumericFromInt(params.PricePerUnit),
-		GstPercent:   pgconv.NumericFromInt(params.GSTPercent),
+		PricePerUnit: sql.NullString{String: strconv.Itoa(params.PricePerUnit), Valid: true},
+		GstPercent:   sql.NullString{String: strconv.Itoa(params.GSTPercent), Valid: true},
 	}
 
 	product, err := s.q.CreateProduct(ctx, args)
@@ -222,15 +222,37 @@ func ToUpdateProductPatchParms(p ProductInputRequest, productID, tenantID uuid.U
 	return db.UpdateProductPatchParams{
 		ID:           productID,
 		TenantID:     tenantID,
-		Name:         pgconv.TextPtrFromString(p.Name),
-		Price:        pgconv.NumericPtrFromInt(p.Price),
-		Description:  pgconv.TextPtrFromString(p.Description),
-		ImageUrl:     pgconv.TextPtrFromString(p.ImageUrl),
-		Brand:        pgconv.TextPtrFromString(p.Brand),
-		PricePerUnit: pgconv.NumericPtrFromInt(p.PricePerUnit),
-		GstPercent:   pgconv.NumericPtrFromInt(p.GstPercent),
-		UnitID:       utils.P.UUIDPtr(p.UnitID),
+		Name:         stringPtrToNullString(p.Name),
+		Price:        intPtrToNullString(p.Price),
+		Description:  stringPtrToNullString(p.Description),
+		ImageUrl:     stringPtrToNullString(p.ImageUrl),
+		Brand:        stringPtrToNullString(p.Brand),
+		PricePerUnit: intPtrToNullString(p.PricePerUnit),
+		GstPercent:   intPtrToNullString(p.GstPercent),
+		UnitID:       uuidPtrToNullUUID(p.UnitID),
 	}
+}
+
+// Helper functions for converting pointers to sql.NullString/NullUUID
+func stringPtrToNullString(s *string) sql.NullString {
+	if s == nil {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{String: *s, Valid: true}
+}
+
+func intPtrToNullString(i *int) sql.NullString {
+	if i == nil {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{String: strconv.Itoa(*i), Valid: true}
+}
+
+func uuidPtrToNullUUID(u *uuid.UUID) uuid.NullUUID {
+	if u == nil {
+		return uuid.NullUUID{Valid: false}
+	}
+	return uuid.NullUUID{UUID: *u, Valid: true}
 }
 func (s *ProductService) PatchProduct(ctx context.Context, tenantID, productID uuid.UUID, patch ProductInputRequest) error {
 	params := ToUpdateProductPatchParms(patch, productID, tenantID)

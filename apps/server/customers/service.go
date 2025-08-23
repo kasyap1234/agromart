@@ -2,10 +2,10 @@ package customers
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"agromart2/db"
-	"agromart2/internal/utils"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
@@ -50,11 +50,11 @@ func (s *CustomerService) CreateCustomer(ctx context.Context, params CreateCusto
 	args := db.CreateCustomerParams{
 		TenantID:      params.TenantID,
 		Name:          params.Name,
-		ContactPerson: utils.P.Text(params.ContactPerson),
-		Email:         utils.P.Text(params.Email),
-		Phone:         utils.P.Text(params.Phone),
-		Address:       utils.P.Text(params.Address),
-		PaymentMode:   utils.P.Text(params.PaymentMode),
+		ContactPerson: sql.NullString{String: params.ContactPerson, Valid: params.ContactPerson != ""},
+		Email:         sql.NullString{String: params.Email, Valid: params.Email != ""},
+		Phone:         sql.NullString{String: params.Phone, Valid: params.Phone != ""},
+		Address:       sql.NullString{String: params.Address, Valid: params.Address != ""},
+		PaymentMode:   sql.NullString{String: params.PaymentMode, Valid: params.PaymentMode != ""},
 	}
 
 	customer, err := s.q.CreateCustomer(ctx, args)
@@ -121,12 +121,12 @@ func (s *CustomerService) UpdateCustomer(ctx context.Context, params UpdateCusto
 	args := db.UpdateCustomerParams{
 		ID:            params.ID,
 		Name:          params.Name,
-		ContactPerson: utils.P.Text(params.ContactPerson),
-		Email:         utils.P.Text(params.Email),
-		Phone:         utils.P.Text(params.Phone),
-		Address:       utils.P.Text(params.Address),
-		PaymentMode:   utils.P.Text(params.PaymentMode),
-		IsActive:      utils.P.Bool(params.IsActive),
+		ContactPerson: sql.NullString{String: params.ContactPerson, Valid: params.ContactPerson != ""},
+		Email:         sql.NullString{String: params.Email, Valid: params.Email != ""},
+		Phone:         sql.NullString{String: params.Phone, Valid: params.Phone != ""},
+		Address:       sql.NullString{String: params.Address, Valid: params.Address != ""},
+		PaymentMode:   sql.NullString{String: params.PaymentMode, Valid: params.PaymentMode != ""},
+		IsActive:      sql.NullBool{Bool: params.IsActive, Valid: true},
 		TenantID:      params.TenantID,
 	}
 

@@ -74,7 +74,7 @@ export default function RecentActivity({recentActivity=[]}: Props) {
                         {recentActivity.map((log) => {
                             const activityType = getActivityType(log.transaction_type);
                             return (
-                                <div key={log.id} className="flex items-start gap-3">
+                                <div key={log.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-200">
                                     <div className="flex-shrink-0 mt-1">
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getActivityColorClass(activityType)}`}>
                                             {getActivityIcon(activityType)}
@@ -93,9 +93,9 @@ export default function RecentActivity({recentActivity=[]}: Props) {
                         })}
                     </div>
                 ) : (
-                    <div className="text-center py-6">
-                        <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">
+                    <div className="text-center py-8 text-muted-foreground">
+                        <FileText className="w-8 h-8 mx-auto mb-2" />
+                        <p className="text-sm">
                             No recent activity
                         </p>
                     </div>

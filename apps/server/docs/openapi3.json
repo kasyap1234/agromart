@@ -1,0 +1,3545 @@
+
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AgroMart API",
+    "description": "# AgroMart API Documentation\n\nWelcome to the AgroMart API! This comprehensive REST API provides complete management capabilities for agricultural product inventory, suppliers, customers, sales orders, and analytics.\n\n## Key Features\n\n- **Multi-tenant architecture** with tenant isolation\n- **JWT-based authentication** with role-based access control\n- **File upload system** with MinIO integration\n- **Real-time analytics** and dashboard metrics\n- **Comprehensive inventory management**\n- **Purchase and sales order processing**\n- **Batch tracking and expiry management**\n\n## Authentication\n\nAll protected endpoints require JWT authentication. Include the token in the Authorization header:\n```\nAuthorization: Bearer <your-jwt-token>\n```\n\n## Rate Limiting\n\nAPI endpoints are rate-limited to protect against abuse. Current limits:\n- **Authenticated requests**: 1000 requests per hour\n- **File uploads**: 50 uploads per hour\n- **Search endpoints**: 100 requests per minute\n\n## Response Format\n\nAll responses follow a consistent format:\n```json\n{\n  \"success\": true,\n  \"data\": { ... },\n  \"message\": \"Operation completed successfully\",\n  \"pagination\": { ... } // for list endpoints\n}\n```\n\n## Error Handling\n\nError responses include detailed information:\n```json\n{\n  \"success\": false,\n  \"error\": {\n    \"code\": \"VALIDATION_ERROR\",\n    \"message\": \"Validation failed\",\n    \"details\": { ... }\n  }\n}\n```",
+    "version": "1.0.0",
+    "contact": {
+      "name": "AgroMart Support",
+      "email": "support@agromart.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/api",
+      "description": "Development server"
+    },
+    {
+      "url": "https://api.agromart.com/api",
+      "description": "Production server"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "auth",
+      "description": "Authentication and authorization endpoints"
+    },
+    {
+      "name": "products",
+      "description": "Product management and inventory"
+    },
+    {
+      "name": "suppliers",
+      "description": "Supplier management"
+    },
+    {
+      "name": "customers",
+      "description": "Customer management"
+    },
+    {
+      "name": "users",
+      "description": "User management and profiles"
+    },
+    {
+      "name": "sales",
+      "description": "Sales orders and transactions"
+    },
+    {
+      "name": "purchase-orders",
+      "description": "Purchase order management"
+    },
+    {
+      "name": "inventory",
+      "description": "Inventory tracking and management"
+    },
+    {
+      "name": "batches",
+      "description": "Batch tracking and expiry management"
+    },
+    {
+      "name": "analytics",
+      "description": "Analytics and reporting"
+    },
+    {
+      "name": "reports",
+      "description": "Generated reports and exports"
+    },
+    {
+      "name": "files",
+      "description": "File upload and management"
+    },
+    {
+      "name": "settings",
+      "description": "System settings and configuration"
+    },
+    {
+      "name": "health",
+      "description": "Health check and monitoring"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Health check",
+        "description": "Returns the health status of the API service",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "service": "agromart-api",
+                  "status": "ok",
+                  "timestamp": "2024-01-01T12:00:00Z",
+                  "version": "1.0.0"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Register new user and tenant",
+        "description": "Creates a new tenant and the first admin user within that tenant",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              },
+              "example": {
+                "company": "My Farm Co",
+                "email": "admin@myfarm.com",
+                "name": "John Farmer",
+                "password": "securepassword123",
+                "phone": "+1234567890"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User and tenant created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "User login",
+        "description": "Authenticates a user and returns access and refresh tokens",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "example": {
+                "email": "admin@myfarm.com",
+                "password": "securepassword123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "User logout",
+        "description": "Invalidates the current session (client-side token removal)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logout successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Refresh access token",
+        "description": "Generates a new access token using a valid refresh token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              },
+              "example": {
+                "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token refreshed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or expired refresh token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": ["auth"],
+        "summary": "Get current user",
+        "description": "Returns the authenticated user and tenant information",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/password/forgot": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Forgot password",
+        "description": "Initiates password reset process. Returns 200 to prevent user enumeration.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              },
+              "example": {
+                "email": "user@myfarm.com"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reset email sent (if email exists)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/password/reset": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Reset password",
+        "description": "Resets password using a stateless reset token containing the email claim",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              },
+              "example": {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "new_password": "newsecurepassword123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/password": {
+      "put": {
+        "tags": ["auth"],
+        "summary": "Update password",
+        "description": "Updates the authenticated user's password",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePasswordRequest"
+              },
+              "example": {
+                "current_password": "oldpassword123",
+                "new_password": "newpassword123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or current password incorrect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "tags": ["products"],
+        "summary": "List products",
+        "description": "Lists products with pagination support",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page (1-100)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Products list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductsListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["products"],
+        "summary": "Create product",
+        "description": "Creates a new product in the current tenant (requires admin/manager role)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProductRequest"
+              },
+              "example": {
+                "name": "Organic Tomatoes",
+                "sku": "TOM-ORG-001",
+                "price": 350,
+                "price_per_unit": 35,
+                "unit_id": "550e8400-e29b-41d4-a716-446655440001",
+                "description": "Fresh organic tomatoes",
+                "brand": "Farm Fresh",
+                "gst_percent": 5,
+                "image_url": "https://example.com/tomatoes.jpg"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/search": {
+      "get": {
+        "tags": ["products"],
+        "summary": "Search products",
+        "description": "Searches products by name or SKU",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Search query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page (1-100)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductsListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing search query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/units": {
+      "get": {
+        "tags": ["products"],
+        "summary": "List units",
+        "description": "Lists all available product units",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page (1-100)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Units list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitsListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "tags": ["products"],
+        "summary": "Get product",
+        "description": "Returns a product by ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Product ID (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid product ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["products"],
+        "summary": "Update product",
+        "description": "Applies partial update to a product (requires admin/manager role)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Product ID (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProductRequest"
+              },
+              "example": {
+                "name": "Updated Product Name",
+                "price": 400,
+                "description": "Updated description"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["products"],
+        "summary": "Delete product",
+        "description": "Soft deletes a product by ID (requires admin/manager role)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Product ID (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid product ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers": {
+      "get": {
+        "tags": ["customers"],
+        "summary": "List customers",
+        "description": "Lists customers with pagination support",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page (1-100)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customers list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomersListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["customers"],
+        "summary": "Create customer",
+        "description": "Creates a new customer in the current tenant (requires admin/manager role)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCustomerRequest"
+              },
+              "example": {
+                "name": "Green Valley Market",
+                "contact_person": "Sarah Johnson",
+                "email": "sarah@greenvalley.com",
+                "phone": "+1234567890",
+                "address": "123 Market Street, Farmville",
+                "payment_mode": "credit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Customer created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers/active": {
+      "get": {
+        "tags": ["customers"],
+        "summary": "List active customers",
+        "description": "Lists only active customers with pagination support",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page (1-100)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active customers list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomersListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers/search": {
+      "get": {
+        "tags": ["customers"],
+        "summary": "Search customers",
+        "description": "Searches customers by name",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Search query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page (1-100)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomersListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing search query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customers/{id}": {
+      "get": {
+        "tags": ["customers"],
+        "summary": "Get customer",
+        "description": "Returns a customer by ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Customer ID (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid customer ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Customer not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["customers"],
+        "summary": "Update customer",
+        "description": "Updates a customer by ID (requires admin/manager role)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Customer ID (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomerRequest"
+              },
+              "example": {
+                "name": "Updated Customer Name",
+                "contact_person": "Updated Contact",
+                "email": "updated@email.com",
+                "phone": "+1987654321",
+                "address": "Updated Address",
+                "payment_mode": "cash",
+                "is_active": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Customer updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Customer not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["customers"],
+        "summary": "Delete customer",
+        "description": "Soft deletes a customer by ID (requires admin/manager role)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Customer ID (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid customer ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Customer not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/suppliers": {
+      "get": {
+        "tags": ["suppliers"],
+        "summary": "List suppliers",
+        "description": "Lists suppliers with pagination support. Use active=true to only include active suppliers.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page (1-100)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Only active suppliers",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Suppliers list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuppliersListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["suppliers"],
+        "summary": "Create supplier",
+        "description": "Creates a new supplier in the current tenant (requires admin/manager role)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSupplierRequest"
+              },
+              "example": {
+                "name": "Fresh Produce Co",
+                "contact_person": "Mike Smith",
+                "email": "mike@freshproduce.com",
+                "phone": "+1234567890",
+                "address": "456 Supply Road, Agriculture City",
+                "payment_mode": "net30",
+                "tax_id": "TX123456789"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Supplier created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplierResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/suppliers/search": {
+      "get": {
+        "tags": ["suppliers"],
+        "summary": "Search suppliers",
+        "description": "Searches suppliers by name",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Search query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page (1-100)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuppliersListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing search query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/suppliers/{id}": {
+      "get": {
+        "tags": ["suppliers"],
+        "summary": "Get supplier",
+        "description": "Returns a supplier by ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Supplier ID (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Supplier details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplierResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid supplier ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Supplier not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["suppliers"],
+        "summary": "Update supplier",
+        "description": "Updates a supplier by ID (requires admin/manager role)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Supplier ID (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSupplierRequest"
+              },
+              "example": {
+                "name": "Updated Supplier Name",
+                "contact_person": "Updated Contact",
+                "email": "updated@supplier.com",
+                "phone": "+1987654321",
+                "address": "Updated Address",
+                "payment_mode": "net60",
+                "is_active": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Supplier updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplierResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Supplier not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["suppliers"],
+        "summary": "Delete supplier",
+        "description": "Soft deletes a supplier by ID (requires admin/manager role)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Supplier ID (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Supplier deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid supplier ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Supplier not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files/upload": {
+      "post": {
+        "tags": ["files"],
+        "summary": "Upload file",
+        "description": "Uploads a file to the system with metadata",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File to upload"
+                  },
+                  "entity_type": {
+                    "type": "string",
+                    "description": "Type of entity (e.g., 'product', 'supplier', 'customer')",
+                    "default": "general"
+                  },
+                  "entity_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Entity ID to associate file with"
+                  },
+                  "file_type": {
+                    "type": "string",
+                    "description": "File type category",
+                    "default": "general"
+                  }
+                },
+                "required": ["file", "entity_id"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or missing entity_id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "File too large (max 10MB)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files": {
+      "get": {
+        "tags": ["files"],
+        "summary": "List files",
+        "description": "Lists files for the current tenant with optional filtering",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_type",
+            "in": "query",
+            "description": "Filter by entity type",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entity_id",
+            "in": "query",
+            "description": "Filter by entity ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "file_type",
+            "in": "query",
+            "description": "Filter by file type",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page (1-100)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Files list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilesListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files/{id}": {
+      "get": {
+        "tags": ["files"],
+        "summary": "Get file info",
+        "description": "Returns file information and generates a signed URL",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "File ID (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "expiry",
+            "in": "query",
+            "description": "URL expiry duration (e.g., '1h', '30m')",
+            "schema": {
+              "type": "string",
+              "default": "1h"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File information with signed URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileInfoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "File not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["files"],
+        "summary": "Delete file",
+        "description": "Deletes a file from the system",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "File ID (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "File not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files/signed-url": {
+      "post": {
+        "tags": ["files"],
+        "summary": "Get signed upload URL",
+        "description": "Generates a signed URL for direct upload to storage",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignedURLRequest"
+              },
+              "example": {
+                "file_name": "product-image.jpg",
+                "content_type": "image/jpeg",
+                "entity_type": "product",
+                "entity_id": "550e8400-e29b-41d4-a716-446655440001",
+                "file_type": "image"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed upload URL generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedURLResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files/{id}/url": {
+      "get": {
+        "tags": ["files"],
+        "summary": "Get signed file URL",
+        "description": "Generates a signed URL for accessing a file",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "File ID (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "expiry",
+            "in": "query",
+            "description": "URL expiry duration (e.g., '1h', '30m')",
+            "schema": {
+              "type": "string",
+              "default": "1h"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signed file URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedFileURLResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "File not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string",
+            "example": "agromart-api"
+          },
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-01-01T12:00:00Z"
+          },
+          "version": {
+            "type": "string",
+            "example": "1.0.0"
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Operation completed successfully"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "VALIDATION_ERROR"
+              },
+              "message": {
+                "type": "string",
+                "example": "Validation failed"
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["company", "email", "name", "password", "phone"],
+        "properties": {
+          "company": {
+            "type": "string",
+            "description": "Company/tenant name",
+            "example": "My Farm Co"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User email address",
+            "example": "admin@myfarm.com"
+          },
+          "name": {
+            "type": "string",
+            "description": "Full name",
+            "example": "John Farmer"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8,
+            "description": "Password (minimum 8 characters)",
+            "example": "securepassword123"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number",
+            "example": "+1234567890"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User email address",
+            "example": "admin@myfarm.com"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "description": "User password",
+            "example": "securepassword123"
+          }
+        }
+      },
+      "RefreshTokenRequest": {
+        "type": "object",
+        "required": ["refresh_token"],
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "description": "Refresh token from login response",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        }
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "required": ["email"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User email address",
+            "example": "user@myfarm.com"
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "required": ["token", "new_password"],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Reset token from forgot password email",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          },
+          "new_password": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8,
+            "description": "New password (minimum 8 characters)",
+            "example": "newsecurepassword123"
+          }
+        }
+      },
+      "UpdatePasswordRequest": {
+        "type": "object",
+        "required": ["current_password", "new_password"],
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "format": "password",
+            "description": "Current password",
+            "example": "oldpassword123"
+          },
+          "new_password": {
+            "type": "string",
+            "format": "password",
+            "minLength": 8,
+            "description": "New password (minimum 8 characters)",
+            "example": "newpassword123"
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "user": {
+                "$ref": "#/components/schemas/User"
+              },
+              "token": {
+                "type": "string",
+                "description": "JWT access token",
+                "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              },
+              "refresh_token": {
+                "type": "string",
+                "description": "JWT refresh token",
+                "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              }
+            }
+          },
+          "message": {
+            "type": "string",
+            "example": "Login successful"
+          }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/UserWithTenant"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "User ID",
+            "example": "550e8400-e29b-41d4-a716-446655440001"
+          },
+          "name": {
+            "type": "string",
+            "description": "Full name",
+            "example": "John Farmer"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address",
+            "example": "john@myfarm.com"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number",
+            "example": "+1234567890"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["admin", "manager", "staff"],
+            "description": "User role",
+            "example": "admin"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Account status",
+            "example": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp",
+            "example": "2024-01-01T12:00:00Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp",
+            "example": "2024-01-01T12:00:00Z"
+          }
+        }
+      },
+      "UserWithTenant": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/User"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "tenant": {
+                "$ref": "#/components/schemas/Tenant"
+              }
+            }
+          }
+        ]
+      },
+      "Tenant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Tenant ID",
+            "example": "550e8400-e29b-41d4-a716-446655440002"
+          },
+          "name": {
+            "type": "string",
+            "description": "Company/tenant name",
+            "example": "My Farm Co"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Company email",
+            "example": "info@myfarm.com"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Company phone",
+            "example": "+1234567890"
+          },
+          "address": {
+            "type": "string",
+            "description": "Company address",
+            "example": "123 Farm Road, Agriculture City"
+          },
+          "registration_number": {
+            "type": "string",
+            "description": "Business registration number",
+            "example": "REG123456789"
+          }
+        }
+      },
+      "CreateProductRequest": {
+        "type": "object",
+        "required": ["name", "price", "sku"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Product name",
+            "example": "Organic Tomatoes"
+          },
+          "sku": {
+            "type": "string",
+            "description": "Stock Keeping Unit",
+            "example": "TOM-ORG-001"
+          },
+          "price": {
+            "type": "integer",
+            "description": "Price in cents (e.g., 350 = $3.50)",
+            "minimum": 0,
+            "example": 350
+          },
+          "price_per_unit": {
+            "type": "integer",
+            "description": "Price per unit in cents",
+            "minimum": 0,
+            "example": 35
+          },
+          "unit_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unit ID",
+            "example": "550e8400-e29b-41d4-a716-446655440003"
+          },
+          "description": {
+            "type": "string",
+            "description": "Product description",
+            "example": "Fresh organic tomatoes"
+          },
+          "brand": {
+            "type": "string",
+            "description": "Product brand",
+            "example": "Farm Fresh"
+          },
+          "gst_percent": {
+            "type": "integer",
+            "description": "GST percentage",
+            "minimum": 0,
+            "maximum": 100,
+            "example": 5
+          },
+          "image_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Product image URL",
+            "example": "https://example.com/tomatoes.jpg"
+          }
+        }
+      },
+      "UpdateProductRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Product name",
+            "example": "Updated Product Name"
+          },
+          "price": {
+            "type": "integer",
+            "description": "Price in cents",
+            "minimum": 0,
+            "example": 400
+          },
+          "price_per_unit": {
+            "type": "integer",
+            "description": "Price per unit in cents",
+            "minimum": 0,
+            "example": 40
+          },
+          "unit_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unit ID",
+            "example": "550e8400-e29b-41d4-a716-446655440003"
+          },
+          "description": {
+            "type": "string",
+            "description": "Product description",
+            "example": "Updated description"
+          },
+          "brand": {
+            "type": "string",
+            "description": "Product brand",
+            "example": "Updated Brand"
+          },
+          "gst_percent": {
+            "type": "integer",
+            "description": "GST percentage",
+            "minimum": 0,
+            "maximum": 100,
+            "example": 8
+          },
+          "image_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Product image URL",
+            "example": "https://example.com/updated.jpg"
+          }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Product ID",
+            "example": "550e8400-e29b-41d4-a716-446655440004"
+          },
+          "name": {
+            "type": "string",
+            "description": "Product name",
+            "example": "Organic Tomatoes"
+          },
+          "sku": {
+            "type": "string",
+            "description": "Stock Keeping Unit",
+            "example": "TOM-ORG-001"
+          },
+          "price": {
+            "type": "integer",
+            "description": "Price in cents",
+            "example": 350
+          },
+          "price_per_unit": {
+            "type": "integer",
+            "description": "Price per unit in cents",
+            "example": 35
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Unit"
+          },
+          "description": {
+            "type": "string",
+            "description": "Product description",
+            "example": "Fresh organic tomatoes"
+          },
+          "brand": {
+            "type": "string",
+            "description": "Product brand",
+            "example": "Farm Fresh"
+          },
+          "gst_percent": {
+            "type": "integer",
+            "description": "GST percentage",
+            "example": 5
+          },
+          "image_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Product image URL",
+            "example": "https://example.com/tomatoes.jpg"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Product status",
+            "example": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp",
+            "example": "2024-01-01T12:00:00Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp",
+            "example": "2024-01-01T12:00:00Z"
+          }
+        }
+      },
+      "ProductResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/Product"
+          },
+          "message": {
+            "type": "string",
+            "example": "Product retrieved successfully"
+          }
+        }
+      },
+      "ProductsListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "Unit": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unit ID",
+            "example": "550e8400-e29b-41d4-a716-446655440005"
+          },
+          "name": {
+            "type": "string",
+            "description": "Unit name",
+            "example": "Kilogram"
+          },
+          "symbol": {
+            "type": "string",
+            "description": "Unit symbol",
+            "example": "kg"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Unit status",
+            "example": true
+          }
+        }
+      },
+      "UnitsListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Unit"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "CreateCustomerRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Customer name",
+            "example": "Green Valley Market"
+          },
+          "contact_person": {
+            "type": "string",
+            "description": "Contact person name",
+            "example": "Sarah Johnson"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address",
+            "example": "sarah@greenvalley.com"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number",
+            "example": "+1234567890"
+          },
+          "address": {
+            "type": "string",
+            "description": "Customer address",
+            "example": "123 Market Street, Farmville"
+          },
+          "payment_mode": {
+            "type": "string",
+            "description": "Payment mode",
+            "example": "credit"
+          }
+        }
+      },
+      "UpdateCustomerRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Customer name",
+            "example": "Updated Customer Name"
+          },
+          "contact_person": {
+            "type": "string",
+            "description": "Contact person name",
+            "example": "Updated Contact"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address",
+            "example": "updated@email.com"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number",
+            "example": "+1987654321"
+          },
+          "address": {
+            "type": "string",
+            "description": "Customer address",
+            "example": "Updated Address"
+          },
+          "payment_mode": {
+            "type": "string",
+            "description": "Payment mode",
+            "example": "cash"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Customer status",
+            "example": true
+          }
+        }
+      },
+      "Customer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Customer ID",
+            "example": "550e8400-e29b-41d4-a716-446655440006"
+          },
+          "name": {
+            "type": "string",
+            "description": "Customer name",
+            "example": "Green Valley Market"
+          },
+          "contact_person": {
+            "type": "string",
+            "description": "Contact person name",
+            "example": "Sarah Johnson"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address",
+            "example": "sarah@greenvalley.com"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number",
+            "example": "+1234567890"
+          },
+          "address": {
+            "type": "string",
+            "description": "Customer address",
+            "example": "123 Market Street, Farmville"
+          },
+          "payment_mode": {
+            "type": "string",
+            "description": "Payment mode",
+            "example": "credit"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Customer status",
+            "example": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp",
+            "example": "2024-01-01T12:00:00Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp",
+            "example": "2024-01-01T12:00:00Z"
+          }
+        }
+      },
+      "CustomerResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/Customer"
+          },
+          "message": {
+            "type": "string",
+            "example": "Customer retrieved successfully"
+          }
+        }
+      },
+      "CustomersListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Customer"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "CreateSupplierRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Supplier name",
+            "example": "Fresh Produce Co"
+          },
+          "contact_person": {
+            "type": "string",
+            "description": "Contact person name",
+            "example": "Mike Smith"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address",
+            "example": "mike@freshproduce.com"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number",
+            "example": "+1234567890"
+          },
+          "address": {
+            "type": "string",
+            "description": "Supplier address",
+            "example": "456 Supply Road, Agriculture City"
+          },
+          "payment_mode": {
+            "type": "string",
+            "description": "Payment mode",
+            "example": "net30"
+          },
+          "tax_id": {
+            "type": "string",
+            "description": "Tax identification number",
+            "example": "TX123456789"
+          }
+        }
+      },
+      "UpdateSupplierRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Supplier name",
+            "example": "Updated Supplier Name"
+          },
+          "contact_person": {
+            "type": "string",
+            "description": "Contact person name",
+            "example": "Updated Contact"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address",
+            "example": "updated@supplier.com"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number",
+            "example": "+1987654321"
+          },
+          "address": {
+            "type": "string",
+            "description": "Supplier address",
+            "example": "Updated Address"
+          },
+          "payment_mode": {
+            "type": "string",
+            "description": "Payment mode",
+            "example": "net60"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Supplier status",
+            "example": true
+          },
+          "tax_id": {
+            "type": "string",
+            "description": "Tax identification number",
+            "example": "TX987654321"
+          }
+        }
+      },
+      "Supplier": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Supplier ID",
+            "example": "550e8400-e29b-41d4-a716-446655440007"
+          },
+          "name": {
+            "type": "string",
+            "description": "Supplier name",
+            "example": "Fresh Produce Co"
+          },
+          "contact_person": {
+            "type": "string",
+            "description": "Contact person name",
+            "example": "Mike Smith"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address",
+            "example": "mike@freshproduce.com"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Phone number",
+            "example": "+1234567890"
+          },
+          "address": {
+            "type": "string",
+            "description": "Supplier address",
+            "example": "456 Supply Road, Agriculture City"
+          },
+          "payment_mode": {
+            "type": "string",
+            "description": "Payment mode",
+            "example": "net30"
+          },
+          "tax_id": {
+            "type": "string",
+            "description": "Tax identification number",
+            "example": "TX123456789"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Supplier status",
+            "example": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp",
+            "example": "2024-01-01T12:00:00Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp",
+            "example": "2024-01-01T12:00:00Z"
+          }
+        }
+      },
+      "SupplierResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/Supplier"
+          },
+          "message": {
+            "type": "string",
+            "example": "Supplier retrieved successfully"
+          }
+        }
+      },
+      "SuppliersListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Supplier"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "SignedURLRequest": {
+        "type": "object",
+        "required": ["file_name", "entity_id"],
+        "properties": {
+          "file_name": {
+            "type": "string",
+            "description": "Name of the file",
+            "example": "product-image.jpg"
+          },
+          "content_type": {
+            "type": "string",
+            "description": "MIME type of the file",
+            "example": "image/jpeg"
+          },
+          "entity_type": {
+            "type": "string",
+            "description": "Type of entity (product, supplier, customer, etc.)",
+            "example": "product"
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Entity ID to associate file with",
+            "example": "550e8400-e29b-41d4-a716-446655440001"
+          },
+          "file_type": {
+            "type": "string",
+            "description": "File type category",
+            "example": "image"
+          }
+        }
+      },
+      "SignedURLResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "upload_url": {
+                "type": "string",
+                "description": "Signed upload URL",
+                "example": "https://minio.example.com/bucket/..."
+              },
+              "object_key": {
+                "type": "string",
+                "description": "Object key in storage",
+                "example": "product/550e8400-e29b-41d4-a716-446655440001/image.jpg"
+              },
+              "content_type": {
+                "type": "string",
+                "description": "Content type",
+                "example": "image/jpeg"
+              }
+            }
+          },
+          "message": {
+            "type": "string",
+            "example": "Signed upload URL generated successfully"
+          }
+        }
+      },
+      "SignedFileURLResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "file_url": {
+                "type": "string",
+                "description": "Signed file URL",
+                "example": "https://minio.example.com/bucket/..."
+              },
+              "expiry": {
+                "type": "string",
+                "description": "URL expiry duration",
+                "example": "1h0m0s"
+              }
+            }
+          },
+          "message": {
+            "type": "string",
+            "example": "Signed file URL generated successfully"
+          }
+        }
+      },
+      "FileUploadResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "file_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "File ID",
+                "example": "550e8400-e29b-41d4-a716-446655440008"
+              },
+              "file_name": {
+                "type": "string",
+                "description": "Original file name",
+                "example": "product-image.jpg"
+              },
+              "file_path": {
+                "type": "string",
+                "description": "File path in storage",
+                "example": "product/550e8400-e29b-41d4-a716-446655440001/image.jpg"
+              },
+              "file_url": {
+                "type": "string",
+                "description": "File access URL",
+                "example": "https://minio.example.com/bucket/product/..."
+              },
+              "file_size": {
+                "type": "integer",
+                "description": "File size in bytes",
+                "example": 1024000
+              }
+            }
+          },
+          "message": {
+            "type": "string",
+            "example": "File uploaded successfully"
+          }
+        }
+      },
+      "FileInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "File ID",
+            "example": "550e8400-e29b-41d4-a716-446655440008"
+          },
+          "file_name": {
+            "type": "string",
+            "description": "Original file name",
+            "example": "product-image.jpg"
+          },
+          "file_path": {
+            "type": "string",
+            "description": "File path in storage",
+            "example": "product/550e8400-e29b-41d4-a716-446655440001/image.jpg"
+          },
+          "file_size": {
+            "type": "integer",
+            "description": "File size in bytes",
+            "example": 1024000
+          },
+          "content_type": {
+            "type": "string",
+            "description": "File content type",
+            "example": "image/jpeg"
+          },
+          "entity_type": {
+            "type": "string",
+            "description": "Associated entity type",
+            "example": "product"
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Associated entity ID",
+            "example": "550e8400-e29b-41d4-a716-446655440001"
+          },
+          "file_type": {
+            "type": "string",
+            "description": "File type category",
+            "example": "image"
+          },
+          "uploaded_by": {
+            "type": "string",
+            "format": "uuid",
+            "description": "User who uploaded the file",
+            "example": "550e8400-e29b-41d4-a716-446655440009"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Upload timestamp",
+            "example": "2024-01-01T12:00:00Z"
+          }
+        }
+      },
+      "FileInfoResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "file_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "File ID",
+                "example": "550e8400-e29b-41d4-a716-446655440008"
+              },
+              "file_url": {
+                "type": "string",
+                "description": "Signed file URL",
+                "example": "https://minio.example.com/bucket/..."
+              },
+              "expiry": {
+                "type": "string",
+                "description": "URL expiry duration",
+                "example": "1h0m0s"
+              }
+            }
+          }
+        }
+      },
+      "FilesListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileInfo"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "description": "Current page number",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Items per page",
+            "example": 20
+          },
+          "total": {
+            "type": "integer",
+            "description": "Total number of items",
+            "example": 150
+          },
+          "pages": {
+            "type": "integer",
+            "description": "Total number of pages",
+            "example": 8
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "Whether there are more pages",
+            "example": true
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token obtained from login"
+      }
+    }
+  }
+}

@@ -5,42 +5,76 @@
 package db
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Batch struct {
-	ID          uuid.UUID      `json:"id"`
-	TenantID    uuid.UUID      `json:"tenant_id"`
-	ProductID   uuid.UUID      `json:"product_id"`
-	BatchNumber string         `json:"batch_number"`
-	ExpiryDate  time.Time      `json:"expiry_date"`
-	Cost        pgtype.Numeric `json:"cost"`
-	CreatedAt   time.Time      `json:"created_at"`
+	ID          uuid.UUID `json:"id"`
+	TenantID    uuid.UUID `json:"tenant_id"`
+	ProductID   uuid.UUID `json:"product_id"`
+	BatchNumber string    `json:"batch_number"`
+	ExpiryDate  time.Time `json:"expiry_date"`
+	Cost        string    `json:"cost"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type Customer struct {
-	ID            uuid.UUID   `json:"id"`
-	TenantID      uuid.UUID   `json:"tenant_id"`
-	Name          string      `json:"name"`
-	ContactPerson pgtype.Text `json:"contact_person"`
-	Email         pgtype.Text `json:"email"`
-	Phone         pgtype.Text `json:"phone"`
-	Address       pgtype.Text `json:"address"`
-	PaymentMode   pgtype.Text `json:"payment_mode"`
-	IsActive      pgtype.Bool `json:"is_active"`
-	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at"`
+	ID            uuid.UUID      `json:"id"`
+	TenantID      uuid.UUID      `json:"tenant_id"`
+	Name          string         `json:"name"`
+	ContactPerson sql.NullString `json:"contact_person"`
+	Email         sql.NullString `json:"email"`
+	Phone         sql.NullString `json:"phone"`
+	Address       sql.NullString `json:"address"`
+	PaymentMode   sql.NullString `json:"payment_mode"`
+	IsActive      sql.NullBool   `json:"is_active"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+}
+
+type File struct {
+	ID                 uuid.UUID      `json:"id"`
+	TenantID           uuid.UUID      `json:"tenant_id"`
+	OriginalName       string         `json:"original_name"`
+	FileName           string         `json:"file_name"`
+	FilePath           string         `json:"file_path"`
+	FileSize           int64          `json:"file_size"`
+	MimeType           string         `json:"mime_type"`
+	FileType           string         `json:"file_type"`
+	EntityType         string         `json:"entity_type"`
+	EntityID           uuid.UUID      `json:"entity_id"`
+	Width              sql.NullInt32  `json:"width"`
+	Height             sql.NullInt32  `json:"height"`
+	CompressionApplied sql.NullBool   `json:"compression_applied"`
+	VirusScanned       sql.NullBool   `json:"virus_scanned"`
+	VirusScanStatus    sql.NullString `json:"virus_scan_status"`
+	Checksum           sql.NullString `json:"checksum"`
+	BucketName         string         `json:"bucket_name"`
+	ObjectKey          string         `json:"object_key"`
+	IsPublic           sql.NullBool   `json:"is_public"`
+	UploadedBy         uuid.NullUUID  `json:"uploaded_by"`
+	ExpiresAt          sql.NullTime   `json:"expires_at"`
+	CreatedAt          time.Time      `json:"created_at"`
+	UpdatedAt          time.Time      `json:"updated_at"`
 }
 
 type Inventory struct {
-	ID        uuid.UUID      `json:"id"`
-	TenantID  uuid.UUID      `json:"tenant_id"`
-	ProductID uuid.UUID      `json:"product_id"`
-	BatchID   uuid.UUID      `json:"batch_id"`
-	Quantity  pgtype.Numeric `json:"quantity"`
+	ID                uuid.UUID      `json:"id"`
+	TenantID          uuid.UUID      `json:"tenant_id"`
+	ProductID         uuid.UUID      `json:"product_id"`
+	BatchID           uuid.UUID      `json:"batch_id"`
+	LocationID        uuid.UUID      `json:"location_id"`
+	Quantity          string         `json:"quantity"`
+	ReservedQuantity  string         `json:"reserved_quantity"`
+	AvailableQuantity sql.NullString `json:"available_quantity"`
+	MinStockLevel     sql.NullString `json:"min_stock_level"`
+	MaxStockLevel     sql.NullString `json:"max_stock_level"`
+	LastCountedAt     sql.NullTime   `json:"last_counted_at"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
 }
 
 type InventoryLog struct {
@@ -48,29 +82,53 @@ type InventoryLog struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	ProductID       uuid.UUID      `json:"product_id"`
 	BatchID         uuid.UUID      `json:"batch_id"`
+	LocationID      uuid.UUID      `json:"location_id"`
 	TransactionType string         `json:"transaction_type"`
-	QuantityChange  pgtype.Numeric `json:"quantity_change"`
+	QuantityChange  string         `json:"quantity_change"`
 	TransactionDate time.Time      `json:"transaction_date"`
-	Notes           pgtype.Text    `json:"notes"`
-	ReferenceID     pgtype.UUID    `json:"reference_id"`
+	Notes           sql.NullString `json:"notes"`
+	ReferenceID     uuid.NullUUID  `json:"reference_id"`
 }
 
 type Location struct {
-	ID           uuid.UUID   `json:"id"`
-	TenantID     uuid.UUID   `json:"tenant_id"`
-	Name         string      `json:"name"`
-	Address      pgtype.Text `json:"address"`
-	City         pgtype.Text `json:"city"`
-	State        pgtype.Text `json:"state"`
-	PostalCode   pgtype.Text `json:"postal_code"`
-	Country      pgtype.Text `json:"country"`
-	Phone        pgtype.Text `json:"phone"`
-	Email        pgtype.Text `json:"email"`
-	LocationType string      `json:"location_type"`
-	IsActive     bool        `json:"is_active"`
-	Notes        pgtype.Text `json:"notes"`
-	CreatedAt    time.Time   `json:"created_at"`
-	UpdatedAt    time.Time   `json:"updated_at"`
+	ID                    uuid.UUID      `json:"id"`
+	TenantID              uuid.UUID      `json:"tenant_id"`
+	Name                  string         `json:"name"`
+	Address               sql.NullString `json:"address"`
+	City                  sql.NullString `json:"city"`
+	State                 sql.NullString `json:"state"`
+	PostalCode            sql.NullString `json:"postal_code"`
+	Country               sql.NullString `json:"country"`
+	Phone                 sql.NullString `json:"phone"`
+	Email                 sql.NullString `json:"email"`
+	LocationType          string         `json:"location_type"`
+	Capacity              sql.NullString `json:"capacity"`
+	CapacityUnit          sql.NullString `json:"capacity_unit"`
+	ManagerID             uuid.NullUUID  `json:"manager_id"`
+	OperatingHours        sql.NullString `json:"operating_hours"`
+	TemperatureControlled bool           `json:"temperature_controlled"`
+	SecurityLevel         sql.NullString `json:"security_level"`
+	IsActive              bool           `json:"is_active"`
+	Notes                 sql.NullString `json:"notes"`
+	CreatedAt             time.Time      `json:"created_at"`
+	UpdatedAt             time.Time      `json:"updated_at"`
+}
+
+type NotificationSetting struct {
+	ID                 uuid.UUID    `json:"id"`
+	TenantID           uuid.UUID    `json:"tenant_id"`
+	UserID             uuid.UUID    `json:"user_id"`
+	EmailNotifications sql.NullBool `json:"email_notifications"`
+	SmsNotifications   sql.NullBool `json:"sms_notifications"`
+	PushNotifications  sql.NullBool `json:"push_notifications"`
+	LowStockAlerts     sql.NullBool `json:"low_stock_alerts"`
+	ExpiryAlerts       sql.NullBool `json:"expiry_alerts"`
+	OrderUpdates       sql.NullBool `json:"order_updates"`
+	PaymentReminders   sql.NullBool `json:"payment_reminders"`
+	MarketingEmails    sql.NullBool `json:"marketing_emails"`
+	WeeklyReports      sql.NullBool `json:"weekly_reports"`
+	CreatedAt          time.Time    `json:"created_at"`
+	UpdatedAt          time.Time    `json:"updated_at"`
 }
 
 type Product struct {
@@ -78,36 +136,36 @@ type Product struct {
 	TenantID     uuid.UUID      `json:"tenant_id"`
 	Sku          string         `json:"sku"`
 	Name         string         `json:"name"`
-	Price        pgtype.Numeric `json:"price"`
-	Description  pgtype.Text    `json:"description"`
-	ImageUrl     pgtype.Text    `json:"image_url"`
-	Brand        pgtype.Text    `json:"brand"`
+	Price        string         `json:"price"`
+	Description  sql.NullString `json:"description"`
+	ImageUrl     sql.NullString `json:"image_url"`
+	Brand        sql.NullString `json:"brand"`
 	UnitID       uuid.UUID      `json:"unit_id"`
-	PricePerUnit pgtype.Numeric `json:"price_per_unit"`
-	GstPercent   pgtype.Numeric `json:"gst_percent"`
+	PricePerUnit sql.NullString `json:"price_per_unit"`
+	GstPercent   sql.NullString `json:"gst_percent"`
 	CreatedAt    time.Time      `json:"created_at"`
 }
 
 type PurchaseOrder struct {
-	ID                   uuid.UUID          `json:"id"`
-	TenantID             uuid.UUID          `json:"tenant_id"`
-	PoNumber             string             `json:"po_number"`
-	SupplierID           uuid.UUID          `json:"supplier_id"`
-	LocationID           pgtype.UUID        `json:"location_id"`
-	OrderDate            time.Time          `json:"order_date"`
-	ExpectedDeliveryDate pgtype.Date        `json:"expected_delivery_date"`
-	ActualDeliveryDate   pgtype.Date        `json:"actual_delivery_date"`
-	TotalAmount          pgtype.Numeric     `json:"total_amount"`
-	TaxAmount            pgtype.Numeric     `json:"tax_amount"`
-	DiscountAmount       pgtype.Numeric     `json:"discount_amount"`
-	FinalAmount          pgtype.Numeric     `json:"final_amount"`
-	Status               string             `json:"status"`
-	Notes                pgtype.Text        `json:"notes"`
-	CreatedBy            pgtype.UUID        `json:"created_by"`
-	ApprovedBy           pgtype.UUID        `json:"approved_by"`
-	ApprovedAt           pgtype.Timestamptz `json:"approved_at"`
-	CreatedAt            time.Time          `json:"created_at"`
-	UpdatedAt            time.Time          `json:"updated_at"`
+	ID                   uuid.UUID      `json:"id"`
+	TenantID             uuid.UUID      `json:"tenant_id"`
+	PoNumber             string         `json:"po_number"`
+	SupplierID           uuid.UUID      `json:"supplier_id"`
+	LocationID           uuid.NullUUID  `json:"location_id"`
+	OrderDate            time.Time      `json:"order_date"`
+	ExpectedDeliveryDate sql.NullTime   `json:"expected_delivery_date"`
+	ActualDeliveryDate   sql.NullTime   `json:"actual_delivery_date"`
+	TotalAmount          string         `json:"total_amount"`
+	TaxAmount            sql.NullString `json:"tax_amount"`
+	DiscountAmount       sql.NullString `json:"discount_amount"`
+	FinalAmount          string         `json:"final_amount"`
+	Status               string         `json:"status"`
+	Notes                sql.NullString `json:"notes"`
+	CreatedBy            uuid.NullUUID  `json:"created_by"`
+	ApprovedBy           uuid.NullUUID  `json:"approved_by"`
+	ApprovedAt           sql.NullTime   `json:"approved_at"`
+	CreatedAt            time.Time      `json:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at"`
 }
 
 type PurchaseOrderItem struct {
@@ -115,38 +173,38 @@ type PurchaseOrderItem struct {
 	TenantID         uuid.UUID      `json:"tenant_id"`
 	PurchaseOrderID  uuid.UUID      `json:"purchase_order_id"`
 	ProductID        uuid.UUID      `json:"product_id"`
-	BatchID          pgtype.UUID    `json:"batch_id"`
-	QuantityOrdered  pgtype.Numeric `json:"quantity_ordered"`
-	QuantityReceived pgtype.Numeric `json:"quantity_received"`
-	UnitCost         pgtype.Numeric `json:"unit_cost"`
-	TotalCost        pgtype.Numeric `json:"total_cost"`
-	TaxPercent       pgtype.Numeric `json:"tax_percent"`
-	DiscountPercent  pgtype.Numeric `json:"discount_percent"`
-	Notes            pgtype.Text    `json:"notes"`
+	BatchID          uuid.NullUUID  `json:"batch_id"`
+	QuantityOrdered  string         `json:"quantity_ordered"`
+	QuantityReceived sql.NullString `json:"quantity_received"`
+	UnitCost         string         `json:"unit_cost"`
+	TotalCost        string         `json:"total_cost"`
+	TaxPercent       sql.NullString `json:"tax_percent"`
+	DiscountPercent  sql.NullString `json:"discount_percent"`
+	Notes            sql.NullString `json:"notes"`
 	CreatedAt        time.Time      `json:"created_at"`
 	UpdatedAt        time.Time      `json:"updated_at"`
 }
 
 type SalesOrder struct {
-	ID                   uuid.UUID          `json:"id"`
-	TenantID             uuid.UUID          `json:"tenant_id"`
-	SoNumber             string             `json:"so_number"`
-	CustomerID           uuid.UUID          `json:"customer_id"`
-	LocationID           pgtype.UUID        `json:"location_id"`
-	OrderDate            time.Time          `json:"order_date"`
-	ExpectedDeliveryDate pgtype.Date        `json:"expected_delivery_date"`
-	ActualDeliveryDate   pgtype.Date        `json:"actual_delivery_date"`
-	TotalAmount          pgtype.Numeric     `json:"total_amount"`
-	TaxAmount            pgtype.Numeric     `json:"tax_amount"`
-	DiscountAmount       pgtype.Numeric     `json:"discount_amount"`
-	FinalAmount          pgtype.Numeric     `json:"final_amount"`
-	Status               string             `json:"status"`
-	Notes                pgtype.Text        `json:"notes"`
-	CreatedBy            pgtype.UUID        `json:"created_by"`
-	ApprovedBy           pgtype.UUID        `json:"approved_by"`
-	ApprovedAt           pgtype.Timestamptz `json:"approved_at"`
-	CreatedAt            time.Time          `json:"created_at"`
-	UpdatedAt            time.Time          `json:"updated_at"`
+	ID                   uuid.UUID      `json:"id"`
+	TenantID             uuid.UUID      `json:"tenant_id"`
+	SoNumber             string         `json:"so_number"`
+	CustomerID           uuid.UUID      `json:"customer_id"`
+	LocationID           uuid.NullUUID  `json:"location_id"`
+	OrderDate            time.Time      `json:"order_date"`
+	ExpectedDeliveryDate sql.NullTime   `json:"expected_delivery_date"`
+	ActualDeliveryDate   sql.NullTime   `json:"actual_delivery_date"`
+	TotalAmount          string         `json:"total_amount"`
+	TaxAmount            sql.NullString `json:"tax_amount"`
+	DiscountAmount       sql.NullString `json:"discount_amount"`
+	FinalAmount          string         `json:"final_amount"`
+	Status               string         `json:"status"`
+	Notes                sql.NullString `json:"notes"`
+	CreatedBy            uuid.NullUUID  `json:"created_by"`
+	ApprovedBy           uuid.NullUUID  `json:"approved_by"`
+	ApprovedAt           sql.NullTime   `json:"approved_at"`
+	CreatedAt            time.Time      `json:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at"`
 }
 
 type SalesOrderItem struct {
@@ -154,40 +212,60 @@ type SalesOrderItem struct {
 	TenantID        uuid.UUID      `json:"tenant_id"`
 	SalesOrderID    uuid.UUID      `json:"sales_order_id"`
 	ProductID       uuid.UUID      `json:"product_id"`
-	BatchID         pgtype.UUID    `json:"batch_id"`
-	QuantityOrdered pgtype.Numeric `json:"quantity_ordered"`
-	QuantityShipped pgtype.Numeric `json:"quantity_shipped"`
-	UnitPrice       pgtype.Numeric `json:"unit_price"`
-	TotalPrice      pgtype.Numeric `json:"total_price"`
-	TaxPercent      pgtype.Numeric `json:"tax_percent"`
-	DiscountPercent pgtype.Numeric `json:"discount_percent"`
-	Notes           pgtype.Text    `json:"notes"`
+	BatchID         uuid.NullUUID  `json:"batch_id"`
+	QuantityOrdered string         `json:"quantity_ordered"`
+	QuantityShipped sql.NullString `json:"quantity_shipped"`
+	UnitPrice       string         `json:"unit_price"`
+	TotalPrice      string         `json:"total_price"`
+	TaxPercent      sql.NullString `json:"tax_percent"`
+	DiscountPercent sql.NullString `json:"discount_percent"`
+	Notes           sql.NullString `json:"notes"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
 type Supplier struct {
-	ID            uuid.UUID   `json:"id"`
-	TenantID      uuid.UUID   `json:"tenant_id"`
-	Name          string      `json:"name"`
-	ContactPerson pgtype.Text `json:"contact_person"`
-	Email         pgtype.Text `json:"email"`
-	Phone         pgtype.Text `json:"phone"`
-	Address       pgtype.Text `json:"address"`
-	TaxID         pgtype.Text `json:"tax_id"`
-	PaymentMode   pgtype.Text `json:"payment_mode"`
-	IsActive      pgtype.Bool `json:"is_active"`
+	ID            uuid.UUID      `json:"id"`
+	TenantID      uuid.UUID      `json:"tenant_id"`
+	Name          string         `json:"name"`
+	ContactPerson sql.NullString `json:"contact_person"`
+	Email         sql.NullString `json:"email"`
+	Phone         sql.NullString `json:"phone"`
+	Address       sql.NullString `json:"address"`
+	TaxID         sql.NullString `json:"tax_id"`
+	PaymentMode   sql.NullString `json:"payment_mode"`
+	IsActive      sql.NullBool   `json:"is_active"`
+	LogoUrl       sql.NullString `json:"logo_url"`
 }
 
 type Tenant struct {
-	ID                 uuid.UUID   `json:"id"`
-	Name               string      `json:"name"`
-	Email              string      `json:"email"`
-	Phone              string      `json:"phone"`
-	Address            pgtype.Text `json:"address"`
-	RegistrationNumber pgtype.Text `json:"registration_number"`
-	IsActive           bool        `json:"is_active"`
-	CreatedAt          time.Time   `json:"created_at"`
+	ID                 uuid.UUID      `json:"id"`
+	Name               string         `json:"name"`
+	Email              string         `json:"email"`
+	Phone              string         `json:"phone"`
+	Address            sql.NullString `json:"address"`
+	RegistrationNumber sql.NullString `json:"registration_number"`
+	IsActive           bool           `json:"is_active"`
+	CreatedAt          time.Time      `json:"created_at"`
+}
+
+type TenantSetting struct {
+	ID              uuid.UUID      `json:"id"`
+	TenantID        uuid.UUID      `json:"tenant_id"`
+	CompanyName     string         `json:"company_name"`
+	CompanyLogoUrl  sql.NullString `json:"company_logo_url"`
+	CompanyAddress  sql.NullString `json:"company_address"`
+	CompanyPhone    sql.NullString `json:"company_phone"`
+	CompanyEmail    sql.NullString `json:"company_email"`
+	Timezone        sql.NullString `json:"timezone"`
+	CurrencyCode    sql.NullString `json:"currency_code"`
+	DateFormat      sql.NullString `json:"date_format"`
+	Language        sql.NullString `json:"language"`
+	FiscalYearStart sql.NullInt32  `json:"fiscal_year_start"`
+	TaxID           sql.NullString `json:"tax_id"`
+	WebsiteUrl      sql.NullString `json:"website_url"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
 type Unit struct {
@@ -199,14 +277,15 @@ type Unit struct {
 }
 
 type User struct {
-	ID            uuid.UUID   `json:"id"`
-	Name          string      `json:"name"`
-	Email         string      `json:"email"`
-	Password      string      `json:"password"`
-	Phone         string      `json:"phone"`
-	TenantID      uuid.UUID   `json:"tenant_id"`
-	Role          interface{} `json:"role"`
-	EmailVerified pgtype.Bool `json:"email_verified"`
-	IsActive      pgtype.Bool `json:"is_active"`
-	CreatedAt     time.Time   `json:"created_at"`
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	Email         string         `json:"email"`
+	Password      string         `json:"password"`
+	Phone         string         `json:"phone"`
+	TenantID      uuid.UUID      `json:"tenant_id"`
+	Role          interface{}    `json:"role"`
+	EmailVerified sql.NullBool   `json:"email_verified"`
+	IsActive      sql.NullBool   `json:"is_active"`
+	CreatedAt     time.Time      `json:"created_at"`
+	AvatarUrl     sql.NullString `json:"avatar_url"`
 }

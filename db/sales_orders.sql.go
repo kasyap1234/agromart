@@ -7,10 +7,10 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createSalesOrder = `-- name: CreateSalesOrder :one
@@ -20,15 +20,15 @@ RETURNING id, tenant_id, so_number, customer_id, location_id, order_date, expect
 `
 
 type CreateSalesOrderParams struct {
-	TenantID   uuid.UUID   `json:"tenant_id"`
-	SoNumber   string      `json:"so_number"`
-	CustomerID uuid.UUID   `json:"customer_id"`
-	LocationID pgtype.UUID `json:"location_id"`
-	CreatedBy  pgtype.UUID `json:"created_by"`
+	TenantID   uuid.UUID     `json:"tenant_id"`
+	SoNumber   string        `json:"so_number"`
+	CustomerID uuid.UUID     `json:"customer_id"`
+	LocationID uuid.NullUUID `json:"location_id"`
+	CreatedBy  uuid.NullUUID `json:"created_by"`
 }
 
 func (q *Queries) CreateSalesOrder(ctx context.Context, arg CreateSalesOrderParams) (SalesOrder, error) {
-	row := q.db.QueryRow(ctx, createSalesOrder,
+	row := q.db.QueryRowContext(ctx, createSalesOrder,
 		arg.TenantID,
 		arg.SoNumber,
 		arg.CustomerID,
@@ -67,16 +67,16 @@ RETURNING id, tenant_id, sales_order_id, product_id, batch_id, quantity_ordered,
 `
 
 type CreateSalesOrderItemParams struct {
-	TenantID        uuid.UUID      `json:"tenant_id"`
-	SalesOrderID    uuid.UUID      `json:"sales_order_id"`
-	ProductID       uuid.UUID      `json:"product_id"`
-	QuantityOrdered pgtype.Numeric `json:"quantity_ordered"`
-	UnitPrice       pgtype.Numeric `json:"unit_price"`
-	TotalPrice      pgtype.Numeric `json:"total_price"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	SalesOrderID    uuid.UUID `json:"sales_order_id"`
+	ProductID       uuid.UUID `json:"product_id"`
+	QuantityOrdered string    `json:"quantity_ordered"`
+	UnitPrice       string    `json:"unit_price"`
+	TotalPrice      string    `json:"total_price"`
 }
 
 func (q *Queries) CreateSalesOrderItem(ctx context.Context, arg CreateSalesOrderItemParams) (SalesOrderItem, error) {
-	row := q.db.QueryRow(ctx, createSalesOrderItem,
+	row := q.db.QueryRowContext(ctx, createSalesOrderItem,
 		arg.TenantID,
 		arg.SalesOrderID,
 		arg.ProductID,
@@ -123,7 +123,7 @@ type GetCustomerSalesSummaryRow struct {
 }
 
 func (q *Queries) GetCustomerSalesSummary(ctx context.Context, tenantID uuid.UUID) ([]GetCustomerSalesSummaryRow, error) {
-	rows, err := q.db.Query(ctx, getCustomerSalesSummary, tenantID)
+	rows, err := q.db.QueryContext(ctx, getCustomerSalesSummary, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -135,6 +135,9 @@ func (q *Queries) GetCustomerSalesSummary(ctx context.Context, tenantID uuid.UUI
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -153,7 +156,7 @@ type GetSalesOrderParams struct {
 }
 
 func (q *Queries) GetSalesOrder(ctx context.Context, arg GetSalesOrderParams) (SalesOrder, error) {
-	row := q.db.QueryRow(ctx, getSalesOrder, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, getSalesOrder, arg.ID, arg.TenantID)
 	var i SalesOrder
 	err := row.Scan(
 		&i.ID,
@@ -190,7 +193,7 @@ type GetSalesOrderItemByIDParams struct {
 }
 
 func (q *Queries) GetSalesOrderItemByID(ctx context.Context, arg GetSalesOrderItemByIDParams) (SalesOrderItem, error) {
-	row := q.db.QueryRow(ctx, getSalesOrderItemByID, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, getSalesOrderItemByID, arg.ID, arg.TenantID)
 	var i SalesOrderItem
 	err := row.Scan(
 		&i.ID,
@@ -222,7 +225,7 @@ type GetSalesOrderItemsParams struct {
 }
 
 func (q *Queries) GetSalesOrderItems(ctx context.Context, arg GetSalesOrderItemsParams) ([]SalesOrderItem, error) {
-	rows, err := q.db.Query(ctx, getSalesOrderItems, arg.SalesOrderID, arg.TenantID)
+	rows, err := q.db.QueryContext(ctx, getSalesOrderItems, arg.SalesOrderID, arg.TenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -249,6 +252,9 @@ func (q *Queries) GetSalesOrderItems(ctx context.Context, arg GetSalesOrderItems
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -284,7 +290,7 @@ type GetSalesReportByDateRow struct {
 }
 
 func (q *Queries) GetSalesReportByDate(ctx context.Context, arg GetSalesReportByDateParams) ([]GetSalesReportByDateRow, error) {
-	rows, err := q.db.Query(ctx, getSalesReportByDate, arg.TenantID, arg.OrderDate, arg.OrderDate_2)
+	rows, err := q.db.QueryContext(ctx, getSalesReportByDate, arg.TenantID, arg.OrderDate, arg.OrderDate_2)
 	if err != nil {
 		return nil, err
 	}
@@ -296,6 +302,9 @@ func (q *Queries) GetSalesReportByDate(ctx context.Context, arg GetSalesReportBy
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -318,7 +327,7 @@ type ListSalesOrdersByCustomerParams struct {
 }
 
 func (q *Queries) ListSalesOrdersByCustomer(ctx context.Context, arg ListSalesOrdersByCustomerParams) ([]SalesOrder, error) {
-	rows, err := q.db.Query(ctx, listSalesOrdersByCustomer,
+	rows, err := q.db.QueryContext(ctx, listSalesOrdersByCustomer,
 		arg.TenantID,
 		arg.CustomerID,
 		arg.Limit,
@@ -356,6 +365,9 @@ func (q *Queries) ListSalesOrdersByCustomer(ctx context.Context, arg ListSalesOr
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -371,12 +383,12 @@ RETURNING id, tenant_id, sales_order_id, product_id, batch_id, quantity_ordered,
 
 type UpdateSalesOrderItemQuantityShippedParams struct {
 	ID              uuid.UUID      `json:"id"`
-	QuantityShipped pgtype.Numeric `json:"quantity_shipped"`
+	QuantityShipped sql.NullString `json:"quantity_shipped"`
 	TenantID        uuid.UUID      `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateSalesOrderItemQuantityShipped(ctx context.Context, arg UpdateSalesOrderItemQuantityShippedParams) (SalesOrderItem, error) {
-	row := q.db.QueryRow(ctx, updateSalesOrderItemQuantityShipped, arg.ID, arg.QuantityShipped, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, updateSalesOrderItemQuantityShipped, arg.ID, arg.QuantityShipped, arg.TenantID)
 	var i SalesOrderItem
 	err := row.Scan(
 		&i.ID,
@@ -410,6 +422,6 @@ type UpdateSalesOrderStatusParams struct {
 }
 
 func (q *Queries) UpdateSalesOrderStatus(ctx context.Context, arg UpdateSalesOrderStatusParams) error {
-	_, err := q.db.Exec(ctx, updateSalesOrderStatus, arg.Status, arg.ID, arg.TenantID)
+	_, err := q.db.ExecContext(ctx, updateSalesOrderStatus, arg.Status, arg.ID, arg.TenantID)
 	return err
 }

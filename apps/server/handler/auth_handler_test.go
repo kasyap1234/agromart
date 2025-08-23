@@ -19,8 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 
-	"agromart/db"
-	internalauth "agromart/internal/auth"
+	"agromart2/db"
+	internalauth "agromart2/internal/auth"
 )
 
 // MockAuthService is a mock implementation of the auth service

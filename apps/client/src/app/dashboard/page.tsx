@@ -1,110 +1,95 @@
-"use client";
+import { Suspense } from 'react';
+import { Package, AlertTriangle, DollarSign, Clock, RefreshCw } from 'lucide-react';
+import DashboardClient from './DashboardClient.tsx';
+import DashboardSkeleton from './DashboardSkeleton.tsx';
+import { ResponsiveContainer } from '@/components/ui/responsive-container';
+import PageContainer from '@/components/layout/PageContainer';
+import { apiClient } from '@/lib/api';
 
-import React from "react";
-import { Package, AlertTriangle, DollarSign, Clock, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import StatsCard from "@/app/dashboard/_components/StatsCard";
-import LoadingSkeleton from "@/app/dashboard/_components/LoadingSkeleton";
-import RecentActivity from "@/app/dashboard/_components/RecentActivity";
-import LowStockItems from "@/app/dashboard/_components/LowStockItems";
-import ExpiringBatches from "@/app/dashboard/_components/ExpiringBatches";
-import QuickActions from "./_components/QuickActions";
-import { ErrorBoundaryWrapper } from "@/components/ui/error-boundary";
-import { ResponsiveContainer } from "@/components/ui/responsive-container";
-import { useDashboardData } from "@/hooks/useDashboardData";
-import { withAuth } from "@/context/AuthContext";
-
-export default withAuth(function DashboardPage() {
-  const {
-    stats,
-    lowStock,
-    expiring,
-    activity,
-    isLoading,
-    hasError,
-    refreshAll
-  } = useDashboardData();
-
-  if (isLoading) {
-    return (
-      <ResponsiveContainer variant="padded">
-        <div className="space-y-6">
-          <PageTitle />
-          <LoadingSkeleton />
-        </div>
-      </ResponsiveContainer>
-    );
+// Server Component - handles initial data fetching with caching
+async function fetchDashboardData() {
+  // During build time, return empty data to avoid API calls
+  if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
+    return {
+      stats: null,
+      lowStock: [],
+      expiring: [],
+      activity: [],
+      hasError: false,
+    };
   }
 
+  try {
+    // Fetch critical data first (stats), then secondary data
+    const statsPromise = apiClient.reports.dashboardStats();
+
+    // Use Promise.allSettled for non-critical data to prevent failures from blocking the UI
+    const [stats, secondaryData] = await Promise.all([
+      statsPromise,
+      Promise.allSettled([
+        apiClient.reports.lowStock(5),
+        apiClient.reports.expiringBatches(5),
+        apiClient.auditLogs.list({ limit: 5 }),
+      ])
+    ]);
+
+    const [lowStockResult, expiringResult, activityResult] = secondaryData;
+
+    return {
+      stats: stats || null,
+      lowStock: lowStockResult.status === 'fulfilled' ? (lowStockResult.value as any[]) : [],
+      expiring: expiringResult.status === 'fulfilled' ? (expiringResult.value as any[]) : [],
+      activity: activityResult.status === 'fulfilled' ? (activityResult.value as any[]) : [],
+      hasError: secondaryData.some(response => response.status === 'rejected'),
+    };
+  } catch (error) {
+    // Even if stats fail, return empty state instead of crashing
+    return {
+      stats: null,
+      lowStock: [],
+      expiring: [],
+      activity: [],
+      hasError: true,
+    };
+  }
+}
+
+export default async function DashboardPage() {
+  // Pre-fetch data on the server
+  const initialData = await fetchDashboardData();
+
   return (
-    <ErrorBoundaryWrapper 
-      onRetry={refreshAll}
-      title="Dashboard Error"
-      description="Failed to load dashboard data. Please try again."
-    >
-      <ResponsiveContainer variant="padded">
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <PageTitle />
-            <Button onClick={refreshAll} variant="outline" size="sm">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh Data
-            </Button>
+    <ResponsiveContainer variant="padded">
+      <PageContainer>
+        {/* Header Section - Server Component */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-purple-500/10 p-6 border border-primary/20">
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-primary via-purple-600 to-primary bg-clip-text text-transparent">
+                  Welcome to AgroMart Dashboard
+                </h1>
+                <p className="text-muted-foreground mt-2 text-base">
+                  Monitor your inventory and business metrics in real-time
+                </p>
+                <div className="flex items-center gap-2 mt-3">
+                  <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm text-muted-foreground">System Online</span>
+                </div>
+              </div>
+            </div>
           </div>
-
-          {/* Stats Grid - Responsive */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-            <StatsCard
-              title="Total Products"
-              value={stats?.total_products?.toLocaleString() || '0'}
-              icon={Package}
-              color="primary"
-            />
-            <StatsCard
-              title="Low Stock Items"
-              value={stats?.low_stock_count || 0}
-              icon={AlertTriangle}
-              color="warning"
-            />
-            <StatsCard
-              title="Inventory Value"
-              value={`₹${(stats?.total_value || 0).toLocaleString()}`}
-              icon={DollarSign}
-              color="success"
-            />
-            <StatsCard
-              title="Expiring Batches"
-              value={stats?.expiring_batches || 0}
-              icon={Clock}
-              color="error"
-            />
-          </div>
-
-          {/* Main Content Grid - Responsive */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
-            <LowStockItems lowStock={lowStock} />
-            <ExpiringBatches expiring={expiring} />
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
-            <RecentActivity recentActivity={activity} />
-            <QuickActions />
-          </div>
+          {/* Background decoration */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-full blur-3xl -z-10"></div>
         </div>
-      </ResponsiveContainer>
-    </ErrorBoundaryWrapper>
-  );
-});
 
-function PageTitle() {
-  return (
-    <div>
-      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-        Welcome to your AgroMart dashboard
-      </h1>
-      <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-        Monitor your inventory and business metrics in real-time
-      </p>
-    </div>
+        <div className="my-6 h-px bg-border"></div>
+
+        {/* Client Component for interactive features */}
+        <Suspense fallback={<DashboardSkeleton />}>
+          <DashboardClient initialData={initialData} />
+        </Suspense>
+      </PageContainer>
+    </ResponsiveContainer>
   );
 }

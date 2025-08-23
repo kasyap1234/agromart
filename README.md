@@ -1,86 +1,107 @@
-# AgroMart Monorepo - Quick Start
+# AgroMart - Agricultural Management System
 
-Run both backend (Go + Echo + Postgres) and frontend (Next.js) locally.
+A modern, scalable agricultural inventory management system built with Go, Next.js, PostgreSQL, and Docker. This system provides comprehensive tools for managing products, inventory, suppliers, customers, purchase orders, and sales with real-time analytics and reporting.
 
-Prerequisites
-- Docker and Docker Compose
-- [mise-en-place](https://mise.jdx.dev/) version manager
-- curl (optional, for quick checks)
+## Quick Start
 
-Install mise:
+### Local Development
 ```bash
-curl https://mise.jdx.dev/install.sh | sh
+# Clone repository
+git clone <repository-url>
+cd agromart
+
+# Start development environment
+docker compose -f docker-compose.dev.yml up --build
+
+# Access the application
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:8080/api
+# Default login: admin@example.com / password
 ```
 
-Ports
-- Backend API: 8080
-- Frontend: 3000 by default (Next.js auto-increments if taken)
+### Production Deployment
+For comprehensive production deployment instructions including database migration verification, environment configuration, and security hardening, see [startapp.md](startapp.md).
 
-Backend: API + DB
-1) Start Postgres and API
-   docker compose -f docker-compose.dev.yml up -d db backend
+### Migration Verification
+Before any deployment, verify database migrations:
+```bash
+cd apps/server/tools/migration-verifier
+go run main.go
+```
 
-2) Tail backend logs (optional)
-   docker compose -f docker-compose.dev.yml logs -f backend --tail=200
+## Prerequisites
 
-3) Verify health
-   curl -sf http://localhost:8080/health && echo
-   Expected:
-   {"status":"ok","service":"agromart-api"}
+- **Docker & Docker Compose** - For containerized development and deployment
+- **Git** - For version control
+- **Code Editor** (optional) - VS Code recommended with Go and TypeScript extensions
 
-4) Smoke test auth flow (optional)
-   bash apps/server/test.sh
+## Environment Setup
 
-Frontend: Next.js
-1) Start dev server
-   cd apps/client
-   npm install
-   npm run dev
-   Visit the printed URL (usually http://localhost:3000)
+### 1. Install Docker Desktop
+Download and install Docker Desktop from [docker.com](https://www.docker.com/products/docker-desktop), then start the application.
 
-Configuration notes
-- Backend config defaults live in apps/server/config/config.go; .env is read if present at repo root, ./apps/server, or /app.
-- Frontend fetches API from http://localhost:8080/api (see apps/client/src/lib/api.ts(api.ts:1)).
+### 2. Clone the Repository
+```bash
+git clone <your-repository-url>
+cd agromart
+```
 
-Troubleshooting
-- If Next.js reports the port is in use, it will pick the next port automatically.
-- A 404 on first load is expected for unauthenticated requests; use /auth/login.
-- Rebuild backend cleanly if needed:
-   docker compose -f docker-compose.dev.yml build --no-cache backend && \
-   docker compose -f docker-compose.dev.yml up -d backend
+## Project Structure
 
-A modern, scalable agricultural management system built with Go, PostgreSQL, and sqlc.
+- `apps/server/` - Go backend with Echo framework
+- `apps/client/` - Next.js frontend application
+- `apps/server/sql/schema/` - Database migrations (14 total)
+- `apps/server/tools/migration-verifier/` - Migration verification tool
+- `docker-compose.dev.yml` - Local development environment
+- `docker-compose.prod.yml` - Production deployment configuration
 
-## Architecture
+## Configuration
 
-This application follows modern Go best practices using:
+Environment files are automatically configured:
+- `.env` - Development settings (automatically created)
+- `.env.production` - Production settings (copy and customize from `.env.example`)
 
-- **Database**: PostgreSQL with pgx/v5 driver
-- **Code Generation**: sqlc for type-safe SQL queries
-- **Web Framework**: Echo v4
-- **Logging**: Zerolog
-- **Configuration**: Viper
-- **Migrations**: golang-migrate (optional)
-- **Containerization**: Docker & Docker Compose
+Key configuration areas:
+- **Database**: PostgreSQL connection settings
+- **Security**: JWT secrets and API keys
+- **Performance**: Connection pool settings
+- **Domains**: For production SSL/TLS setup
 
 ## Features
 
-- **Multi-tenant Architecture**: Secure tenant isolation
-- **Product Management**: Complete product lifecycle management
-- **Inventory Control**: Real-time inventory tracking with batch support
-- **Order Management**: Purchase and sales order processing
-- **Supplier & Customer Management**: Complete vendor and customer lifecycle
-- **Location Management**: Multi-location warehouse support
-- **Audit Logging**: Complete inventory audit trail
+- **Multi-tenant Architecture** - Secure tenant isolation
+- **Real-time Inventory Tracking** - Batch support with expiry management
+- **Role-based Access Control** - Admin, manager, and user roles
+- **Comprehensive Analytics** - Dashboard with key metrics
+- **File Upload System** - MinIO integration for document management
+- **Audit Logging** - Complete inventory and user action tracking
+- **Mobile Responsive** - Works on desktop, tablet, and mobile devices
 
-## Stopping the Development Environment
+## Tech Stack
 
-To stop the backend server and database when you're done working:
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
+- **Backend**: Go 1.24.5, Echo framework, JWT authentication
+- **Database**: PostgreSQL 17.5 with sqlc for type-safe queries
+- **Infrastructure**: Docker, Docker Compose
+- **Testing**: Jest (unit), Playwright (E2E), Go testing
+- **Code Quality**: ESLint, Prettier, Husky
 
-```bash
-./stop-dev.sh
-```
+## Database
 
-This will:
-- Stop the backend server
-- Shut down the PostgreSQL container
+- **14 migrations** covering complete schema (tenants, users, products, inventory, etc.)
+- **Automatic migration verification** before deployments
+- **Migration verification tool** at `apps/server/tools/migration-verifier/`
+
+## Documentation
+
+- **[Complete Setup Guide](startapp.md)** - Comprehensive development and production deployment
+- **Migration Verification Tool** - Database consistency checking
+- **Environment Configuration** - Development and production settings
+
+## Support
+
+For issues and questions:
+1. Check the [comprehensive setup guide](startapp.md)
+2. Run migration verification before deployments
+3. Review logs: `docker compose -f docker-compose.dev.yml logs`
+4. Test health endpoints: `curl http://localhost:8080/health`

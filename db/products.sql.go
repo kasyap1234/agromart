@@ -7,9 +7,9 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const checkProductExists = `-- name: CheckProductExists :one
@@ -22,7 +22,7 @@ type CheckProductExistsParams struct {
 }
 
 func (q *Queries) CheckProductExists(ctx context.Context, arg CheckProductExistsParams) (bool, error) {
-	row := q.db.QueryRow(ctx, checkProductExists, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, checkProductExists, arg.ID, arg.TenantID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -33,7 +33,7 @@ SELECT COUNT(*) FROM products WHERE tenant_id = $1
 `
 
 func (q *Queries) CountProducts(ctx context.Context, tenantID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countProducts, tenantID)
+	row := q.db.QueryRowContext(ctx, countProducts, tenantID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -49,17 +49,17 @@ type CreateProductParams struct {
 	TenantID     uuid.UUID      `json:"tenant_id"`
 	Sku          string         `json:"sku"`
 	Name         string         `json:"name"`
-	Price        pgtype.Numeric `json:"price"`
-	Description  pgtype.Text    `json:"description"`
-	ImageUrl     pgtype.Text    `json:"image_url"`
-	Brand        pgtype.Text    `json:"brand"`
+	Price        string         `json:"price"`
+	Description  sql.NullString `json:"description"`
+	ImageUrl     sql.NullString `json:"image_url"`
+	Brand        sql.NullString `json:"brand"`
 	UnitID       uuid.UUID      `json:"unit_id"`
-	PricePerUnit pgtype.Numeric `json:"price_per_unit"`
-	GstPercent   pgtype.Numeric `json:"gst_percent"`
+	PricePerUnit sql.NullString `json:"price_per_unit"`
+	GstPercent   sql.NullString `json:"gst_percent"`
 }
 
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
-	row := q.db.QueryRow(ctx, createProduct,
+	row := q.db.QueryRowContext(ctx, createProduct,
 		arg.TenantID,
 		arg.Sku,
 		arg.Name,
@@ -102,7 +102,7 @@ type CreateUnitParams struct {
 }
 
 func (q *Queries) CreateUnit(ctx context.Context, arg CreateUnitParams) (Unit, error) {
-	row := q.db.QueryRow(ctx, createUnit, arg.TenantID, arg.Name, arg.Abbreviation)
+	row := q.db.QueryRowContext(ctx, createUnit, arg.TenantID, arg.Name, arg.Abbreviation)
 	var i Unit
 	err := row.Scan(
 		&i.ID,
@@ -125,7 +125,7 @@ type DeleteProductParams struct {
 }
 
 func (q *Queries) DeleteProduct(ctx context.Context, arg DeleteProductParams) error {
-	_, err := q.db.Exec(ctx, deleteProduct, arg.ID, arg.TenantID)
+	_, err := q.db.ExecContext(ctx, deleteProduct, arg.ID, arg.TenantID)
 	return err
 }
 
@@ -140,7 +140,7 @@ type GetProductByIDParams struct {
 }
 
 func (q *Queries) GetProductByID(ctx context.Context, arg GetProductByIDParams) (Product, error) {
-	row := q.db.QueryRow(ctx, getProductByID, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, getProductByID, arg.ID, arg.TenantID)
 	var i Product
 	err := row.Scan(
 		&i.ID,
@@ -170,7 +170,7 @@ type GetProductBySKUParams struct {
 }
 
 func (q *Queries) GetProductBySKU(ctx context.Context, arg GetProductBySKUParams) (Product, error) {
-	row := q.db.QueryRow(ctx, getProductBySKU, arg.Sku, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, getProductBySKU, arg.Sku, arg.TenantID)
 	var i Product
 	err := row.Scan(
 		&i.ID,
@@ -200,7 +200,7 @@ type GetUnitByIDParams struct {
 }
 
 func (q *Queries) GetUnitByID(ctx context.Context, arg GetUnitByIDParams) (Unit, error) {
-	row := q.db.QueryRow(ctx, getUnitByID, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, getUnitByID, arg.ID, arg.TenantID)
 	var i Unit
 	err := row.Scan(
 		&i.ID,
@@ -226,7 +226,7 @@ type ListProductsParams struct {
 }
 
 func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]Product, error) {
-	rows, err := q.db.Query(ctx, listProducts, arg.TenantID, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listProducts, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -252,6 +252,9 @@ func (q *Queries) ListProducts(ctx context.Context, arg ListProductsParams) ([]P
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -272,7 +275,7 @@ type ListUnitsParams struct {
 }
 
 func (q *Queries) ListUnits(ctx context.Context, arg ListUnitsParams) ([]Unit, error) {
-	rows, err := q.db.Query(ctx, listUnits, arg.TenantID, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listUnits, arg.TenantID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -290,6 +293,9 @@ func (q *Queries) ListUnits(ctx context.Context, arg ListUnitsParams) ([]Unit, e
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -312,7 +318,7 @@ type SearchProductsParams struct {
 }
 
 func (q *Queries) SearchProducts(ctx context.Context, arg SearchProductsParams) ([]Product, error) {
-	rows, err := q.db.Query(ctx, searchProducts,
+	rows, err := q.db.QueryContext(ctx, searchProducts,
 		arg.TenantID,
 		arg.Name,
 		arg.Limit,
@@ -343,6 +349,9 @@ func (q *Queries) SearchProducts(ctx context.Context, arg SearchProductsParams) 
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -359,18 +368,18 @@ RETURNING id, tenant_id, sku, name, price, description, image_url, brand, unit_i
 type UpdateProductDetailsParams struct {
 	ID           uuid.UUID      `json:"id"`
 	Name         string         `json:"name"`
-	Price        pgtype.Numeric `json:"price"`
-	Description  pgtype.Text    `json:"description"`
-	ImageUrl     pgtype.Text    `json:"image_url"`
-	Brand        pgtype.Text    `json:"brand"`
+	Price        string         `json:"price"`
+	Description  sql.NullString `json:"description"`
+	ImageUrl     sql.NullString `json:"image_url"`
+	Brand        sql.NullString `json:"brand"`
 	UnitID       uuid.UUID      `json:"unit_id"`
-	PricePerUnit pgtype.Numeric `json:"price_per_unit"`
-	GstPercent   pgtype.Numeric `json:"gst_percent"`
+	PricePerUnit sql.NullString `json:"price_per_unit"`
+	GstPercent   sql.NullString `json:"gst_percent"`
 	TenantID     uuid.UUID      `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateProductDetails(ctx context.Context, arg UpdateProductDetailsParams) (Product, error) {
-	row := q.db.QueryRow(ctx, updateProductDetails,
+	row := q.db.QueryRowContext(ctx, updateProductDetails,
 		arg.ID,
 		arg.Name,
 		arg.Price,
@@ -415,20 +424,20 @@ WHERE id = $9 AND tenant_id = $10
 `
 
 type UpdateProductPatchParams struct {
-	Name         pgtype.Text    `json:"name"`
-	Price        pgtype.Numeric `json:"price"`
-	Description  pgtype.Text    `json:"description"`
-	Brand        pgtype.Text    `json:"brand"`
-	ImageUrl     pgtype.Text    `json:"image_url"`
-	PricePerUnit pgtype.Numeric `json:"price_per_unit"`
-	GstPercent   pgtype.Numeric `json:"gst_percent"`
-	UnitID       pgtype.UUID    `json:"unit_id"`
+	Name         sql.NullString `json:"name"`
+	Price        sql.NullString `json:"price"`
+	Description  sql.NullString `json:"description"`
+	Brand        sql.NullString `json:"brand"`
+	ImageUrl     sql.NullString `json:"image_url"`
+	PricePerUnit sql.NullString `json:"price_per_unit"`
+	GstPercent   sql.NullString `json:"gst_percent"`
+	UnitID       uuid.NullUUID  `json:"unit_id"`
 	ID           uuid.UUID      `json:"id"`
 	TenantID     uuid.UUID      `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateProductPatch(ctx context.Context, arg UpdateProductPatchParams) error {
-	_, err := q.db.Exec(ctx, updateProductPatch,
+	_, err := q.db.ExecContext(ctx, updateProductPatch,
 		arg.Name,
 		arg.Price,
 		arg.Description,
@@ -458,7 +467,7 @@ type UpdateUnitParams struct {
 }
 
 func (q *Queries) UpdateUnit(ctx context.Context, arg UpdateUnitParams) (Unit, error) {
-	row := q.db.QueryRow(ctx, updateUnit,
+	row := q.db.QueryRowContext(ctx, updateUnit,
 		arg.ID,
 		arg.Name,
 		arg.Abbreviation,

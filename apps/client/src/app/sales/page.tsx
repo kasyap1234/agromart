@@ -326,7 +326,7 @@ export default function SalesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All customers</SelectItem>
-                    {customers.map((customer) => (
+                    {customers.map((customer: Customer) => (
                       <SelectItem key={customer.id} value={customer.id}>
                         {customer.name}
                       </SelectItem>
@@ -363,7 +363,7 @@ export default function SalesPage() {
                       required
                     >
                       <option value="">Select a customer</option>
-                      {customers.map((customer) => (
+                      {customers.map((customer: Customer) => (
                         <option key={customer.id} value={customer.id}>
                           {customer.name} ({customer.email})
                         </option>
@@ -507,7 +507,7 @@ export default function SalesPage() {
             </Card>
           ) : (
             salesOrders.map((order) => {
-              const customer = customers.find(c => c.id === order.customer_id);
+              const customer = customers.find((c: Customer) => c.id === order.customer_id);
               
               return (
                 <Card key={order.id}>
@@ -620,7 +620,7 @@ export default function SalesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Customer</Label>
-                    <p>{customers.find(c => c.id === selectedOrder.customer_id)?.name || 'Unknown'}</p>
+                    <p>{customers.find((c: Customer) => c.id === selectedOrder.customer_id)?.name || 'Unknown'}</p>
                   </div>
                   <div>
                     <Label>Status</Label>

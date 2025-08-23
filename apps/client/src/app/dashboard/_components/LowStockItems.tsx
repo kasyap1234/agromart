@@ -55,9 +55,9 @@ export default function LowStockItems({lowStock=[]}:Props) {
             </TableBody>
           </Table>
         ) : (
-          <div className="text-center py-6">
-            <Package className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">
+          <div className="text-center py-8 text-muted-foreground">
+            <Package className="w-8 h-8 mx-auto mb-2" />
+            <p className="text-sm">
               No low stock items
             </p>
           </div>

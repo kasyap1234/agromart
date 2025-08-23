@@ -51,7 +51,7 @@ interface ReportCard {
   href: string;
   category: 'financial' | 'inventory' | 'operational' | 'compliance';
   badge?: string;
-  permission?: () => boolean;
+  permission?: boolean;
 }
 
 export default function ReportsPage() {
@@ -207,9 +207,9 @@ export default function ReportsPage() {
 
   // Filter reports based on permissions, category, and search
   const filteredReports = reportCards.filter(report => {
-    if (report.permission && !report.permission()) return false;
+    if (report.permission === false) return false;
     if (selectedCategory !== 'all' && report.category !== selectedCategory) return false;
-    if (searchTerm && !report.title.toLowerCase().includes(searchTerm.toLowerCase()) && 
+    if (searchTerm && !report.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
         !report.description.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     return true;
   });
@@ -235,7 +235,7 @@ export default function ReportsPage() {
   };
 
   // Check permissions
-  if (!canViewReports() && !canManageInventory()) {
+  if (!canViewReports && !canManageInventory) {
     return (
       <DashboardLayout title="Reports">
         <Card>

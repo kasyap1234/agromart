@@ -7,34 +7,40 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createLocation = `-- name: CreateLocation :one
-INSERT INTO locations (tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, is_active, notes)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, is_active, notes, created_at, updated_at
+INSERT INTO locations (tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, capacity, capacity_unit, manager_id, operating_hours, temperature_controlled, security_level, is_active, notes)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+RETURNING id, tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, capacity, capacity_unit, manager_id, operating_hours, temperature_controlled, security_level, is_active, notes, created_at, updated_at
 `
 
 type CreateLocationParams struct {
-	TenantID     uuid.UUID   `json:"tenant_id"`
-	Name         string      `json:"name"`
-	Address      pgtype.Text `json:"address"`
-	City         pgtype.Text `json:"city"`
-	State        pgtype.Text `json:"state"`
-	PostalCode   pgtype.Text `json:"postal_code"`
-	Country      pgtype.Text `json:"country"`
-	Phone        pgtype.Text `json:"phone"`
-	Email        pgtype.Text `json:"email"`
-	LocationType string      `json:"location_type"`
-	IsActive     bool        `json:"is_active"`
-	Notes        pgtype.Text `json:"notes"`
+	TenantID              uuid.UUID      `json:"tenant_id"`
+	Name                  string         `json:"name"`
+	Address               sql.NullString `json:"address"`
+	City                  sql.NullString `json:"city"`
+	State                 sql.NullString `json:"state"`
+	PostalCode            sql.NullString `json:"postal_code"`
+	Country               sql.NullString `json:"country"`
+	Phone                 sql.NullString `json:"phone"`
+	Email                 sql.NullString `json:"email"`
+	LocationType          string         `json:"location_type"`
+	Capacity              sql.NullString `json:"capacity"`
+	CapacityUnit          sql.NullString `json:"capacity_unit"`
+	ManagerID             uuid.NullUUID  `json:"manager_id"`
+	OperatingHours        sql.NullString `json:"operating_hours"`
+	TemperatureControlled bool           `json:"temperature_controlled"`
+	SecurityLevel         sql.NullString `json:"security_level"`
+	IsActive              bool           `json:"is_active"`
+	Notes                 sql.NullString `json:"notes"`
 }
 
 func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) (Location, error) {
-	row := q.db.QueryRow(ctx, createLocation,
+	row := q.db.QueryRowContext(ctx, createLocation,
 		arg.TenantID,
 		arg.Name,
 		arg.Address,
@@ -45,6 +51,12 @@ func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) 
 		arg.Phone,
 		arg.Email,
 		arg.LocationType,
+		arg.Capacity,
+		arg.CapacityUnit,
+		arg.ManagerID,
+		arg.OperatingHours,
+		arg.TemperatureControlled,
+		arg.SecurityLevel,
 		arg.IsActive,
 		arg.Notes,
 	)
@@ -61,6 +73,12 @@ func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) 
 		&i.Phone,
 		&i.Email,
 		&i.LocationType,
+		&i.Capacity,
+		&i.CapacityUnit,
+		&i.ManagerID,
+		&i.OperatingHours,
+		&i.TemperatureControlled,
+		&i.SecurityLevel,
 		&i.IsActive,
 		&i.Notes,
 		&i.CreatedAt,
@@ -69,8 +87,24 @@ func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) 
 	return i, err
 }
 
+const deleteLocation = `-- name: DeleteLocation :exec
+UPDATE locations
+SET is_active = FALSE, updated_at = NOW()
+WHERE id = $1 AND tenant_id = $2
+`
+
+type DeleteLocationParams struct {
+	ID       uuid.UUID `json:"id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+func (q *Queries) DeleteLocation(ctx context.Context, arg DeleteLocationParams) error {
+	_, err := q.db.ExecContext(ctx, deleteLocation, arg.ID, arg.TenantID)
+	return err
+}
+
 const getLocationByID = `-- name: GetLocationByID :one
-SELECT id, tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, is_active, notes, created_at, updated_at FROM locations
+SELECT id, tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, capacity, capacity_unit, manager_id, operating_hours, temperature_controlled, security_level, is_active, notes, created_at, updated_at FROM locations
 WHERE id = $1 AND tenant_id = $2
 `
 
@@ -80,7 +114,7 @@ type GetLocationByIDParams struct {
 }
 
 func (q *Queries) GetLocationByID(ctx context.Context, arg GetLocationByIDParams) (Location, error) {
-	row := q.db.QueryRow(ctx, getLocationByID, arg.ID, arg.TenantID)
+	row := q.db.QueryRowContext(ctx, getLocationByID, arg.ID, arg.TenantID)
 	var i Location
 	err := row.Scan(
 		&i.ID,
@@ -94,6 +128,12 @@ func (q *Queries) GetLocationByID(ctx context.Context, arg GetLocationByIDParams
 		&i.Phone,
 		&i.Email,
 		&i.LocationType,
+		&i.Capacity,
+		&i.CapacityUnit,
+		&i.ManagerID,
+		&i.OperatingHours,
+		&i.TemperatureControlled,
+		&i.SecurityLevel,
 		&i.IsActive,
 		&i.Notes,
 		&i.CreatedAt,
@@ -102,8 +142,166 @@ func (q *Queries) GetLocationByID(ctx context.Context, arg GetLocationByIDParams
 	return i, err
 }
 
+const getLocationsByManager = `-- name: GetLocationsByManager :many
+SELECT id, tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, capacity, capacity_unit, manager_id, operating_hours, temperature_controlled, security_level, is_active, notes, created_at, updated_at FROM locations
+WHERE tenant_id = $1 AND manager_id = $2 AND is_active = TRUE
+ORDER BY name
+`
+
+type GetLocationsByManagerParams struct {
+	TenantID  uuid.UUID     `json:"tenant_id"`
+	ManagerID uuid.NullUUID `json:"manager_id"`
+}
+
+func (q *Queries) GetLocationsByManager(ctx context.Context, arg GetLocationsByManagerParams) ([]Location, error) {
+	rows, err := q.db.QueryContext(ctx, getLocationsByManager, arg.TenantID, arg.ManagerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Location{}
+	for rows.Next() {
+		var i Location
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.Address,
+			&i.City,
+			&i.State,
+			&i.PostalCode,
+			&i.Country,
+			&i.Phone,
+			&i.Email,
+			&i.LocationType,
+			&i.Capacity,
+			&i.CapacityUnit,
+			&i.ManagerID,
+			&i.OperatingHours,
+			&i.TemperatureControlled,
+			&i.SecurityLevel,
+			&i.IsActive,
+			&i.Notes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLocationsWithCapacity = `-- name: GetLocationsWithCapacity :many
+SELECT id, tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, capacity, capacity_unit, manager_id, operating_hours, temperature_controlled, security_level, is_active, notes, created_at, updated_at FROM locations
+WHERE tenant_id = $1 AND capacity IS NOT NULL AND is_active = TRUE
+ORDER BY capacity DESC
+`
+
+func (q *Queries) GetLocationsWithCapacity(ctx context.Context, tenantID uuid.UUID) ([]Location, error) {
+	rows, err := q.db.QueryContext(ctx, getLocationsWithCapacity, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Location{}
+	for rows.Next() {
+		var i Location
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.Address,
+			&i.City,
+			&i.State,
+			&i.PostalCode,
+			&i.Country,
+			&i.Phone,
+			&i.Email,
+			&i.LocationType,
+			&i.Capacity,
+			&i.CapacityUnit,
+			&i.ManagerID,
+			&i.OperatingHours,
+			&i.TemperatureControlled,
+			&i.SecurityLevel,
+			&i.IsActive,
+			&i.Notes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActiveLocations = `-- name: ListActiveLocations :many
+SELECT id, tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, capacity, capacity_unit, manager_id, operating_hours, temperature_controlled, security_level, is_active, notes, created_at, updated_at FROM locations
+WHERE tenant_id = $1 AND is_active = TRUE
+ORDER BY name
+`
+
+func (q *Queries) ListActiveLocations(ctx context.Context, tenantID uuid.UUID) ([]Location, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveLocations, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Location{}
+	for rows.Next() {
+		var i Location
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.Address,
+			&i.City,
+			&i.State,
+			&i.PostalCode,
+			&i.Country,
+			&i.Phone,
+			&i.Email,
+			&i.LocationType,
+			&i.Capacity,
+			&i.CapacityUnit,
+			&i.ManagerID,
+			&i.OperatingHours,
+			&i.TemperatureControlled,
+			&i.SecurityLevel,
+			&i.IsActive,
+			&i.Notes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLocations = `-- name: ListLocations :many
-SELECT id, tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, is_active, notes, created_at, updated_at FROM locations
+SELECT id, tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, capacity, capacity_unit, manager_id, operating_hours, temperature_controlled, security_level, is_active, notes, created_at, updated_at FROM locations
 WHERE tenant_id = $1 AND location_type = $2 AND is_active = $3
 ORDER BY name
 LIMIT $4 OFFSET $5
@@ -118,7 +316,7 @@ type ListLocationsParams struct {
 }
 
 func (q *Queries) ListLocations(ctx context.Context, arg ListLocationsParams) ([]Location, error) {
-	rows, err := q.db.Query(ctx, listLocations,
+	rows, err := q.db.QueryContext(ctx, listLocations,
 		arg.TenantID,
 		arg.LocationType,
 		arg.IsActive,
@@ -144,6 +342,12 @@ func (q *Queries) ListLocations(ctx context.Context, arg ListLocationsParams) ([
 			&i.Phone,
 			&i.Email,
 			&i.LocationType,
+			&i.Capacity,
+			&i.CapacityUnit,
+			&i.ManagerID,
+			&i.OperatingHours,
+			&i.TemperatureControlled,
+			&i.SecurityLevel,
 			&i.IsActive,
 			&i.Notes,
 			&i.CreatedAt,
@@ -153,6 +357,65 @@ func (q *Queries) ListLocations(ctx context.Context, arg ListLocationsParams) ([
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLocationsByType = `-- name: ListLocationsByType :many
+SELECT id, tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, capacity, capacity_unit, manager_id, operating_hours, temperature_controlled, security_level, is_active, notes, created_at, updated_at FROM locations
+WHERE tenant_id = $1 AND location_type = $2
+ORDER BY name
+`
+
+type ListLocationsByTypeParams struct {
+	TenantID     uuid.UUID `json:"tenant_id"`
+	LocationType string    `json:"location_type"`
+}
+
+func (q *Queries) ListLocationsByType(ctx context.Context, arg ListLocationsByTypeParams) ([]Location, error) {
+	rows, err := q.db.QueryContext(ctx, listLocationsByType, arg.TenantID, arg.LocationType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Location{}
+	for rows.Next() {
+		var i Location
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.Address,
+			&i.City,
+			&i.State,
+			&i.PostalCode,
+			&i.Country,
+			&i.Phone,
+			&i.Email,
+			&i.LocationType,
+			&i.Capacity,
+			&i.CapacityUnit,
+			&i.ManagerID,
+			&i.OperatingHours,
+			&i.TemperatureControlled,
+			&i.SecurityLevel,
+			&i.IsActive,
+			&i.Notes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -161,29 +424,35 @@ func (q *Queries) ListLocations(ctx context.Context, arg ListLocationsParams) ([
 
 const updateLocation = `-- name: UpdateLocation :one
 UPDATE locations
-SET name = $2, address = $3, city = $4, state = $5, postal_code = $6, country = $7, phone = $8, email = $9, location_type = $10, is_active = $11, notes = $12, updated_at = NOW()
-WHERE id = $1 AND tenant_id = $13
-RETURNING id, tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, is_active, notes, created_at, updated_at
+SET name = $2, address = $3, city = $4, state = $5, postal_code = $6, country = $7, phone = $8, email = $9, location_type = $10, capacity = $11, capacity_unit = $12, manager_id = $13, operating_hours = $14, temperature_controlled = $15, security_level = $16, is_active = $17, notes = $18, updated_at = NOW()
+WHERE id = $1 AND tenant_id = $19
+RETURNING id, tenant_id, name, address, city, state, postal_code, country, phone, email, location_type, capacity, capacity_unit, manager_id, operating_hours, temperature_controlled, security_level, is_active, notes, created_at, updated_at
 `
 
 type UpdateLocationParams struct {
-	ID           uuid.UUID   `json:"id"`
-	Name         string      `json:"name"`
-	Address      pgtype.Text `json:"address"`
-	City         pgtype.Text `json:"city"`
-	State        pgtype.Text `json:"state"`
-	PostalCode   pgtype.Text `json:"postal_code"`
-	Country      pgtype.Text `json:"country"`
-	Phone        pgtype.Text `json:"phone"`
-	Email        pgtype.Text `json:"email"`
-	LocationType string      `json:"location_type"`
-	IsActive     bool        `json:"is_active"`
-	Notes        pgtype.Text `json:"notes"`
-	TenantID     uuid.UUID   `json:"tenant_id"`
+	ID                    uuid.UUID      `json:"id"`
+	Name                  string         `json:"name"`
+	Address               sql.NullString `json:"address"`
+	City                  sql.NullString `json:"city"`
+	State                 sql.NullString `json:"state"`
+	PostalCode            sql.NullString `json:"postal_code"`
+	Country               sql.NullString `json:"country"`
+	Phone                 sql.NullString `json:"phone"`
+	Email                 sql.NullString `json:"email"`
+	LocationType          string         `json:"location_type"`
+	Capacity              sql.NullString `json:"capacity"`
+	CapacityUnit          sql.NullString `json:"capacity_unit"`
+	ManagerID             uuid.NullUUID  `json:"manager_id"`
+	OperatingHours        sql.NullString `json:"operating_hours"`
+	TemperatureControlled bool           `json:"temperature_controlled"`
+	SecurityLevel         sql.NullString `json:"security_level"`
+	IsActive              bool           `json:"is_active"`
+	Notes                 sql.NullString `json:"notes"`
+	TenantID              uuid.UUID      `json:"tenant_id"`
 }
 
 func (q *Queries) UpdateLocation(ctx context.Context, arg UpdateLocationParams) (Location, error) {
-	row := q.db.QueryRow(ctx, updateLocation,
+	row := q.db.QueryRowContext(ctx, updateLocation,
 		arg.ID,
 		arg.Name,
 		arg.Address,
@@ -194,6 +463,12 @@ func (q *Queries) UpdateLocation(ctx context.Context, arg UpdateLocationParams) 
 		arg.Phone,
 		arg.Email,
 		arg.LocationType,
+		arg.Capacity,
+		arg.CapacityUnit,
+		arg.ManagerID,
+		arg.OperatingHours,
+		arg.TemperatureControlled,
+		arg.SecurityLevel,
 		arg.IsActive,
 		arg.Notes,
 		arg.TenantID,
@@ -211,6 +486,12 @@ func (q *Queries) UpdateLocation(ctx context.Context, arg UpdateLocationParams) 
 		&i.Phone,
 		&i.Email,
 		&i.LocationType,
+		&i.Capacity,
+		&i.CapacityUnit,
+		&i.ManagerID,
+		&i.OperatingHours,
+		&i.TemperatureControlled,
+		&i.SecurityLevel,
 		&i.IsActive,
 		&i.Notes,
 		&i.CreatedAt,

@@ -3,6 +3,7 @@ import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
 import { AuthResponse } from "@/types";
 import { MeResponse } from "@/types/auth";
+import { createNetworkError, createAuthError, createBusinessError } from "@/hooks/useErrorHandler";
 
 // API Configuration
 // Use /api for frontend calls which will be proxied to backend via Next.js API routes
@@ -11,114 +12,137 @@ const API_BASE_URL =
     ? process.env.NEXT_PUBLIC_API_URL || "/api"
     : "/api";
 
-// Debug: surface base URL and token presence to console for diagnostics
-if (typeof window !== "undefined") {
+// Debug: surface base URL and token presence to console for diagnostics (only in development)
+if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
   const t = Cookies.get("auth_token");
   // eslint-disable-next-line no-console
   console.debug("[API] Base URL:", API_BASE_URL, "Token present:", !!t);
 }
 
-// Create axios instance
+// Create axios instance with optimized settings
 const api: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+   baseURL: API_BASE_URL,
+   timeout: 15000, // Reduced timeout for better UX
+   headers: {
+     "Content-Type": "application/json",
+   },
+   // Enable compression and connection reuse
+   decompress: true,
+   maxRedirects: 3,
+ });
 
-// Request interceptor to add auth token
+// Request deduplication cache
+const pendingRequests = new Map();
+
+// Request interceptor to add auth token and handle deduplication
 api.interceptors.request.use(
   (config) => {
     let token: string | undefined;
     if (typeof window !== "undefined") {
-      token = Cookies.get("auth_token");
+      token = Cookies.get("auth_token") || undefined;
     }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      (config.headers as any)["X-Debug-Client"] = "agromart-web";
-    } else {
-      (config.headers as any)["X-Debug-Client"] = "agromart-web-no-token";
     }
-    // eslint-disable-next-line no-console
-    const dbgUrl = `${config.baseURL ?? ""}${config.url ?? ""}`;
-    if (typeof window !== "undefined") {
-      console.debug(
-        "[API][REQ]",
-        (config.method ?? "GET").toUpperCase(),
-        dbgUrl,
-        {
-          hasToken: !!token,
-          params: config.params,
-        },
-      );
+
+    // Create request key for deduplication
+    const requestKey = `${config.method}-${config.url}-${JSON.stringify(config.params || {})}`;
+
+    // Check if request is already pending
+    if (config.method?.toLowerCase() === 'get' && pendingRequests.has(requestKey)) {
+      // Cancel this request and return the pending one
+      const cancelToken = axios.CancelToken.source();
+      config.cancelToken = cancelToken.token;
+      cancelToken.cancel('Request deduplicated');
+      return pendingRequests.get(requestKey);
     }
+
+    // Store the request promise for deduplication
+    if (config.method?.toLowerCase() === 'get') {
+      const requestPromise = api.request(config);
+      pendingRequests.set(requestKey, requestPromise);
+
+      // Clean up after request completes
+      requestPromise.finally(() => {
+        pendingRequests.delete(requestKey);
+      });
+
+      return requestPromise;
+    }
+
     return config;
   },
   (error) => {
-    // eslint-disable-next-line no-console
-    if (typeof window !== "undefined") console.error("[API][REQ][ERR]", error);
     return Promise.reject(error);
   },
 );
 
-// Response interceptor for error handling
+// Enhanced response interceptor with structured error handling
 api.interceptors.response.use(
-  (response: AxiosResponse) => {
-    // eslint-disable-next-line no-console
-    if (typeof window !== "undefined")
-      console.debug("[API][RES]", response.config.url, response.status);
-    return response;
-  },
-  (error: AxiosError) => {
-    // eslint-disable-next-line no-console
-    if (typeof window !== "undefined")
-      console.error("[API][RES][ERR]", {
-        url: error.config?.url,
-        status: error.response?.status,
-        data: error.response?.data,
-      });
+   (response: AxiosResponse) => {
+     return response;
+   },
+   (error: AxiosError) => {
+     // Enhanced error handling with structured error types
+     if (error.response) {
+       const { status, data } = error.response;
+       const errorMessage = data && typeof data === "object" && "error" in data
+         ? (data as any).error?.message || (data as any).message
+         : "An unexpected error occurred";
 
-    // Handle common errors
-    if (error.response) {
-      const { status, data } = error.response;
-
-      switch (status) {
-        case 401:
-          // Unauthorized - redirect to login
-          Cookies.remove("auth_token");
-          Cookies.remove("refresh_token");
-          if (typeof window !== "undefined") {
-            window.location.href = "/auth/login";
-          }
-          break;
-        case 403:
-          toast.error(
-            "Access denied. You do not have permission to perform this action.",
-          );
-          break;
-        case 429:
-          toast.error("Too many requests. Please try again later.");
-          break;
-        case 500:
-          toast.error("Server error. Please try again later.");
-          break;
-        default:
-          if (data && typeof data === "object" && "message" in data) {
-            toast.error((data as any).message as string);
-          } else {
-            toast.error("An unexpected error occurred.");
-          }
-      }
-    } else if (error.request) {
-      toast.error("Network error. Please check your connection.");
-    } else {
-      toast.error("An unexpected error occurred.");
-    }
-
-    return Promise.reject(error);
-  },
-);
+       switch (status) {
+         case 400:
+           // Bad Request - often validation errors
+           throw createBusinessError(errorMessage || "Invalid request data", "VALIDATION_ERROR");
+         case 401:
+           // Unauthorized - clear tokens and redirect
+           if (typeof window !== "undefined") {
+             clearTokens();
+             window.location.href = "/auth/login";
+           }
+           throw createAuthError(errorMessage || "Authentication required");
+         case 403:
+           // Forbidden - permission denied
+           throw createAuthError(errorMessage || "Access denied. You do not have permission to perform this action.", "FORBIDDEN");
+         case 404:
+           // Not Found
+           throw createBusinessError(errorMessage || "The requested resource was not found", "NOT_FOUND");
+         case 409:
+           // Conflict - resource already exists
+           throw createBusinessError(errorMessage || "Resource already exists", "CONFLICT");
+         case 422:
+           // Unprocessable Entity - validation failed
+           throw createBusinessError(errorMessage || "Validation failed", "VALIDATION_FAILED");
+         case 429:
+           // Too Many Requests - rate limited
+           throw createNetworkError(errorMessage || "Too many requests. Please try again later.", status);
+         case 500:
+         case 502:
+         case 503:
+         case 504:
+           // Server errors
+           throw createNetworkError(errorMessage || "Server error. Please try again later.", status);
+         default:
+           // Other errors
+           throw createNetworkError(errorMessage || "An unexpected error occurred", status);
+       }
+     } else if (error.request) {
+       // Network error - no response received
+       throw createNetworkError(
+         "Network error. Please check your connection and try again.",
+         0,
+         error as Error
+       );
+     } else {
+       // Request setup error
+       throw createNetworkError(
+         error.message || "An unexpected error occurred",
+         0,
+         error
+       );
+     }
+   },
+ );
 
 // API Methods
 export const apiClient = {
@@ -393,6 +417,65 @@ export const apiClient = {
     update: (data: any) => apiClient.put("/users/me", data),
   },
 
+  // Users Management
+  users: {
+    list: (params?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      role?: string;
+      status?: 'active' | 'inactive';
+      sort_by?: string;
+      sort_order?: 'asc' | 'desc';
+    }) => apiClient.get("/users", params),
+
+    search: (q: string, params?: { page?: number; limit?: number }) =>
+      apiClient.get("/users/search", { q, ...(params || {}) }),
+
+    get: (id: string) => apiClient.get(`/users/${id}`),
+
+    create: (data: {
+      name: string;
+      email: string;
+      password: string;
+      phone?: string;
+      role: 'admin' | 'manager' | 'user';
+      profile_photo?: string;
+    }) => apiClient.post("/users", data),
+
+    update: (id: string, data: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      role?: 'admin' | 'manager' | 'user';
+      is_active?: boolean;
+      profile_photo?: string;
+    }) => apiClient.put(`/users/${id}`, data),
+
+    delete: (id: string) => apiClient.delete(`/users/${id}`),
+
+    bulkDelete: (ids: string[]) => apiClient.post("/users/bulk/delete", { ids }),
+
+    bulkUpdateStatus: (ids: string[], is_active: boolean) =>
+      apiClient.post("/users/bulk/status", { ids, is_active }),
+
+    resetPassword: (id: string, data: { new_password: string }) =>
+      apiClient.post(`/users/${id}/reset-password`, data),
+
+    changePassword: (id: string, data: { current_password: string; new_password: string }) =>
+      apiClient.post(`/users/${id}/change-password`, data),
+
+    uploadProfilePhoto: (id: string, file: File) => {
+      const formData = new FormData();
+      formData.append('profile_photo', file);
+      return api.post(`/users/${id}/upload-profile-photo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }).then((response) => response.data);
+    },
+
+    deleteProfilePhoto: (id: string) => apiClient.delete(`/users/${id}/profile-photo`),
+  },
+
   // Audit Logs
   auditLogs: {
     list: (params?: {
@@ -450,6 +533,10 @@ export const getRefreshToken = (): string | undefined => {
 export const clearTokens = () => {
   Cookies.remove("auth_token");
   Cookies.remove("refresh_token");
+  // Clear axios default header
+  if (api.defaults.headers.Authorization) {
+    delete api.defaults.headers.Authorization;
+  }
 };
 
 export default api;

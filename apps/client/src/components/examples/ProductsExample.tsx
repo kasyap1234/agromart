@@ -34,9 +34,9 @@ export default function ProductsExample() {
     }
   );
 
-  const products = Array.isArray(productsResponse) 
-    ? productsResponse 
-    : productsResponse?.data || [];
+  const products = Array.isArray(productsResponse)
+    ? productsResponse
+    : (productsResponse as { data?: Product[] })?.data || [];
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);

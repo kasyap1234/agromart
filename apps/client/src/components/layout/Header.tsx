@@ -45,7 +45,7 @@ export default function Header({ title }: HeaderProps) {
           <Button variant="ghost" size="icon" className="relative">
             <span className="sr-only">View notifications</span>
             <Bell className="h-5 w-5" />
-            <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-error-400 ring-2 ring-background" />
+            <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
           </Button>
 
           {/* User menu */}

@@ -16,10 +16,10 @@ export default function ProductDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const id = Array.isArray(params?.id) ? params?.id[0] : (params as any)?.id;
-  const { data, error, isLoading, mutate } = useSWR<Product>(id ? [`/products/${id}`] : null, () => apiClient.products.get(String(id)));
+  const { data, error, isLoading, mutate } = useSWR<Product>(id ? [`/products/${id}`] : null, () => apiClient.products.get(String(id)) as Promise<Product>);
   const [deleting, setDeleting] = useState(false);
 
-  const product = data?.data || data;
+  const product = (data as any)?.data || data;
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {

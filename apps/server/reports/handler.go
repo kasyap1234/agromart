@@ -8,7 +8,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"agromart2/db"
 	"agromart2/internal/errors"
-	"agromart2/internal/pgconv"
 )
 
 type Handler struct {
@@ -62,7 +61,7 @@ func (h *Handler) DashboardStats(c echo.Context) error {
 	// Get low stock products (threshold = 10 to match existing implementation)
 	lowStock, err := h.queries.GetLowStockReport(c.Request().Context(), db.GetLowStockReportParams{
 		TenantID: tenantID,
-		Quantity: pgconv.NumericFromInt(10),
+		Quantity: "10",
 	})
 	if err != nil {
 		customErr := errors.Wrap(err, http.StatusInternalServerError, "failed to get low stock report")

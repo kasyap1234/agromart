@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 
 export default function InventoryPage() {
   const { data, error, isLoading } = useSWR(['/inventory'], () => apiClient.inventory.list());
-  const items: InventoryDetails[] = Array.isArray(data) ? data : data?.data || [];
+  const items: InventoryDetails[] = Array.isArray(data) ? data : (data as any)?.data || [];
 
   const columns: Column<InventoryDetails>[] = [
     {

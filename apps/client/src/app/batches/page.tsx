@@ -63,7 +63,7 @@ export default function BatchesPage() {
 
   useEffect(() => {
     if (batchData) {
-      const batchesList = Array.isArray(batchData) ? batchData : batchData.data || [];
+      const batchesList = Array.isArray(batchData) ? batchData : (batchData as any)?.data || [];
       setBatches(batchesList);
       setLoading(false);
     }
@@ -79,7 +79,7 @@ export default function BatchesPage() {
   const fetchProducts = async () => {
     try {
       const resp = await apiClient.products.list({ page: 1, limit: 1000 });
-      const list = Array.isArray(resp) ? resp : resp.data || [];
+      const list = Array.isArray(resp) ? resp : (resp as any)?.data || [];
       setProducts(list);
     } catch (error) {
       console.error('Error fetching products:', error);

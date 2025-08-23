@@ -3,6 +3,7 @@ package analytics
 import (
 	"context"
 	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -65,8 +66,7 @@ func (s *Service) GetKPIs(ctx context.Context, p KPIParams) (*KPIs, error) {
 	// Stockout risk count (threshold numeric)
 	stockoutAny, err := s.queries.GetStockoutRiskCount(ctx, db.GetStockoutRiskCountParams{
 		TenantID: p.TenantID,
-		// Build a pgtype.Numeric integer with scale 0 using available fields in our pgtype.Numeric
-		Quantity: numericFromInt64(int64(p.Threshold)),
+		Quantity: strconv.FormatInt(int64(p.Threshold), 10),
 	})
 	if err != nil {
 		return nil, err
@@ -173,7 +173,7 @@ func (s *Service) GetSalesSeries(ctx context.Context, p SeriesParams) ([]SeriesP
 	out := make([]SeriesPoint, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, SeriesPoint{
-			Period: intervalToBucketStart(r.Period, p.Group, p.FromDate),
+			Period: periodToBucketStart(r.Period, p.Group, p.FromDate),
 			Value:  toInt64(r.Revenue),
 		})
 	}
@@ -193,7 +193,7 @@ func (s *Service) GetPurchasesSeries(ctx context.Context, p SeriesParams) ([]Ser
 	out := make([]SeriesPoint, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, SeriesPoint{
-			Period: intervalToBucketStart(r.Period, p.Group, p.FromDate),
+			Period: periodToBucketStart(r.Period, p.Group, p.FromDate),
 			Value:  toInt64(r.TotalCost),
 		})
 	}
@@ -257,6 +257,18 @@ func intervalToBucketStart(iv pgtype.Interval, grp string, fromDate time.Time) t
 	if iv.Microseconds != 0 {
 		t = t.Add(time.Duration(iv.Microseconds) * time.Microsecond)
 	}
+	// Normalize to bucket floor
+	if grp == "month" {
+		return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
+	}
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+// periodToBucketStart converts int64 period to bucket start time
+func periodToBucketStart(period int64, grp string, fromDate time.Time) time.Time {
+	// Convert int64 to time (assuming Unix timestamp in seconds)
+	t := time.Unix(period, 0)
+
 	// Normalize to bucket floor
 	if grp == "month" {
 		return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)

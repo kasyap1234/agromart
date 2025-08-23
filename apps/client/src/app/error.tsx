@@ -17,32 +17,28 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html>
-      <body>
-        <main className="min-h-screen flex items-center justify-center bg-neutral-50 px-6">
-          <div className="text-center max-w-md">
-            <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Something went wrong</h1>
-            <p className="mt-2 text-sm text-neutral-600">
-              An unexpected error occurred. You can try again or return to the dashboard.
-            </p>
+    <main className="min-h-screen flex items-center justify-center bg-neutral-50 px-6">
+      <div className="text-center max-w-md">
+        <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Something went wrong</h1>
+        <p className="mt-2 text-sm text-neutral-600">
+          An unexpected error occurred. You can try again or return to the dashboard.
+        </p>
 
-            <div className="mt-6 space-x-3">
-              <Button onClick={() => reset()}>
-                Try again
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/dashboard">Go to dashboard</Link>
-              </Button>
-            </div>
+        <div className="mt-6 space-x-3">
+          <Button onClick={() => reset()}>
+            Try again
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/dashboard">Go to dashboard</Link>
+          </Button>
+        </div>
 
-            {error?.digest && (
-              <p className="mt-4 text-xs text-neutral-400">
-                Error Id: {error.digest}
-              </p>
-            )}
-          </div>
-        </main>
-      </body>
-    </html>
+        {error?.digest && (
+          <p className="mt-4 text-xs text-neutral-400">
+            Error Id: {error.digest}
+          </p>
+        )}
+      </div>
+    </main>
   );
 }

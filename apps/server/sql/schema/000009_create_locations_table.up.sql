@@ -10,6 +10,12 @@ CREATE TABLE IF NOT EXISTS locations(
     phone TEXT,
     email TEXT,
     location_type TEXT NOT NULL DEFAULT 'WAREHOUSE', -- WAREHOUSE, STORE, OFFICE, DISTRIBUTION_CENTER
+    capacity NUMERIC(10,2), -- Storage capacity in square meters or cubic meters
+    capacity_unit TEXT, -- sqm, cum, pallets, etc.
+    manager_id UUID REFERENCES users(id), -- Location manager
+    operating_hours TEXT, -- JSON string with operating hours
+    temperature_controlled BOOLEAN NOT NULL DEFAULT FALSE,
+    security_level TEXT DEFAULT 'STANDARD', -- STANDARD, HIGH, MAXIMUM
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

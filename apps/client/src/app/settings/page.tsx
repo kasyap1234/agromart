@@ -2,18 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
+import Image from 'next/image';
 import { apiClient } from '@/lib/api';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import { FileUpload } from '@/components/ui/file-upload';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 import {
   Select,
@@ -30,7 +32,9 @@ import {
 } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { 
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import {
   User,
   Building,
   Bell,
@@ -42,22 +46,32 @@ import {
   Camera,
   Mail,
   Phone,
-  MapPin
+  MapPin,
+  CreditCard,
+  MessageSquare,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'react-hot-toast';
 
+// Updated interfaces to match database schema
 interface TenantSettings {
   id: string;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  registration_number: string;
-  logo_url?: string;
+  company_name: string;
+  company_logo_url?: string;
+  company_address?: string;
+  company_phone?: string;
+  company_email?: string;
   timezone: string;
-  currency: string;
+  currency_code: string;
   date_format: string;
+  language: string;
+  fiscal_year_start: number;
+  tax_id?: string;
+  website_url?: string;
   theme: 'light' | 'dark' | 'auto';
 }
 
@@ -65,18 +79,25 @@ interface UserProfile {
   id: string;
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
   role: string;
   avatar_url?: string;
 }
 
 interface NotificationSettings {
   email_notifications: boolean;
+  sms_notifications: boolean;
   push_notifications: boolean;
   low_stock_alerts: boolean;
+  expiry_alerts: boolean;
   order_updates: boolean;
-  system_alerts: boolean;
+  payment_reminders: boolean;
+  marketing_emails: boolean;
   weekly_reports: boolean;
+}
+
+interface FormErrors {
+  [key: string]: string;
 }
 
 const TIMEZONES = [
@@ -103,9 +124,14 @@ const DATE_FORMATS = [
 ];
 
 export default function SettingsPage() {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile');
+   const { user } = useAuth();
+   const [loading, setLoading] = useState(false);
+   const [activeTab, setActiveTab] = useState('profile');
+
+   // Permission-based access control
+   const canEditProfile = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'user';
+   const canEditOrganization = user?.role === 'admin' || user?.role === 'manager';
+   const canEditSystemSettings = user?.role === 'admin';
 
   // Profile state
   const [profile, setProfile] = useState<UserProfile>({
@@ -119,26 +145,37 @@ export default function SettingsPage() {
   // Tenant settings state
   const [tenantSettings, setTenantSettings] = useState<TenantSettings>({
     id: '',
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    registration_number: '',
+    company_name: '',
+    company_address: '',
+    company_phone: '',
+    company_email: '',
     timezone: 'UTC',
-    currency: 'USD',
-    date_format: 'MM/DD/YYYY',
+    currency_code: 'USD',
+    date_format: 'YYYY-MM-DD',
+    language: 'en',
+    fiscal_year_start: 1,
+    tax_id: '',
+    website_url: '',
     theme: 'light',
   });
 
   // Notification settings state
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
-    email_notifications: false,
-    push_notifications: false,
-    low_stock_alerts: false,
-    order_updates: false,
-    system_alerts: false,
-    weekly_reports: false,
+    email_notifications: true,
+    sms_notifications: false,
+    push_notifications: true,
+    low_stock_alerts: true,
+    expiry_alerts: true,
+    order_updates: true,
+    payment_reminders: true,
+    marketing_emails: false,
+    weekly_reports: true,
   });
+
+  // Form errors and validation
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
 
   const { data: tenantResp, mutate: mutateTenant } = useSWR('settings:tenant', () => apiClient.settings.getTenant());
   const { data: notifResp, mutate: mutateNotif } = useSWR('settings:notifications', () => apiClient.settings.getNotifications());
@@ -157,16 +194,114 @@ export default function SettingsPage() {
     }
   }, [notifResp]);
 
+  // Validation functions
+  const validateTenantSettings = (): boolean => {
+    const errors: FormErrors = {};
+
+    if (!tenantSettings.company_name?.trim()) {
+      errors.company_name = 'Organization name is required';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const validateProfile = (): boolean => {
+    const errors: FormErrors = {};
+
+    if (!profile.name?.trim()) {
+      errors.name = 'Full name is required';
+    }
+
+    if (!profile.email?.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // File upload handlers
+  const handleAvatarUpload = (file: File | null) => {
+    setAvatarFile(file);
+    if (file) {
+      // Create preview URL
+      const url = URL.createObjectURL(file);
+      setProfile({ ...profile, avatar_url: url });
+    } else {
+      setProfile({ ...profile, avatar_url: undefined });
+    }
+  };
+
+  const handleLogoUpload = (file: File | null) => {
+    setLogoFile(file);
+    if (file) {
+      // Create preview URL
+      const url = URL.createObjectURL(file);
+      setTenantSettings({ ...tenantSettings, company_logo_url: url });
+    } else {
+      setTenantSettings({ ...tenantSettings, company_logo_url: undefined });
+    }
+  };
+
+  // Wrapper functions for onClick handlers
+  const openAvatarUpload = () => {
+    document.getElementById('avatar-upload')?.click();
+  };
+
+  const openLogoUpload = () => {
+    document.getElementById('logo-upload')?.click();
+  };
+
+  // Upload file utility
+  const uploadFile = async (file: File, type: 'avatar' | 'logo'): Promise<string> => {
+    try {
+      // In a real implementation, you would upload to your file storage service
+      // For now, we'll simulate the upload and return the file URL
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', type);
+
+      // TODO: Implement actual file upload to your backend
+      // const response = await apiClient.uploadFile(formData);
+      // return response.data.url;
+
+      // Simulate upload delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return URL.createObjectURL(file); // Return preview URL for now
+    } catch (error) {
+      console.error(`Failed to upload ${type}:`, error);
+      throw new Error(`Failed to upload ${type}`);
+    }
+  };
+
   const handleSaveProfile = async () => {
+    if (!validateProfile()) {
+      toast.error('Please fix the errors before saving');
+      return;
+    }
+
     setLoading(true);
     try {
+      let avatar_url = profile.avatar_url;
+
+      // Upload avatar if a new file was selected
+      if (avatarFile) {
+        avatar_url = await uploadFile(avatarFile, 'avatar');
+      }
+
       await apiClient.profile.update({
         name: profile.name,
         phone: profile.phone,
-        avatar_url: profile.avatar_url,
+        avatar_url,
       });
+
+      setAvatarFile(null);
       toast.success('Profile updated successfully');
     } catch (error) {
+      console.error('Failed to update profile:', error);
       toast.error('Failed to update profile');
     } finally {
       setLoading(false);
@@ -174,12 +309,31 @@ export default function SettingsPage() {
   };
 
   const handleSaveTenantSettings = async () => {
+    if (!validateTenantSettings()) {
+      toast.error('Please fix the errors before saving');
+      return;
+    }
+
     setLoading(true);
     try {
-      await apiClient.settings.updateTenant(tenantSettings);
+      let logo_url = tenantSettings.company_logo_url;
+
+      // Upload logo if a new file was selected
+      if (logoFile) {
+        logo_url = await uploadFile(logoFile, 'logo');
+      }
+
+      const settingsToSave = {
+        ...tenantSettings,
+        company_logo_url: logo_url,
+      };
+
+      await apiClient.settings.updateTenant(settingsToSave);
       mutateTenant();
+      setLogoFile(null);
       toast.success('Organization settings updated successfully');
     } catch (error) {
+      console.error('Failed to update organization settings:', error);
       toast.error('Failed to update organization settings');
     } finally {
       setLoading(false);
@@ -193,21 +347,13 @@ export default function SettingsPage() {
       mutateNotif();
       toast.success('Notification preferences updated successfully');
     } catch (error) {
+      console.error('Failed to update notification preferences:', error);
       toast.error('Failed to update notification preferences');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAvatarUpload = () => {
-    // TODO: Implement file upload
-    toast('Avatar upload functionality coming soon', { icon: 'ℹ️' });
-  };
-
-  const handleLogoUpload = () => {
-    // TODO: Implement file upload
-    toast('Logo upload functionality coming soon', { icon: 'ℹ️' });
-  };
 
   return (
     <DashboardLayout title="Settings">
@@ -256,13 +402,12 @@ export default function SettingsPage() {
                   <div className="relative">
                     <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center">
                       {profile.avatar_url ? (
-                        <img
+                        <Image
                           src={profile.avatar_url}
                           alt="User avatar"
                           width={80}
                           height={80}
                           loading="lazy"
-                          decoding="async"
                           sizes="80px"
                           className="w-20 h-20 rounded-full object-cover"
                         />
@@ -275,11 +420,22 @@ export default function SettingsPage() {
                       variant="outline"
                       className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full"
                       aria-label="Upload avatar"
-                      onClick={handleAvatarUpload}
+                      onClick={openAvatarUpload}
                     >
                       <Camera className="h-3 w-3" />
                     </Button>
                   </div>
+                  {/* Hidden file input for avatar */}
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      handleAvatarUpload(file);
+                    }}
+                    className="hidden"
+                  />
                   <div>
                     <h3 className="font-medium">{profile.name}</h3>
                     <p className="text-sm text-muted-foreground">{profile.email}</p>
@@ -327,8 +483,15 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="flex justify-end">
-                  <Button onClick={handleSaveProfile} disabled={loading}>
-                    <Save className="mr-2 h-4 w-4" />
+                  <Button
+                    onClick={handleSaveProfile}
+                    disabled={loading || !canEditProfile}
+                  >
+                    {loading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
                     Save Changes
                   </Button>
                 </div>
@@ -350,14 +513,13 @@ export default function SettingsPage() {
                 <div className="flex items-center space-x-4">
                   <div className="relative">
                     <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center">
-                      {tenantSettings.logo_url ? (
-                        <img
-                          src={tenantSettings.logo_url}
+                      {tenantSettings.company_logo_url ? (
+                        <Image
+                          src={tenantSettings.company_logo_url}
                           alt="Organization logo"
                           width={80}
                           height={80}
                           loading="lazy"
-                          decoding="async"
                           sizes="80px"
                           className="w-20 h-20 rounded-lg object-cover"
                         />
@@ -370,11 +532,22 @@ export default function SettingsPage() {
                       variant="outline"
                       className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full"
                       aria-label="Upload organization logo"
-                      onClick={handleLogoUpload}
+                      onClick={openLogoUpload}
                     >
                       <Upload className="h-3 w-3" />
                     </Button>
                   </div>
+                  {/* Hidden file input for logo */}
+                  <input
+                    id="logo-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      handleLogoUpload(file);
+                    }}
+                    className="hidden"
+                  />
                   <div>
                     <h3 className="font-medium">Organization Logo</h3>
                     <p className="text-sm text-muted-foreground">
@@ -384,56 +557,131 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="org-name">Organization Name</Label>
-                    <Input
-                      id="org-name"
-                      value={tenantSettings.name}
-                      onChange={(e) => setTenantSettings({ ...tenantSettings, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="org-email">Contact Email</Label>
-                    <Input
-                      id="org-email"
-                      type="email"
-                      value={tenantSettings.email}
-                      onChange={(e) => setTenantSettings({ ...tenantSettings, email: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="org-phone">Contact Phone</Label>
-                    <Input
-                      id="org-phone"
-                      value={tenantSettings.phone}
-                      onChange={(e) => setTenantSettings({ ...tenantSettings, phone: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="org-reg">Registration Number</Label>
-                    <Input
-                      id="org-reg"
-                      value={tenantSettings.registration_number}
-                      onChange={(e) => setTenantSettings({ ...tenantSettings, registration_number: e.target.value })}
-                    />
-                  </div>
-                </div>
+                   <div className="grid gap-2">
+                     <Label htmlFor="org-name">Organization Name *</Label>
+                     <Input
+                       id="org-name"
+                       value={tenantSettings.company_name}
+                       onChange={(e) => setTenantSettings({ ...tenantSettings, company_name: e.target.value })}
+                       className={formErrors.company_name ? 'border-destructive' : ''}
+                     />
+                     {formErrors.company_name && (
+                       <p className="text-sm text-destructive">{formErrors.company_name}</p>
+                     )}
+                   </div>
+                   <div className="grid gap-2">
+                     <Label htmlFor="org-email">Contact Email</Label>
+                     <Input
+                       id="org-email"
+                       type="email"
+                       value={tenantSettings.company_email || ''}
+                       onChange={(e) => setTenantSettings({ ...tenantSettings, company_email: e.target.value })}
+                     />
+                   </div>
+                   <div className="grid gap-2">
+                     <Label htmlFor="org-phone">Contact Phone</Label>
+                     <Input
+                       id="org-phone"
+                       value={tenantSettings.company_phone || ''}
+                       onChange={(e) => setTenantSettings({ ...tenantSettings, company_phone: e.target.value })}
+                     />
+                   </div>
+                   <div className="grid gap-2">
+                     <Label htmlFor="tax-id">Tax ID</Label>
+                     <Input
+                       id="tax-id"
+                       value={tenantSettings.tax_id || ''}
+                       onChange={(e) => setTenantSettings({ ...tenantSettings, tax_id: e.target.value })}
+                     />
+                   </div>
+                   <div className="grid gap-2">
+                     <Label htmlFor="website">Website</Label>
+                     <Input
+                       id="website"
+                       type="url"
+                       value={tenantSettings.website_url || ''}
+                       onChange={(e) => setTenantSettings({ ...tenantSettings, website_url: e.target.value })}
+                       placeholder="https://example.com"
+                     />
+                   </div>
+                   <div className="grid gap-2">
+                     <Label htmlFor="language">Language</Label>
+                     <Select
+                       value={tenantSettings.language}
+                       onValueChange={(value) => setTenantSettings({ ...tenantSettings, language: value })}
+                     >
+                       <SelectTrigger>
+                         <SelectValue />
+                       </SelectTrigger>
+                       <SelectContent>
+                         <SelectItem value="en">English</SelectItem>
+                         <SelectItem value="es">Spanish</SelectItem>
+                         <SelectItem value="fr">French</SelectItem>
+                         <SelectItem value="de">German</SelectItem>
+                         <SelectItem value="it">Italian</SelectItem>
+                         <SelectItem value="pt">Portuguese</SelectItem>
+                         <SelectItem value="hi">Hindi</SelectItem>
+                         <SelectItem value="zh">Chinese</SelectItem>
+                         <SelectItem value="ja">Japanese</SelectItem>
+                       </SelectContent>
+                     </Select>
+                   </div>
+                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="org-address">Address</Label>
-                  <Textarea
-                    id="org-address"
-                    value={tenantSettings.address}
-                    onChange={(e) => setTenantSettings({ ...tenantSettings, address: e.target.value })}
-                    rows={3}
-                  />
-                </div>
+                 <div className="grid gap-2">
+                   <Label htmlFor="org-address">Address</Label>
+                   <Textarea
+                     id="org-address"
+                     value={tenantSettings.company_address || ''}
+                     onChange={(e) => setTenantSettings({ ...tenantSettings, company_address: e.target.value })}
+                     rows={3}
+                     placeholder="Enter your organization address"
+                   />
+                 </div>
+
+                 <div className="grid gap-2">
+                   <Label htmlFor="fiscal-year">Fiscal Year Start Month</Label>
+                   <Select
+                     value={tenantSettings.fiscal_year_start.toString()}
+                     onValueChange={(value) => setTenantSettings({ ...tenantSettings, fiscal_year_start: parseInt(value) })}
+                   >
+                     <SelectTrigger>
+                       <SelectValue />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="1">January</SelectItem>
+                       <SelectItem value="2">February</SelectItem>
+                       <SelectItem value="3">March</SelectItem>
+                       <SelectItem value="4">April</SelectItem>
+                       <SelectItem value="5">May</SelectItem>
+                       <SelectItem value="6">June</SelectItem>
+                       <SelectItem value="7">July</SelectItem>
+                       <SelectItem value="8">August</SelectItem>
+                       <SelectItem value="9">September</SelectItem>
+                       <SelectItem value="10">October</SelectItem>
+                       <SelectItem value="11">November</SelectItem>
+                       <SelectItem value="12">December</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
 
                 <div className="flex justify-end">
-                  <Button onClick={handleSaveTenantSettings} disabled={loading}>
-                    <Save className="mr-2 h-4 w-4" />
+                  <Button
+                    onClick={handleSaveTenantSettings}
+                    disabled={loading || !canEditOrganization}
+                  >
+                    {loading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
                     Save Changes
                   </Button>
+                  {!canEditOrganization && (
+                    <p className="text-sm text-muted-foreground ml-2">
+                      Admin or Manager access required
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -461,6 +709,21 @@ export default function SettingsPage() {
                       checked={notificationSettings.email_notifications}
                       onCheckedChange={(checked) =>
                         setNotificationSettings({ ...notificationSettings, email_notifications: checked })
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>SMS Notifications</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Receive important notifications via SMS
+                      </p>
+                    </div>
+                    <Switch
+                      checked={notificationSettings.sms_notifications}
+                      onCheckedChange={(checked) =>
+                        setNotificationSettings({ ...notificationSettings, sms_notifications: checked })
                       }
                     />
                   </div>
@@ -497,6 +760,21 @@ export default function SettingsPage() {
 
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
+                      <Label>Expiry Alerts</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Get notified when products are expiring soon
+                      </p>
+                    </div>
+                    <Switch
+                      checked={notificationSettings.expiry_alerts}
+                      onCheckedChange={(checked) =>
+                        setNotificationSettings({ ...notificationSettings, expiry_alerts: checked })
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
                       <Label>Order Updates</Label>
                       <p className="text-sm text-muted-foreground">
                         Notifications for order status changes
@@ -512,15 +790,30 @@ export default function SettingsPage() {
 
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label>System Alerts</Label>
+                      <Label>Payment Reminders</Label>
                       <p className="text-sm text-muted-foreground">
-                        Important system maintenance and updates
+                        Reminders for overdue payments and invoices
                       </p>
                     </div>
                     <Switch
-                      checked={notificationSettings.system_alerts}
+                      checked={notificationSettings.payment_reminders}
                       onCheckedChange={(checked) =>
-                        setNotificationSettings({ ...notificationSettings, system_alerts: checked })
+                        setNotificationSettings({ ...notificationSettings, payment_reminders: checked })
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Marketing Emails</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Receive promotional offers and updates
+                      </p>
+                    </div>
+                    <Switch
+                      checked={notificationSettings.marketing_emails}
+                      onCheckedChange={(checked) =>
+                        setNotificationSettings({ ...notificationSettings, marketing_emails: checked })
                       }
                     />
                   </div>
@@ -543,7 +836,11 @@ export default function SettingsPage() {
 
                 <div className="flex justify-end">
                   <Button onClick={handleSaveNotifications} disabled={loading}>
-                    <Save className="mr-2 h-4 w-4" />
+                    {loading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
                     Save Preferences
                   </Button>
                 </div>
@@ -584,8 +881,8 @@ export default function SettingsPage() {
                   <div className="grid gap-2">
                     <Label htmlFor="currency">Currency</Label>
                     <Select
-                      value={tenantSettings.currency}
-                      onValueChange={(value) => setTenantSettings({ ...tenantSettings, currency: value })}
+                      value={tenantSettings.currency_code}
+                      onValueChange={(value) => setTenantSettings({ ...tenantSettings, currency_code: value })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -638,10 +935,22 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="flex justify-end">
-                  <Button onClick={handleSaveTenantSettings} disabled={loading}>
-                    <Save className="mr-2 h-4 w-4" />
+                  <Button
+                    onClick={handleSaveTenantSettings}
+                    disabled={loading || !canEditSystemSettings}
+                  >
+                    {loading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
                     Save Preferences
                   </Button>
+                  {!canEditSystemSettings && (
+                    <p className="text-sm text-muted-foreground ml-2">
+                      Admin access required
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

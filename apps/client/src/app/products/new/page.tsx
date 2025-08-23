@@ -3,92 +3,113 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
+import { FormProvider, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import PageContainer from '@/components/layout/PageContainer';
+import ProductFormSection from '@/components/products/ProductFormSection';
 import { apiClient } from '@/lib/api';
 import { toast } from 'react-hot-toast';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { ProductUnit, CreateProductRequest } from '@/types';
+import { ProductUnit } from '@/types';
+import { createProductSchema } from '@/lib/schemas/product-schemas';
+import { getProductFormSections } from '@/lib/configs/product-form-config';
+import { ProductFormData } from '@/types/product-forms';
 import { cn } from '@/lib/utils';
 
-const newProductSchema = z.object({
-  sku: z.string().min(1, 'SKU is required'),
-  name: z.string().min(1, 'Name is required'),
-  price: z.preprocess(
-    (val) => Number(val),
-    z.number().min(0.01, 'Price must be a positive number')
-  ),
-  brand: z.string().optional(),
-  description: z.string().optional(),
-  unit_id: z.string().min(1, 'Unit is required'),
-  price_per_unit: z.preprocess(
-    (val) => Number(val),
-    z.number().min(0.01, 'Price per unit must be a positive number')
-  ),
-  gst_percent: z.preprocess(
-    (val) => (val === '' ? undefined : Number(val)),
-    z.number().min(0, 'GST % cannot be negative').max(100, 'GST % cannot exceed 100').optional()
-  ),
-});
-
-type NewProductFormData = z.infer<typeof newProductSchema>;
+type NewProductFormData = ProductFormData;
 
 export default function NewProductPage() {
   const router = useRouter();
-  const { data: units, error: unitsError, isLoading: unitsLoading } = useSWR<ProductUnit[]>('/units', () => apiClient.units.list());
   const [submitting, setSubmitting] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isDirty, isValid },
-    setValue,
-    watch,
-  } = useForm<NewProductFormData>({
-    resolver: zodResolver(newProductSchema),
+  // Fetch units for the form
+  const { data: units, error: unitsError, isLoading: unitsLoading } = useSWR<ProductUnit[]>(
+    '/units',
+    async () => {
+      const result = await apiClient.units.list();
+      return result as ProductUnit[];
+    }
+  );
+
+  // Form configuration
+  const methods = useForm<ProductFormData>({
+    resolver: zodResolver(createProductSchema),
     mode: 'onChange',
+    defaultValues: {
+      is_active: true,
+      is_featured: false,
+      allow_backorders: false,
+      track_inventory: true,
+      tags: [],
+    },
   });
 
-  const unitId = watch('unit_id');
+  const {
+    handleSubmit,
+    formState: { isDirty, isValid, errors },
+    setValue,
+    watch,
+  } = methods;
 
-  useEffect(() => {
-    if (units && units.length > 0 && !unitId) {
-      setValue('unit_id', units[0].id);
+  // Watch category to update subcategory options
+  const selectedCategory = watch('category');
+
+  // Form sections configuration
+  const formSections = getProductFormSections(
+    undefined, // Use default categories
+    selectedCategory ? { [selectedCategory]: [{ value: 'default', label: 'Default' }] } : undefined
+  );
+
+  // Update unit options dynamically
+  const updatedFormSections = formSections.map(section => {
+    if (section.id === 'inventory') {
+      return {
+        ...section,
+        fields: section.fields.map(field => {
+          if (field.name === 'unit_id') {
+            return {
+              ...field,
+              options: units?.map(unit => ({
+                value: unit.id,
+                label: `${unit.name} (${unit.abbreviation})`,
+              })) || [],
+            };
+          }
+          return field;
+        }),
+      };
     }
-  }, [units, unitId, setValue]);
+    return section;
+  });
 
-  const onSubmit = async (data: NewProductFormData) => {
+  const onSubmit = async (data: ProductFormData) => {
     setSubmitting(true);
     try {
-      const productData: CreateProductRequest = {
+      // Transform form data to match API expectations
+      const productData = {
         sku: data.sku,
         name: data.name,
-        selling_price: data.price,
-        description: data.description,
-        brand: data.brand,
+        selling_price: data.selling_price,
+        description: data.description || undefined,
+        brand: data.brand || undefined,
         unit_id: data.unit_id,
-        cost_price: data.price_per_unit, // Assuming price_per_unit is cost_price
-        tax_rate: data.gst_percent, // Assuming gst_percent is tax_rate
-        category: "", // TODO: Add category field to form
-        min_stock_level: 0, // TODO: Add min_stock_level field to form
-        max_stock_level: 0, // TODO: Add max_stock_level field to form
-        reorder_point: 0, // TODO: Add reorder_point field to form
+        cost_price: data.cost_price,
+        tax_rate: data.tax_rate || undefined,
+        category: data.category,
+        min_stock_level: data.min_stock_level,
+        max_stock_level: data.max_stock_level,
+        reorder_point: data.reorder_point,
+        tags: data.tags,
+        image_url: data.image_url || undefined,
+        is_active: data.is_active,
+        is_featured: data.is_featured,
+        allow_backorders: data.allow_backorders,
+        track_inventory: data.track_inventory,
       };
 
       const response = await apiClient.products.create(productData);
-      const id = response?.data?.id || response?.id;
+      const id = (response as any)?.data?.id || (response as any)?.id;
       toast.success('Product created successfully!');
       if (id) router.push(`/products/${id}`);
       else router.push('/products');
@@ -102,159 +123,54 @@ export default function NewProductPage() {
 
   if (unitsLoading) {
     return (
-      <DashboardLayout title="New Product">
+      <PageContainer
+        title="New Product"
+        description="Create a new product in your inventory"
+      >
         <div className="py-8">Loading units...</div>
-      </DashboardLayout>
+      </PageContainer>
     );
   }
 
   if (unitsError) {
     return (
-      <DashboardLayout title="New Product">
+      <PageContainer
+        title="New Product"
+        description="Create a new product in your inventory"
+      >
         <div className="py-8 text-red-600">Failed to load units.</div>
-      </DashboardLayout>
+      </PageContainer>
     );
   }
 
   return (
-    <DashboardLayout title="New Product">
-      <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="sku">SKU</Label>
-            <Input
-              id="sku"
-              {...register('sku')}
-              className={cn("mt-1", errors.sku && "border-destructive focus-visible:ring-destructive")}
-              placeholder="Enter product SKU"
-              aria-invalid={errors.sku ? "true" : "false"}
-              aria-describedby="sku-error"
-            />
-            {errors.sku && (
-              <p className="text-sm text-destructive" id="sku-error">
-                {errors.sku.message}
-              </p>
-            )}
-          </div>
-          <div>
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              {...register('name')}
-              className={cn("mt-1", errors.name && "border-destructive focus-visible:ring-destructive")}
-              placeholder="Enter product name"
-              aria-invalid={errors.name ? "true" : "false"}
-              aria-describedby="name-error"
-            />
-            {errors.name && (
-              <p className="text-sm text-destructive" id="name-error">
-                {errors.name.message}
-              </p>
-            )}
-          </div>
-          <div>
-            <Label htmlFor="price">Price</Label>
-            <Input
-              id="price"
-              type="number"
-              step="0.01"
-              {...register('price')}
-              className={cn("mt-1", errors.price && "border-destructive focus-visible:ring-destructive")}
-              placeholder="Enter selling price"
-              aria-invalid={errors.price ? "true" : "false"}
-              aria-describedby="price-error"
-            />
-            {errors.price && (
-              <p className="text-sm text-destructive" id="price-error">
-                {errors.price.message}
-              </p>
-            )}
-          </div>
-          <div>
-            <Label htmlFor="brand">Brand</Label>
-            <Input
-              id="brand"
-              {...register('brand')}
-              className="mt-1"
-              placeholder="Enter brand name (optional)"
-            />
-          </div>
-          <div>
-            <Label htmlFor="unit_id">Unit</Label>
-            <Select
-              onValueChange={(value) => setValue('unit_id', value, { shouldValidate: true, shouldDirty: true })}
-              value={unitId}
+    <PageContainer
+      title="New Product"
+      description="Create a new product in your inventory"
+    >
+      <FormProvider {...methods}>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {updatedFormSections.map((section) => (
+            <ProductFormSection key={section.id} section={section} />
+          ))}
+
+          <div className="flex justify-end space-x-4 pt-6 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push('/products')}
             >
-              <SelectTrigger className={cn("mt-1", errors.unit_id && "border-destructive focus-visible:ring-destructive")}>
-                <SelectValue placeholder="Select a unit" />
-              </SelectTrigger>
-              <SelectContent>
-                {units?.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name} ({u.abbreviation})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.unit_id && (
-              <p className="text-sm text-destructive" id="unit-error">
-                {errors.unit_id.message}
-              </p>
-            )}
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={submitting || !isDirty || !isValid}
+            >
+              {submitting ? 'Creating Product...' : 'Create Product'}
+            </Button>
           </div>
-          <div>
-            <Label htmlFor="price_per_unit">Cost Price</Label>
-            <Input
-              id="price_per_unit"
-              type="number"
-              step="0.01"
-              {...register('price_per_unit')}
-              className={cn("mt-1", errors.price_per_unit && "border-destructive focus-visible:ring-destructive")}
-              placeholder="Enter cost price per unit"
-              aria-invalid={errors.price_per_unit ? "true" : "false"}
-              aria-describedby="price-per-unit-error"
-            />
-            {errors.price_per_unit && (
-              <p className="text-sm text-destructive" id="price-per-unit-error">
-                {errors.price_per_unit.message}
-              </p>
-            )}
-          </div>
-          <div>
-            <Label htmlFor="gst_percent">GST %</Label>
-            <Input
-              id="gst_percent"
-              type="number"
-              step="0.01"
-              {...register('gst_percent')}
-              className={cn("mt-1", errors.gst_percent && "border-destructive focus-visible:ring-destructive")}
-              placeholder="Enter GST percentage (optional)"
-              aria-invalid={errors.gst_percent ? "true" : "false"}
-              aria-describedby="gst-percent-error"
-            />
-            {errors.gst_percent && (
-              <p className="text-sm text-destructive" id="gst-percent-error">
-                {errors.gst_percent.message}
-              </p>
-            )}
-          </div>
-          <div className="md:col-span-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              rows={4}
-              {...register('description')}
-              className="mt-1"
-              placeholder="Enter product description (optional)"
-            />
-          </div>
-        </div>
-        <div className="pt-2">
-          <Button type="submit" disabled={submitting || !isDirty || !isValid}>
-            {submitting ? 'Creating...' : 'Create product'}
-          </Button>
-        </div>
-      </form>
-    </DashboardLayout>
+        </form>
+      </FormProvider>
+    </PageContainer>
   );
 }

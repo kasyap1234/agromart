@@ -31,3 +31,26 @@ UPDATE users
 SET name = $2, email = $3, phone = $4, role = CAST($5 AS user_role), email_verified = $6
 WHERE id = $1 AND tenant_id = $7
 RETURNING id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at;
+
+-- name: ListUsers :many
+SELECT id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at FROM users
+WHERE tenant_id = $1
+ORDER BY name
+LIMIT $2 OFFSET $3;
+
+-- name: CountUsers :one
+SELECT COUNT(*) FROM users WHERE tenant_id = $1;
+
+-- name: SearchUsers :many
+SELECT id, name, email, password, phone, tenant_id, role::text AS role, email_verified, is_active, created_at FROM users
+WHERE tenant_id = $1 AND (name ILIKE $2 OR email ILIKE $2)
+ORDER BY name
+LIMIT $3 OFFSET $4;
+
+-- name: DeactivateUser :exec
+UPDATE users
+SET is_active = false
+WHERE id = $1 AND tenant_id = $2;
+
+-- name: CheckUserExists :one
+SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND tenant_id = $2);

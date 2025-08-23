@@ -7,9 +7,9 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createTenant = `-- name: CreateTenant :one
@@ -19,15 +19,15 @@ RETURNING id, name, email, phone, address, registration_number, is_active, creat
 `
 
 type CreateTenantParams struct {
-	Name               string      `json:"name"`
-	Email              string      `json:"email"`
-	Phone              string      `json:"phone"`
-	Address            pgtype.Text `json:"address"`
-	RegistrationNumber pgtype.Text `json:"registration_number"`
+	Name               string         `json:"name"`
+	Email              string         `json:"email"`
+	Phone              string         `json:"phone"`
+	Address            sql.NullString `json:"address"`
+	RegistrationNumber sql.NullString `json:"registration_number"`
 }
 
 func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error) {
-	row := q.db.QueryRow(ctx, createTenant,
+	row := q.db.QueryRowContext(ctx, createTenant,
 		arg.Name,
 		arg.Email,
 		arg.Phone,
@@ -54,7 +54,7 @@ WHERE id = $1
 `
 
 func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error) {
-	row := q.db.QueryRow(ctx, getTenantByID, id)
+	row := q.db.QueryRowContext(ctx, getTenantByID, id)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -81,7 +81,7 @@ type ListTenantsParams struct {
 }
 
 func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Tenant, error) {
-	rows, err := q.db.Query(ctx, listTenants, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listTenants, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +103,9 @@ func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Ten
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -117,17 +120,17 @@ RETURNING id, name, email, phone, address, registration_number, is_active, creat
 `
 
 type UpdateTenantParams struct {
-	ID                 uuid.UUID   `json:"id"`
-	Name               string      `json:"name"`
-	Email              string      `json:"email"`
-	Phone              string      `json:"phone"`
-	Address            pgtype.Text `json:"address"`
-	RegistrationNumber pgtype.Text `json:"registration_number"`
-	IsActive           bool        `json:"is_active"`
+	ID                 uuid.UUID      `json:"id"`
+	Name               string         `json:"name"`
+	Email              string         `json:"email"`
+	Phone              string         `json:"phone"`
+	Address            sql.NullString `json:"address"`
+	RegistrationNumber sql.NullString `json:"registration_number"`
+	IsActive           bool           `json:"is_active"`
 }
 
 func (q *Queries) UpdateTenant(ctx context.Context, arg UpdateTenantParams) (Tenant, error) {
-	row := q.db.QueryRow(ctx, updateTenant,
+	row := q.db.QueryRowContext(ctx, updateTenant,
 		arg.ID,
 		arg.Name,
 		arg.Email,
