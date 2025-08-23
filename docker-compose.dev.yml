@@ -33,6 +33,7 @@ services:
       APP_DB_NAME: agromart
       APP_JWT_SECRET: supersecretjwt-change-me-for-local-dev-if-you-want
       MIGRATIONS_PATH: /app/sql/schema
+      SEED_DEV: "false"
     ports:
       - "8080:8080"
     depends_on:
@@ -44,7 +45,7 @@ services:
     build:
       context: apps/client
       dockerfile: Dockerfile
-      
+
     container_name: agromart-client
     volumes:
       - ./apps/client:/app
@@ -52,7 +53,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080/api
     ports:
-      - "3000:3000"
+      - "9000:9000"
 
 volumes:
   pgdata:

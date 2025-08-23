@@ -18,7 +18,9 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:chromium": "playwright test --project=chromium",
     "test:e2e:mobile": "playwright test --project='Mobile Chrome'",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "ANALYZE=true next build",
+    "install-deps": "bun install",
+    "clean-install": "rm -rf node_modules .next && bun install"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",

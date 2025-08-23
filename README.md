@@ -10,11 +10,14 @@ A modern, scalable agricultural inventory management system built with Go, Next.
 git clone <repository-url>
 cd agromart
 
+# Install Bun (if not already installed)
+curl -fsSL https://bun.sh/install | bash
+
 # Start development environment
 docker compose -f docker-compose.dev.yml up --build
 
 # Access the application
-# Frontend: http://localhost:3000
+# Frontend: http://localhost:9000
 # Backend API: http://localhost:8080/api
 # Default login: admin@example.com / password
 ```
@@ -79,7 +82,7 @@ Key configuration areas:
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, Bun (package manager)
 - **Backend**: Go 1.24.5, Echo framework, JWT authentication
 - **Database**: PostgreSQL 17.5 with sqlc for type-safe queries
 - **Infrastructure**: Docker, Docker Compose
