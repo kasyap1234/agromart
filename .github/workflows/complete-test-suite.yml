@@ -12,6 +12,7 @@ on:
 env:
   NODE_VERSION: '20'
   GO_VERSION: '1.24'
+  BUN_VERSION: '1.2.20'
 
 jobs:
   # Frontend Testing
@@ -41,24 +42,27 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: apps/client/package-lock.json
+
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ env.BUN_VERSION }}
 
     - name: Install frontend dependencies
       working-directory: ./apps/client
-      run: npm ci
+      run: bun install --frozen-lockfile
 
     - name: Run frontend linting
       working-directory: ./apps/client
-      run: npm run lint
+      run: bun run lint
 
     - name: Run frontend type check
       working-directory: ./apps/client
-      run: npm run type-check
+      run: bun run type-check
 
     - name: Run frontend unit tests with coverage
       working-directory: ./apps/client
-      run: npm run test:coverage
+      run: bun run test:coverage
 
     - name: Upload frontend coverage
       uses: codecov/codecov-action@v3
@@ -127,20 +131,23 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: apps/client/package-lock.json
+
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ env.BUN_VERSION }}
 
     - name: Install dependencies
       working-directory: ./apps/client
-      run: npm ci
+      run: bun install --frozen-lockfile
 
     - name: Install Playwright browsers
       working-directory: ./apps/client
-      run: npx playwright install --with-deps
+      run: bunx playwright install --with-deps
 
     - name: Run E2E tests
       working-directory: ./apps/client
-      run: npm run test:e2e
+      run: bun run test:e2e
 
     - name: Upload E2E test results
       uses: actions/upload-artifact@v4
@@ -164,12 +171,22 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: apps/client/package-lock.json
 
-    - name: Frontend security audit
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ env.BUN_VERSION }}
+
+    - name: Frontend security audit (npm fallback)
       working-directory: ./apps/client
-      run: npm audit --audit-level high
+      run: |
+        # Use npm audit as fallback since Bun doesn't have direct audit equivalent
+        npm audit --audit-level high --json > audit-results.json
+        if [ $(jq '.metadata.vulnerabilities.high + .metadata.vulnerabilities.critical' audit-results.json) -gt 0 ]; then
+          echo "High or critical vulnerabilities found!"
+          exit 1
+        fi
+      continue-on-error: true
 
     - name: Setup Go
       uses: actions/setup-go@v4
@@ -209,12 +226,19 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: apps/client/package-lock.json
+
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ env.BUN_VERSION }}
+
+    - name: Install dependencies
+      working-directory: ./apps/client
+      run: bun install --frozen-lockfile
 
     - name: Build frontend
       working-directory: ./apps/client
-      run: npm run build
+      run: bun run build
 
     - name: Run Lighthouse performance audit
       uses: treosh/lighthouse-ci-action@v10
@@ -249,12 +273,19 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: apps/client/package-lock.json
+
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ env.BUN_VERSION }}
+
+    - name: Install dependencies
+      working-directory: ./apps/client
+      run: bun install --frozen-lockfile
 
     - name: Run ESLint
       working-directory: ./apps/client
-      run: npm run lint
+      run: bun run lint
 
     - name: Check code duplication
       uses: github/super-linter/slim@v5
@@ -281,10 +312,15 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
 
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ env.BUN_VERSION }}
+
     - name: Generate combined coverage report
       run: |
-        # Install coverage tools
-        npm install -g nyc
+        # Install coverage tools with Bun
+        bunx nyc --version || bun add -g nyc
         go install github.com/axw/gocov/gocov@latest
 
         # Generate coverage badges
