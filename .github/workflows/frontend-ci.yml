@@ -19,18 +19,15 @@ env:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18, 20]
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js ${{ matrix.node-version }}
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: ${{ env.NODE_VERSION }}
 
     - name: Setup Bun
       uses: oven-sh/setup-bun@v2
@@ -67,7 +64,7 @@ jobs:
 
     - name: Check bundle size
       working-directory: ${{ env.WORKING_DIRECTORY }}
-      run: bunx bundle-analyzer build/static/js/*.js
+      run: ANALYZE=true bun run build
 
   security-scan:
     runs-on: ubuntu-latest
@@ -185,7 +182,7 @@ jobs:
     - name: Run Lighthouse
       working-directory: ${{ env.WORKING_DIRECTORY }}
       run: |
-        bunx @lhci/cli autorun --config=lighthouserc.json
+        bunx @lhci/cli autorun --config=../../.github/lighthouse-config.json
 
   deployment-prep:
     runs-on: ubuntu-latest
