@@ -263,6 +263,9 @@ Thumbs.db
 *.zip
 *.tar
 *.tgz
+react19-nextjs15.5.md
+qwen.md
+gemini.md 
 
 # -----------------------
 # Ignore generated manifests
