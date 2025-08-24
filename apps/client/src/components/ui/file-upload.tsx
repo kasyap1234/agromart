@@ -205,7 +205,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           idx === i ? { ...p, status: 'uploading' as const, progress: 50 } : p
         ))
 
-        const uploadedFile = await uploadFile(file, i)
+        const uploadedFile = await uploadFile(file!, i)
 
         if (uploadedFile) {
           uploadedFiles.push(uploadedFile)
@@ -215,7 +215,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Upload failed'
-        errors.push(`${file.name}: ${errorMessage}`)
+        errors.push(`${file!.name}: ${errorMessage}`)
         setUploadProgress(prev => prev.map((p, idx) =>
           idx === i ? { ...p, status: 'error' as const, progress: 0, error: errorMessage } : p
         ))

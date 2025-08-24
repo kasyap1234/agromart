@@ -276,7 +276,7 @@ export async function resetTestEnvironment(page: any) {
   await clearBrowserState(page);
 
   // Navigate to base URL to ensure clean state
-  await page.goto('http://localhost:9000');
+  await page.goto('http://localhost:9001');
 
   // Wait for page to load
   await waitForNetworkIdle(page, 5000);

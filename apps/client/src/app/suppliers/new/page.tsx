@@ -17,9 +17,12 @@ export default function NewSupplierPage() {
   const [address, setAddress] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (!name) return toast.error('Name is required');
+    if (!name) {
+      toast.error('Name is required');
+      return;
+    }
     try {
       setSaving(true);
       const created = await apiClient.suppliers.create({ name, email, phone, address } as any);

@@ -19,7 +19,7 @@ test.describe('Complete User Workflow', () => {
     console.log('🚀 Starting complete user workflow test');
 
     // 1. Navigate to registration page with proper waiting
-    await page.goto('http://localhost:9000/auth/register');
+    await page.goto('http://localhost:9001/auth/register');
     await waitForNetworkIdle(page);
     await waitForElement(page, 'input[name="email"]');
 
@@ -124,7 +124,7 @@ test.describe('Complete User Workflow', () => {
     console.log('🧪 Testing authentication error handling');
 
     // Navigate to login page with proper waiting
-    await page.goto('http://localhost:9000/auth/login');
+    await page.goto('http://localhost:9001/auth/login');
     await waitForNetworkIdle(page);
     await waitForElement(page, 'input[name="email"]');
 
@@ -151,7 +151,7 @@ test.describe('Complete User Workflow', () => {
 
   test('form validation and accessibility', async ({ page }) => {
     // Navigate to registration page
-    await page.goto('http://localhost:9000/auth/register');
+    await page.goto('http://localhost:9001/auth/register');
     await waitForNetworkIdle(page);
     await waitForElement(page, 'input[name="company_name"]');
 
@@ -187,39 +187,39 @@ test.describe('Complete User Workflow', () => {
    // Set viewport to mobile size
    await page.setViewportSize({ width: 375, height: 667 });
 
-   await page.goto('http://localhost:9000/auth/login');
+   await page.goto('http://localhost:9001/auth/login');
    await waitForNetworkIdle(page);
    await waitForElement(page, 'input[name="email"]');
 
-   // Test that form elements are accessible on mobile
-   await safeFill(page, 'input[name="email"]', 'mobile@example.com');
-   await safeFill(page, 'input[name="password"]', 'MobileTest123!');
+    // Test that form elements are accessible on mobile
+    await safeFill(page, 'input[name="email"]', 'mobile@example.com');
+    await safeFill(page, 'input[name="password"]', 'MobileTest123!');
 
-   // Check that form elements are properly sized for mobile
-   const emailInput = page.locator('input[name="email"]');
-   const passwordInput = page.locator('input[name="password"]');
+    // Check that form elements are properly sized for mobile
+    const emailInput = page.locator('input[name="email"]');
+    const passwordInput = page.locator('input[name="password"]');
 
-   await expect(emailInput).toBeVisible();
-   await expect(passwordInput).toBeVisible();
+    await expect(emailInput).toBeVisible();
+    await expect(passwordInput).toBeVisible();
 
-   // Test that inputs are touch-friendly (minimum tap target size)
-   const emailBox = await emailInput.boundingBox();
-   const passwordBox = await passwordInput.boundingBox();
+    // Test that inputs are touch-friendly (minimum tap target size)
+    const emailBox = await emailInput.boundingBox();
+    const passwordBox = await passwordInput.boundingBox();
 
-   expect(emailBox?.height).toBeGreaterThanOrEqual(40); // Minimum touch target
-   expect(passwordBox?.height).toBeGreaterThanOrEqual(40); // Minimum touch target
+    expect(emailBox?.height).toBeGreaterThanOrEqual(40); // Minimum touch target
+    expect(passwordBox?.height).toBeGreaterThanOrEqual(40); // Minimum touch target
 
-   // Test that the login form is properly responsive
-   await expect(page.locator('form')).toBeVisible();
+    // Test that the login form is properly responsive
+    await expect(page.locator('form')).toBeVisible();
 
-   console.log('✅ Mobile compatibility verified - form elements accessible and properly sized');
- });
+    console.log('✅ Mobile compatibility verified - form elements accessible and properly sized');
+  });
 
   test('file upload functionality', async ({ page }) => {
     console.log('📁 Testing file upload functionality');
 
     // Login first with test data
-    await page.goto('http://localhost:9000/auth/login');
+    await page.goto('http://localhost:9001/auth/login');
     await waitForNetworkIdle(page);
     await safeFill(page, 'input[name="email"]', testData.adminUser.email);
     await safeFill(page, 'input[name="password"]', testData.adminUser.password);
@@ -229,7 +229,7 @@ test.describe('Complete User Workflow', () => {
     console.log('✅ Logged in as admin for file upload test');
 
     // Navigate to file upload demo with error handling
-    await page.goto('http://localhost:9000/file-upload-demo');
+    await page.goto('http://localhost:9001/file-upload-demo');
     await waitForNetworkIdle(page);
 
     // Check if file upload page is available
@@ -289,59 +289,59 @@ test.describe('Complete User Workflow', () => {
    const startTime = Date.now();
 
    // Navigate to login page first (since products page requires authentication)
-   await page.goto('http://localhost:9000/auth/login');
+   await page.goto('http://localhost:9001/auth/login');
    await waitForNetworkIdle(page);
 
-   const loadTime = Date.now() - startTime;
+    const loadTime = Date.now() - startTime;
 
-   // Page should load within 10 seconds (more realistic for development environment)
-   expect(loadTime).toBeLessThan(10000);
+    // Page should load within 10 seconds (more realistic for development environment)
+    expect(loadTime).toBeLessThan(10000);
 
-   // Test form interactions for performance
-   await safeFill(page, 'input[name="email"]', 'test@example.com');
-   await safeFill(page, 'input[name="password"]', 'TestPassword123!');
+    // Test form interactions for performance
+    await safeFill(page, 'input[name="email"]', 'test@example.com');
+    await safeFill(page, 'input[name="password"]', 'TestPassword123!');
 
-   // Should handle form interactions smoothly
-   await expect(page.locator('input[name="email"]')).toHaveValue('test@example.com');
-   await expect(page.locator('input[name="password"]')).toHaveValue('TestPassword123!');
+    // Should handle form interactions smoothly
+    await expect(page.locator('input[name="email"]')).toHaveValue('test@example.com');
+    await expect(page.locator('input[name="password"]')).toHaveValue('TestPassword123!');
 
-   console.log('✅ Performance test completed - form interactions working smoothly');
- });
+    console.log('✅ Performance test completed - form interactions working smoothly');
+  });
 
   test('error recovery and resilience', async ({ page }) => {
-   // Test login page error handling
-   await page.goto('http://localhost:9000/auth/login');
-   await waitForNetworkIdle(page);
-   await waitForElement(page, 'input[name="email"]');
+    // Test login page error handling
+    await page.goto('http://localhost:9001/auth/login');
+    await waitForNetworkIdle(page);
+    await waitForElement(page, 'input[name="email"]');
 
-   // Test invalid login credentials
-   await safeFill(page, 'input[name="email"]', 'invalid@example.com');
-   await safeFill(page, 'input[name="password"]', 'wrongpassword');
+    // Test invalid login credentials
+    await safeFill(page, 'input[name="email"]', 'invalid@example.com');
+    await safeFill(page, 'input[name="password"]', 'wrongpassword');
 
-   // Submit form
-   await safeClick(page, 'button[type="submit"]');
+    // Submit form
+    await safeClick(page, 'button[type="submit"]');
 
-   // Wait for login to process (button should show loading state then error)
-   await expect(page.locator('button[type="submit"]:not([disabled])')).toBeVisible({ timeout: 10000 });
+    // Wait for login to process (button should show loading state then error)
+    await expect(page.locator('button[type="submit"]:not([disabled])')).toBeVisible({ timeout: 10000 });
 
-   // Check for error message
-   const errorVisible = await page.locator('text=Login failed').isVisible().catch(() => false);
-   if (errorVisible) {
-     console.log('✅ Error message displayed correctly');
-   } else {
-     console.log('ℹ️  Error handling may vary - checking for other error indicators');
-     // Check if we're still on login page (indicating failed login)
-     await expect(page).toHaveURL(/.*\/auth\/login/);
-   }
+    // Check for error message
+    const errorVisible = await page.locator('text=Login failed').isVisible().catch(() => false);
+    if (errorVisible) {
+      console.log('✅ Error message displayed correctly');
+    } else {
+      console.log('ℹ️  Error handling may vary - checking for other error indicators');
+      // Check if we're still on login page (indicating failed login)
+      await expect(page).toHaveURL(/.*\/auth\/login/);
+    }
 
-   // Test form recovery - clear error and try valid input
-   await safeFill(page, 'input[name="email"]', 'test@example.com');
-   await safeFill(page, 'input[name="password"]', 'TestPassword123!');
+    // Test form recovery - clear error and try valid input
+    await safeFill(page, 'input[name="email"]', 'test@example.com');
+    await safeFill(page, 'input[name="password"]', 'TestPassword123!');
 
-   // Form should be ready for new submission
-   await expect(page.locator('input[name="email"]')).toHaveValue('test@example.com');
-   await expect(page.locator('input[name="password"]')).toHaveValue('TestPassword123!');
+    // Form should be ready for new submission
+    await expect(page.locator('input[name="email"]')).toHaveValue('test@example.com');
+    await expect(page.locator('input[name="password"]')).toHaveValue('TestPassword123!');
 
-   console.log('✅ Error recovery and resilience test completed');
- });
+    console.log('✅ Error recovery and resilience test completed');
+  });
 });

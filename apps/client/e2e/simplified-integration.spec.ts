@@ -9,7 +9,7 @@ interface IntegrationTestResult {
 }
 
 class SimplifiedIntegrationTester {
-  private baseURL = 'http://localhost:9000';
+  private baseURL = 'http://localhost:9001';
   private backendURL = 'http://localhost:8080/api';
   private testResults: IntegrationTestResult[] = [];
 
@@ -32,7 +32,7 @@ class SimplifiedIntegrationTester {
       const corsResponse = await page.request.fetch(`${this.backendURL}/locations`, {
         method: 'OPTIONS',
         headers: {
-          'Origin': 'http://localhost:9000',
+          'Origin': 'http://localhost:9001',
           'Access-Control-Request-Method': 'GET',
           'Access-Control-Request-Headers': 'authorization'
         }
@@ -169,7 +169,7 @@ class SimplifiedIntegrationTester {
       const directResponse = await page.request.get(`${this.backendURL}/health`);
 
       const proxyWorking = apiResponse.status === directResponse.status ||
-                          (apiResponse.status === 200 && directResponse.status === 404);
+        (apiResponse.status === 200 && directResponse.status === 404);
 
       this.logTestResult('Frontend-Backend Connection', 'passed', Date.now() - startTime, undefined, {
         proxyWorking,
@@ -184,7 +184,7 @@ class SimplifiedIntegrationTester {
   // Main test runner
   async runAllIntegrationTests(page: any) {
     console.log('🚀 Starting Simplified Integration Tests...');
-    console.log('=' .repeat(60));
+    console.log('='.repeat(60));
 
     const tests = [
       () => this.testAPICommunication(page),
@@ -204,7 +204,7 @@ class SimplifiedIntegrationTester {
 
   generateTestReport() {
     console.log('\n📊 INTEGRATION TEST REPORT');
-    console.log('=' .repeat(60));
+    console.log('='.repeat(60));
 
     const passed = this.testResults.filter(r => r.status === 'passed').length;
     const failed = this.testResults.filter(r => r.status === 'failed').length;

@@ -15,6 +15,21 @@
     "jsx": "preserve",
     "allowImportingTsExtensions": true,
     "incremental": true,
+    "jsxImportSource": "react",
+    "exactOptionalPropertyTypes": false,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "preserveConstEnums": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true,
+    "removeComments": false,
+    "allowSyntheticDefaultImports": true,
+    "resolvePackageJsonExports": true,
+    "resolvePackageJsonImports": true,
     "plugins": [
       {
         "name": "next"

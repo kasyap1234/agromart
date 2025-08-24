@@ -46,8 +46,8 @@ func CORSMiddleware() echo.MiddlewareFunc {
 		AllowOrigins: []string{
 			"http://localhost:3000",
 			"http://localhost:3001",
-			"http://localhost:9000", // Next.js dev server
-		},
+			"http://localhost:9001", // Next.js dev server
+			},
 		AllowMethods: []string{
 			"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS",
 		},

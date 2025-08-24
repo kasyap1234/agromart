@@ -101,7 +101,7 @@ export default function PurchaseOrdersPage() {
               </a>
             </Button>
             <Button asChild>
-              <Link href="/purchase-orders/new">
+              <Link href={"/purchase-orders/new" as any}>
                 <PlusIcon className="w-4 h-4 mr-2" />
                 Create PO
               </Link>
@@ -136,7 +136,7 @@ export default function PurchaseOrdersPage() {
             </a>
           </Button>
           <Button asChild>
-            <Link href="/purchase-orders/new">
+            <Link href={"/purchase-orders/new" as any}>
               <PlusIcon className="w-4 h-4 mr-2" />
               Create PO
             </Link>
@@ -186,7 +186,7 @@ export default function PurchaseOrdersPage() {
           <CardContent className="p-12 text-center">
             <div className="text-muted-foreground mb-4">No purchase orders found.</div>
             <Button asChild>
-              <Link href="/purchase-orders/new">Create a new purchase order</Link>
+              <Link href={"/purchase-orders/new" as any}>Create a new purchase order</Link>
             </Button>
           </CardContent>
         </Card>
@@ -225,7 +225,7 @@ export default function PurchaseOrdersPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/purchase-orders/${po.id}`}>View</Link>
+                            <Link href={`/purchase-orders/${po.id}` as any}>View</Link>
                           </Button>
                         </TableCell>
                       </TableRow>

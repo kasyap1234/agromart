@@ -1,7 +1,7 @@
 import 'whatwg-fetch';
 
 describe('Products API proxy contract', () => {
-  const base = 'http://localhost:9000';
+  const base = 'http://localhost:9001';
   it('GET /api/products should be protected and/or return JSON', async () => {
     const res = await fetch(base + '/api/products');
     // can be 200 with auth or 401 without; ensure endpoint exists

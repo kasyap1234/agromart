@@ -296,7 +296,7 @@ export const OfflineFallback: React.FC<OfflineFallbackProps> = ({
 };
 
 // Service Worker Registration Helper
-export const registerServiceWorker = async () => {
+export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | undefined> => {
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js');
@@ -319,8 +319,10 @@ export const registerServiceWorker = async () => {
       return registration;
     } catch (error) {
       console.error('Service worker registration failed:', error);
+      return undefined;
     }
   }
+  return undefined;
 };
 
 // PWA Install Prompt Hook

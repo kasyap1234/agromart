@@ -27,7 +27,7 @@ This comprehensive guide covers both local development and production deployment
    ```
 
 3. **Access the application:**
-   - **Frontend**: http://localhost:9000
+   - **Frontend**: http://localhost:9001
    - **Backend API**: http://localhost:8080/api
    - **API Health**: http://localhost:8080/health
 
@@ -61,14 +61,14 @@ Quick start (recommended)
    - Starts PostgreSQL database
    - Runs database setup (migrations)
    - Starts the backend API on port 8080
-   - Starts the frontend website on port 9000
+   - Starts the frontend website on port 9001
 
    First run can take a few minutes while Docker downloads images.
 
 4) Open the app
    - Backend health: http://localhost:8080/health
      You should see a small JSON response saying the server is healthy.
-   - Frontend website: http://localhost:9000
+   - Frontend website: http://localhost:9001
      You should see the login page.
 
 5) Log in
@@ -314,7 +314,7 @@ docker compose -f docker-compose.prod.yml logs -f caddy
 
 ### Development Issues
 
-1. **"This site can't be reached" at http://localhost:9000**
+1. **"This site can't be reached" at http://localhost:9001**
    - **Cause**: Frontend not started yet or build failed.
    - **Fix**: Ensure Docker Desktop is running, then:
      ```bash
@@ -528,7 +528,7 @@ If you encounter issues:
 - **Reverse Proxy (caddy)**: Handles SSL/TLS and load balancing
 
 ### Default Ports
-- **Frontend**: http://localhost:9000
+- **Frontend**: http://localhost:9001
 - **Backend API**: http://localhost:8080
 - **Database**: localhost:5432 (internal only)
 - **Production**: https://your-domain.com (SSL enabled)

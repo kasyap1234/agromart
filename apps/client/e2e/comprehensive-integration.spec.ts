@@ -20,7 +20,7 @@ interface IntegrationTestResult {
 }
 
 class ComprehensiveIntegrationTester {
-  private baseURL = 'http://localhost:9000';
+  private baseURL = 'http://localhost:9001';
   private backendURL = 'http://localhost:8080/api';
   private authToken = '';
   private refreshToken = '';
@@ -107,7 +107,7 @@ class ComprehensiveIntegrationTester {
       const corsResponse = await page.request.fetch(`${this.backendURL}/locations`, {
         method: 'OPTIONS',
         headers: {
-          'Origin': 'http://localhost:9000',
+          'Origin': 'http://localhost:9001',
           'Access-Control-Request-Method': 'GET',
           'Access-Control-Request-Headers': 'authorization'
         }

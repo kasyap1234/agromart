@@ -55,7 +55,7 @@ export function VirtualList<T>({
     for (let i = visibleRange.start; i < visibleRange.end; i++) {
       if (i < items.length) {
         itemsToRender.push({
-          item: items[i],
+          item: items[i]!,
           index: i,
           top: i * itemHeight,
         });
@@ -203,7 +203,7 @@ export function DynamicVirtualList<T>({
     for (let i = visibleRange.start; i < visibleRange.end; i++) {
       if (i < items.length) {
         itemsToRender.push({
-          item: items[i],
+          item: items[i]!,
           index: i,
           top: cumulativeHeights[i],
         });
@@ -322,7 +322,7 @@ export function VirtualGrid<T>({
         const index = row * gridDimensions.columns + col;
         if (index < items.length) {
           itemsToRender.push({
-            item: items[index],
+            item: items[index]!,
             index,
             top: row * (itemHeight + gap),
             left: col * (itemWidth + gap),

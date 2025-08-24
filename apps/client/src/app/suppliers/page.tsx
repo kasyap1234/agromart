@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import Link from "next/link";
 import { useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PlusIcon, Eye, Pencil, Trash2 } from "lucide-react";
 import { apiClient } from "@/lib/api";
@@ -26,8 +27,9 @@ export default function SuppliersPage() {
   const [search, setSearch] = useState("");
   const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
-  const { data, error, isLoading, mutate } = useSWR(
+  const router = useRouter();
+ 
+   const { data, error, isLoading, mutate } = useSWR(
     ["suppliers", page, limit, search],
     () => {
       const params: any = { page, limit };
@@ -129,7 +131,7 @@ export default function SuppliersPage() {
       description="Build your supplier network by adding your first supplier."
       action={{
         label: "Add Supplier",
-        onClick: () => window.location.href = "/suppliers/new"
+        onClick: () => router.push("/suppliers/new")
       }}
     />
   );

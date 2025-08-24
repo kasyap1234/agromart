@@ -84,7 +84,7 @@ export default function SupplierPurchaseOrdersPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Purchase Orders</h1>
         <Button asChild>
-          <Link href="/purchase-orders/new">Create PO</Link>
+          <Link href={"/purchase-orders/new" as any}>Create PO</Link>
         </Button>
       </div>
 
@@ -188,7 +188,7 @@ export default function SupplierPurchaseOrdersPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <Link 
-                          href={`/purchase-orders/${po.id}`} 
+                          href={`/purchase-orders/${po.id}` as any}
                           className="text-primary-600 hover:text-primary-900"
                         >
                           View

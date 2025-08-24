@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Providers } from './providers';
 import { Suspense, lazy } from 'react';
-import '@/styles/tailwind-generated.raw.css';
+import '@/styles/globals.css';
 
 // Lazy load non-critical components for better performance
 const ServiceWorker = lazy(() => import('@/components/pwa/ServiceWorker').then(mod => ({ default: mod.ServiceWorker })));

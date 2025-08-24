@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const base = process.env.E2E_BASE || 'http://localhost:9000';
+const base = process.env.E2E_BASE || 'http://localhost:9001';
 
 async function login(page) {
   await page.goto(base + '/auth/login');

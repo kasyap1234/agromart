@@ -18,12 +18,12 @@ async function fetchDashboardData() {
       hasError: false,
     };
   }
-
-  try {
+ 
+   try {
     // Fetch critical data first (stats), then secondary data
     const statsPromise = apiClient.reports.dashboardStats();
-
-    // Use Promise.allSettled for non-critical data to prevent failures from blocking the UI
+ 
+     // Use Promise.allSettled for non-critical data to prevent failures from blocking the UI
     const [stats, secondaryData] = await Promise.all([
       statsPromise,
       Promise.allSettled([
@@ -32,10 +32,10 @@ async function fetchDashboardData() {
         apiClient.auditLogs.list({ limit: 5 }),
       ])
     ]);
-
-    const [lowStockResult, expiringResult, activityResult] = secondaryData;
-
-    return {
+ 
+     const [lowStockResult, expiringResult, activityResult] = secondaryData;
+ 
+     return {
       stats: stats || null,
       lowStock: lowStockResult.status === 'fulfilled' ? (lowStockResult.value as any[]) : [],
       expiring: expiringResult.status === 'fulfilled' ? (expiringResult.value as any[]) : [],

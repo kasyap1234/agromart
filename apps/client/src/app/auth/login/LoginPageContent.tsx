@@ -4,8 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,6 @@ import { cn } from '@/lib/utils';
 import { ErrorIcon } from '@/components/icons/ErrorIcon';
 import { CheckIcon } from '@/components/icons/CheckIcon';
 import { LogoIcon } from '@/components/icons/LogoIcon';
-import { z } from 'zod';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -25,12 +24,11 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+export function LoginPageContent({ login, isLoading }: any) {
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const { login, isLoading } = useAuth();
- 
-   const {
+
+  const {
     register,
     handleSubmit,
     formState: { errors, isDirty, isValid },
@@ -50,16 +48,16 @@ export default function LoginPage() {
       setApiError(error.message || 'Login failed. Please try again.');
     }
   };
- 
-   return (
-     <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
-       <div className="flex items-center justify-center py-12 px-4">
-         <div className="mx-auto grid w-full max-w-md gap-6">
-           <div className="grid gap-3 text-center">
-             <div className="mx-auto w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-2">
-               <LogoIcon className="w-6 h-6 text-primary" />
-             </div>
-             <h1 id="login-heading" className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+
+  return (
+    <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
+      <div className="flex items-center justify-center py-12 px-4">
+        <div className="mx-auto grid w-full max-w-md gap-6">
+          <div className="grid gap-3 text-center">
+            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-2">
+              <LogoIcon className="w-6 h-6 text-primary" />
+            </div>
+            <h1 id="login-heading" className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
               Welcome back
             </h1>
             <p className="text-balance text-muted-foreground">

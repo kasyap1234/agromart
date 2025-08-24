@@ -86,7 +86,7 @@ export default function CustomerPurchaseOrdersPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Sales Orders</h1>
         <Button asChild>
-          <Link href="/sales/new">Create Sale</Link>
+          <Link href={"/sales/new" as any}>Create Sale</Link>
         </Button>
       </div>
 
@@ -189,8 +189,8 @@ export default function CustomerPurchaseOrdersPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <Link 
-                          href={`/sales/${order.id}`} 
+                        <Link
+                          href={`/sales/${order.id}` as any}
                           className="text-primary-600 hover:text-primary-900"
                         >
                           View

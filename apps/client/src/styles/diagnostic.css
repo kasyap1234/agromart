@@ -1,7 +1,5 @@
 /* Diagnostic CSS to test PostCSS processing */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* Custom diagnostic class */
 .test-diagnostic {

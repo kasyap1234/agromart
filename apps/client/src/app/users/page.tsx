@@ -361,7 +361,7 @@ export default function UsersPage() {
   const renderActions = (user: User) => (
     <div className="flex justify-end space-x-1">
       <Button variant="ghost" size="sm" asChild>
-        <Link href={`/users/${user.id}`} aria-label={`View ${user.name}`}>
+        <Link href={`/users/${user.id}` as any} aria-label={`View ${user.name}`}>
           <Eye className="w-4 h-4" />
         </Link>
       </Button>

@@ -45,7 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({
       errorInfo,
     });
@@ -62,7 +62,7 @@ export class ErrorBoundary extends Component<Props, State> {
     toast.error('Something went wrong. Please try refreshing the page.');
   }
 
-  componentWillUnmount() {
+  override componentWillUnmount() {
     if (this.retryTimeoutId) {
       clearTimeout(this.retryTimeoutId);
     }
@@ -146,7 +146,7 @@ Please describe what you were doing when this error occurred:
     }
   };
 
-  render() {
+  override render() {
     const { hasError, error, errorInfo, isRetrying, retryCount } = this.state;
     const { fallback, showErrorDetails = false, enableRetry = true, children } = this.props;
 

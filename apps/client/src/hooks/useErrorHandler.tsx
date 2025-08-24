@@ -193,7 +193,7 @@ export const useErrorHandler = () => {
             if (typeof window !== 'undefined') {
               localStorage.removeItem('auth_token');
               sessionStorage.removeItem('user');
-              router.push(redirectTo || '/auth/login');
+              router.push((redirectTo || '/auth/login') as any);
             }
           }
           break;

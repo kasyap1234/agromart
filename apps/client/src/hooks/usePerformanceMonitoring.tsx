@@ -186,6 +186,7 @@ export function usePerformanceMonitoring(budgets: Partial<PerformanceBudget> = {
     // Load initial metrics after page load
     if (document.readyState === 'complete') {
       loadInitialMetrics();
+      return () => {}; // Return empty cleanup function
     } else {
       window.addEventListener('load', loadInitialMetrics);
       return () => window.removeEventListener('load', loadInitialMetrics);

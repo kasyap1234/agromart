@@ -151,8 +151,10 @@ export function usePerformance() {
     const navigationEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
     if (navigationEntries.length > 0) {
       const navEntry = navigationEntries[0];
-      const ttfb = navEntry.responseStart - navEntry.requestStart;
-      setMetrics(prev => ({ ...prev, ttfb }));
+      if (navEntry) {
+        const ttfb = navEntry.responseStart - navEntry.requestStart;
+        setMetrics(prev => ({ ...prev, ttfb }));
+      }
     }
 
     return () => {

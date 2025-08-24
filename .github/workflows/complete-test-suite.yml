@@ -245,7 +245,7 @@ jobs:
       with:
         configPath: .github/lighthouse-config.json
         urls: |
-          http://localhost:3000
+          http://localhost:9000
         uploadArtifacts: true
         temporaryPublicStorage: true
 

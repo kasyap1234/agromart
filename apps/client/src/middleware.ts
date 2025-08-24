@@ -13,6 +13,28 @@ const PUBLIC_PATHS: string[] = [
   '/sitemap.xml',
 ];
 
+// MIME type mapping for static assets
+const MIME_TYPES: Record<string, string> = {
+  '.js': 'application/javascript; charset=utf-8',
+  '.mjs': 'application/javascript; charset=utf-8',
+  '.jsx': 'application/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.eot': 'font/eot',
+  '.wasm': 'application/wasm',
+};
+
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) return true;
   // Static files and assets
@@ -20,9 +42,62 @@ function isPublicPath(pathname: string): boolean {
   return false;
 }
 
+// Get MIME type based on file extension
+function getMimeType(pathname: string): string {
+  const ext = pathname.substring(pathname.lastIndexOf('.'));
+  return MIME_TYPES[ext] || 'application/octet-stream';
+}
+
+// Check if the request is for a static asset that needs special handling
+function isStaticAsset(pathname: string): boolean {
+  return pathname.startsWith('/_next/static/') ||
+         pathname.startsWith('/images/') ||
+         pathname.startsWith('/assets/') ||
+         pathname.includes('.');
+}
+
+// Handle static asset requests with proper headers
+async function handleStaticAsset(request: NextRequest): Promise<NextResponse | null> {
+  const { pathname } = request.nextUrl;
+
+  if (!isStaticAsset(pathname)) {
+    return null;
+  }
+
+  try {
+    // Let Next.js handle the request but add proper headers
+    const response = NextResponse.next();
+
+    // Add proper MIME type header
+    const mimeType = getMimeType(pathname);
+    response.headers.set('Content-Type', mimeType);
+
+    // Add cache headers for static assets
+    if (pathname.startsWith('/_next/static/')) {
+      response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    } else if (pathname.startsWith('/images/') || pathname.startsWith('/assets/')) {
+      response.headers.set('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+    }
+
+    // Security headers
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+
+    return response;
+  } catch (error) {
+    console.error('Error handling static asset:', error);
+    return null;
+  }
+}
+
 export function middleware(req: NextRequest) {
   const { nextUrl, cookies } = req;
   const { pathname } = nextUrl;
+
+  // Handle static assets first
+  const assetResponse = handleStaticAsset(req);
+  if (assetResponse) {
+    return assetResponse;
+  }
 
   const isPublic = isPublicPath(pathname);
   const authToken = cookies.get('auth_token')?.value;

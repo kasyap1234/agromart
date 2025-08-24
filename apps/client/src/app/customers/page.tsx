@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import Link from "next/link";
 import { useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PlusIcon, Eye } from "lucide-react";
 import { apiClient } from "@/lib/api";
@@ -22,9 +23,10 @@ export default function CustomersPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState("");
-
-  const { data, error, isLoading, mutate } = useSWR(
-    ["customers", page, limit, search],
+  const router = useRouter();
+ 
+   const { data, error, isLoading, mutate } = useSWR(
+     ["customers", page, limit, search],
     () => {
       const params: any = { page, limit };
       if (search) params.search = search;
@@ -74,7 +76,7 @@ export default function CustomersPage() {
 
   const renderActions = (customer: Customer) => (
     <Button variant="ghost" size="sm" asChild>
-      <Link href={`/customers/${customer.id}`}>
+      <Link href={`/customers/${customer.id}` as any}>
         <Eye className="w-4 h-4 mr-2" />
         View
       </Link>
@@ -88,7 +90,7 @@ export default function CustomersPage() {
       description="Start building your customer base by adding your first customer."
       action={{
         label: "Add Customer",
-        onClick: () => window.location.href = "/customers/new"
+        onClick: () => router.push("/customers/new")
       }}
     />
   );

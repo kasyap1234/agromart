@@ -17,7 +17,7 @@ curl -fsSL https://bun.sh/install | bash
 docker compose -f docker-compose.dev.yml up --build
 
 # Access the application
-# Frontend: http://localhost:9000
+# Frontend: http://localhost:9001
 # Backend API: http://localhost:8080/api
 # Default login: admin@example.com / password
 ```

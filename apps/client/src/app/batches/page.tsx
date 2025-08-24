@@ -136,7 +136,7 @@ export default function BatchesPage() {
     setEditingBatch(batch);
     setProductId(batch.product_id);
     setBatchNumber(batch.batch_number);
-    setExpiryDate(batch.expiry_date.split('T')[0]); // Convert to YYYY-MM-DD format
+    setExpiryDate(batch.expiry_date.split('T')[0] || ''); // Convert to YYYY-MM-DD format
     setCost(batch.cost.toString());
     setShowCreateForm(true);
   };

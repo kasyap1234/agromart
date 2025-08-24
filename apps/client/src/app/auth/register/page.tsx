@@ -243,11 +243,11 @@ export default function RegisterPage() {
                 />
                 <Label htmlFor="acceptTerms" className="text-sm font-normal leading-5">
                   I agree to the{' '}
-                  <Link href="/terms" className="text-primary-600 hover:text-primary-500 underline">
+                  <Link href={"/terms" as any} className="text-primary-600 hover:text-primary-500 underline">
                     Terms and Conditions
                   </Link>{' '}
                   and{' '}
-                  <Link href="/privacy" className="text-primary-600 hover:text-primary-500 underline">
+                  <Link href={"/privacy" as any} className="text-primary-600 hover:text-primary-500 underline">
                     Privacy Policy
                   </Link>
                 </Label>

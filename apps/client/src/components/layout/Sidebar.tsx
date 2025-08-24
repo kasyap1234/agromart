@@ -164,7 +164,7 @@ export default function AppSidebar() {
             <SidebarMenu>
               {filteredNavigation.map((item) => (
                 <SidebarMenuItem key={item.name}>
-                  <Link href={item.href} className="block">
+                  <Link href={item.href as any} className="block">
                     <SidebarMenuButton
                       variant={item.current ? 'active' : 'default'}
                       className="px-3 py-2 text-sm font-medium w-full text-left"

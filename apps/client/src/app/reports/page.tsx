@@ -320,7 +320,7 @@ export default function ReportsPage() {
             const CategoryIcon = categoryIcon;
             
             return (
-              <Link key={report.id} href={report.href}>
+              <Link key={report.id} href={report.href as any}>
                 <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">

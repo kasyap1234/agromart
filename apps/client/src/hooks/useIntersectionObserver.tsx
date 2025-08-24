@@ -102,6 +102,7 @@ export function useProgressiveLoad(delay: number = 100) {
       const timer = setTimeout(() => setShouldLoad(true), delay);
       return () => clearTimeout(timer);
     }
+    return () => {}; // Return empty cleanup function when not intersecting
   }, [hasIntersected, delay]);
 
   return {
