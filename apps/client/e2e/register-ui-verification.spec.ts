@@ -18,8 +18,8 @@ test.describe('Register Page UI Verification - Tailwind CSS v4.1 Migration', () 
     await expect(mainContainer).toHaveClass(/flex/);
 
     // Verify two-column layout exists
-    const formColumn = page.locator('div.flex-1');
-    const heroColumn = page.locator('div.hidden.lg\\:block');
+    const formColumn = page.locator('div.flex-1').first();
+    const heroColumn = page.locator('div.hidden.lg\\:flex.lg\\:flex-1');
     await expect(formColumn).toBeVisible();
     await expect(heroColumn).toBeVisible();
 

@@ -238,17 +238,9 @@ export const apiClient = {
       apiClient.get("/products/search", { q: query, ...(params || {}) }),
   },
 
-  // Product Units
+  // Product Units (Backend endpoint is /products/units, not /units)
   units: {
-    list: () => apiClient.get("/units"),
-
-    create: (data: { name: string; abbreviation: string }) =>
-      apiClient.post("/units", data),
-
-    update: (id: string, data: { name: string; abbreviation: string }) =>
-      apiClient.put(`/units/${id}`, data),
-
-    delete: (id: string) => apiClient.delete(`/units/${id}`),
+    list: () => apiClient.get("/products/units"),
   },
 
   // Inventory
@@ -390,6 +382,31 @@ export const apiClient = {
     delete: (id: string) => apiClient.delete(`/batches/${id}`),
   },
 
+  // Analytics
+  analytics: {
+    getKPIs: (params?: {
+      from_date?: string;
+      to_date?: string;
+      threshold?: number;
+      top?: number;
+      window_days?: number;
+    }) => apiClient.get("/analytics/kpis", params),
+
+    getSalesSeries: (params?: {
+      from_date?: string;
+      to_date?: string;
+      group?: 'day' | 'month';
+    }) => apiClient.get("/analytics/sales", params),
+
+    getPurchasesSeries: (params?: {
+      from_date?: string;
+      to_date?: string;
+      group?: 'day' | 'month';
+    }) => apiClient.get("/analytics/purchases", params),
+
+    getInventorySnapshot: () => apiClient.get("/analytics/inventory"),
+  },
+
   // Reports
   reports: {
     lowStock: (threshold?: number) =>
@@ -401,6 +418,27 @@ export const apiClient = {
     inventoryValue: () => apiClient.get("/reports/inventory-value"),
 
     dashboardStats: () => apiClient.get("/reports/dashboard-stats"),
+
+    // Additional report endpoints for purchase orders
+    productMovement: (params?: { from?: string; to?: string }) =>
+      apiClient.get("/reports/product-movement", params),
+
+    supplierPurchaseSummary: (params?: { from?: string; to?: string }) =>
+      apiClient.get("/reports/supplier-purchase-summary", params),
+
+    // Export functionality
+    analytics: (params?: {
+      startDate?: string;
+      endDate?: string;
+      type?: string;
+    }) => apiClient.get("/reports/analytics", params),
+
+    export: (params: {
+      format: 'csv' | 'pdf';
+      type: string;
+      startDate?: string;
+      endDate?: string;
+    }) => apiClient.get("/reports/export", params),
   },
 
   // Settings & Profile
@@ -474,6 +512,69 @@ export const apiClient = {
     },
 
     deleteProfilePhoto: (id: string) => apiClient.delete(`/users/${id}/profile-photo`),
+  },
+
+  // Locations
+  locations: {
+    list: (params?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      type?: string;
+    }) => apiClient.get("/locations", params),
+
+    get: (id: string) => apiClient.get(`/locations/${id}`),
+
+    create: (data: {
+      name: string;
+      type: string;
+      address?: string;
+      description?: string;
+      is_active?: boolean;
+    }) => apiClient.post("/locations", data),
+
+    update: (id: string, data: {
+      name?: string;
+      type?: string;
+      address?: string;
+      description?: string;
+      is_active?: boolean;
+    }) => apiClient.put(`/locations/${id}`, data),
+
+    delete: (id: string) => apiClient.delete(`/locations/${id}`),
+
+    search: (q: string, params?: { page?: number; limit?: number }) =>
+      apiClient.get("/locations/search", { q, ...params }),
+  },
+
+  // File Upload
+  files: {
+    upload: (file: File, params?: {
+      entity_type?: string;
+      entity_id?: string;
+      file_type?: string;
+    }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (params?.entity_type) formData.append('entity_type', params.entity_type);
+      if (params?.entity_id) formData.append('entity_id', params.entity_id);
+      if (params?.file_type) formData.append('file_type', params.file_type);
+      
+      return api.post('/files/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }).then((response) => response.data);
+    },
+
+    get: (id: string) => apiClient.get(`/files/${id}`),
+
+    delete: (id: string) => apiClient.delete(`/files/${id}`),
+
+    list: (params?: {
+      entity_type?: string;
+      entity_id?: string;
+      page?: number;
+      limit?: number;
+    }) => apiClient.get("/files", params),
   },
 
   // Audit Logs

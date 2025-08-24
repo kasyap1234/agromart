@@ -26,7 +26,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || 'http://localhost:9001',
+    baseURL: process.env.BASE_URL || 'http://localhost:9000',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'retain-on-failure',
@@ -92,21 +92,21 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  // Temporarily disabled webServer to avoid port conflicts
-  // webServer: [
-  //   {
-  //     command: 'npm run dev',
-  //     port: 9000,
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120 * 1000,
-  //   },
-  //   {
-  //     command: 'cd ../server && ./server',
-  //     port: 8080,
-  //     reuseExistingServer: !process.env.CI,
-  //     timeout: 120 * 1000,
-  //   },
-  // ],
+  webServer: [
+    {
+      command: 'npm run dev',
+      port: 9000,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+    },
+    // Temporarily disabled server startup due to database connection issues
+    // {
+    //   command: 'cd ../server && ./server',
+    //   port: 8080,
+    //   reuseExistingServer: !process.env.CI,
+    //   timeout: 120 * 1000,
+    // },
+  ],
 
   /* Global Setup and Teardown */
   globalSetup: require.resolve('./e2e/global-setup'),

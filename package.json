@@ -34,11 +34,8 @@
   ],
   "author": "Agromart Team",
   "license": "MIT",
-  "dependencies": {
-    "k6": "^0.45.0"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@types/k6": "^0.45.0",
     "eslint": "^8.0.0",
     "prettier": "^2.8.0"
   },

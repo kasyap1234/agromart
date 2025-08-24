@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,6 +41,7 @@ export default function RegisterPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const { register: registerUser, isLoading } = useAuth();
 
+
   const {
     register,
     handleSubmit,
@@ -64,14 +65,15 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
+    <div className="min-h-screen lg:flex">
+      {/* Left side - Registration form */}
+      <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-20 xl:px-24 bg-white">
         <div className="mx-auto w-full max-w-sm lg:w-96">
           <div>
-            <h2 className="mt-6 text-3xl font-bold tracking-tight text-neutral-900">
+            <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900">
               Create your account
             </h2>
-            <p className="mt-2 text-sm text-neutral-600">
+            <p className="mt-2 text-sm text-gray-600">
               Join AgroMart and start managing your inventory professionally
             </p>
           </div>
@@ -243,11 +245,11 @@ export default function RegisterPage() {
                 />
                 <Label htmlFor="acceptTerms" className="text-sm font-normal leading-5">
                   I agree to the{' '}
-                  <Link href={"/terms" as any} className="text-primary-600 hover:text-primary-500 underline">
+                  <Link href={"/terms" as any} className="text-blue-600 hover:text-blue-500 underline">
                     Terms and Conditions
                   </Link>{' '}
                   and{' '}
-                  <Link href={"/privacy" as any} className="text-primary-600 hover:text-primary-500 underline">
+                  <Link href={"/privacy" as any} className="text-blue-600 hover:text-blue-500 underline">
                     Privacy Policy
                   </Link>
                 </Label>
@@ -273,11 +275,11 @@ export default function RegisterPage() {
               </Button>
 
               <div className="text-center">
-                <p className="text-sm text-neutral-600">
+                <p className="text-sm text-gray-600">
                   Already have an account?{' '}
                   <Link
                     href="/auth/login"
-                    className="font-medium text-primary-600 hover:text-primary-500"
+                    className="font-medium text-blue-600 hover:text-blue-500"
                   >
                     Sign in here
                   </Link>
@@ -288,46 +290,51 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      <div className="hidden lg:block relative w-0 flex-1">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center">
-          <div className="text-center text-white px-8">
-            <div className="mb-8">
-              <div className="w-20 h-20 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <RegisterIcon className="w-10 h-10 text-white" />
+      {/* Right side - Marketing content */}
+      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-primary-600 to-primary-800 relative overflow-hidden">
+        <div className="flex items-center justify-center h-full w-full p-8">
+          <div className="text-center max-w-lg relative z-10">
+            <div className="mb-10">
+              <div className="w-24 h-24 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg backdrop-blur-sm">
+                <RegisterIcon className="w-12 h-12 text-white" />
               </div>
-              <h1 className="text-4xl font-bold mb-2">Join AgroMart</h1>
-              <p className="text-primary-100 text-lg">Start your inventory management journey</p>
+              <h1 className="text-5xl font-bold mb-3 text-white">
+                Join AgroMart
+              </h1>
+              <p className="text-white/80 text-xl font-medium">
+                Start your inventory management journey
+              </p>
             </div>
-            <div className="space-y-4 text-left max-w-md">
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-primary-400 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <CheckIcon className="w-3 h-3 text-white" />
+            <div className="space-y-6 text-left max-w-md mx-auto">
+              <div className="flex items-start space-x-4 p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
+                <div className="w-8 h-8 bg-blue-400 text-white rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md">
+                  <CheckIcon className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Quick Setup</h3>
-                  <p className="text-primary-100 text-sm">
+                  <h3 className="font-semibold text-white mb-1">Quick Setup</h3>
+                  <p className="text-white/70 text-sm leading-relaxed">
                     Get started in minutes with our guided setup process
                   </p>
                 </div>
               </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-primary-400 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <CheckIcon className="w-3 h-3 text-white" />
+              <div className="flex items-start space-x-4 p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
+                <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md">
+                  <CheckIcon className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Secure & Reliable</h3>
-                  <p className="text-primary-100 text-sm">
+                  <h3 className="font-semibold text-white mb-1">Secure & Reliable</h3>
+                  <p className="text-white/70 text-sm leading-relaxed">
                     Enterprise-grade security with 99.9% uptime guarantee
                   </p>
                 </div>
               </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-primary-400 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <CheckIcon className="w-3 h-3 text-white" />
+              <div className="flex items-start space-x-4 p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
+                <div className="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md">
+                  <CheckIcon className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">24/7 Support</h3>
-                  <p className="text-primary-100 text-sm">
+                  <h3 className="font-semibold text-white mb-1">24/7 Support</h3>
+                  <p className="text-white/70 text-sm leading-relaxed">
                     Get help whenever you need it with our dedicated support team
                   </p>
                 </div>
@@ -335,6 +342,9 @@ export default function RegisterPage() {
             </div>
           </div>
         </div>
+        {/* Background decorations */}
+        <div className="absolute top-20 left-20 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
       </div>
     </div>
   );

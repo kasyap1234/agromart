@@ -1,17 +1,15 @@
-import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 
 export default async function HomePage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token');
+  const cookieStore = await cookies()
+  const token = cookieStore.get('auth_token')
 
   if (token) {
-    redirect('/dashboard');
+    redirect('/dashboard')
   } else {
-    redirect('/auth/login');
+    redirect('/auth/login')
   }
 
-  // This part will not be rendered because of the redirects.
-  // It can be a loading state or null.
-  return null;
+  return null
 }

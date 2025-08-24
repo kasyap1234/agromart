@@ -52,88 +52,74 @@ export default function AppSidebar() {
       current: pathname === '/dashboard',
     },
     {
-      name: 'Suppliers',
-      href: '/suppliers',
-      icon: Store,
-      current: pathname?.startsWith('/suppliers'),
-      permission: canManageInventory,
-    },
-    {
-      name: 'Customers',
-      href: '/customers',
-      icon: Users,
-      current: pathname?.startsWith('/customers'),
-      permission: canManageInventory,
-    },
-    {
-      name: 'Sales',
-      href: '/sales',
-      icon: FileText,
-      current: pathname?.startsWith('/sales'),
-      permission: canViewReports,
-    },
-    {
-      name: 'Purchase Orders',
-      href: '/purchase-orders',
-      icon: ClipboardList,
-      current: pathname?.startsWith('/purchase-orders'),
-      permission: canManageInventory,
-    },
-    {
       name: 'Products',
-      href: '/products',
+      href: '/dashboard/products',
       icon: Package,
-      current: pathname?.startsWith('/products'),
+      current: pathname?.startsWith('/dashboard/products'),
       permission: canManageProducts,
     },
     {
-      name: 'Inventory',
-      href: '/inventory',
-      icon: ClipboardList,
-      current: pathname?.startsWith('/inventory'),
+      name: 'Customers',
+      href: '/dashboard/customers',
+      icon: Users,
+      current: pathname?.startsWith('/dashboard/customers'),
       permission: canManageInventory,
     },
     {
-      name: 'Batches',
-      href: '/batches',
+      name: 'Suppliers',
+      href: '/dashboard/suppliers',
       icon: Store,
-      current: pathname?.startsWith('/batches'),
+      current: pathname?.startsWith('/dashboard/suppliers'),
+      permission: canManageInventory,
+    },
+    {
+      name: 'Purchase Orders',
+      href: '/dashboard/purchase-orders',
+      icon: ClipboardList,
+      current: pathname?.startsWith('/dashboard/purchase-orders'),
+      permission: canManageInventory,
+    },
+    {
+      name: 'Sales Orders',
+      href: '/dashboard/sales-orders',
+      icon: FileText,
+      current: pathname?.startsWith('/dashboard/sales-orders'),
+      permission: canViewReports,
+    },
+    {
+      name: 'Inventory',
+      href: '/dashboard/inventory',
+      icon: ClipboardList,
+      current: pathname?.startsWith('/dashboard/inventory'),
       permission: canManageInventory,
     },
     {
       name: 'Reports',
-      href: '/reports',
+      href: '/dashboard/reports',
       icon: BarChart,
-      current: pathname?.startsWith('/reports'),
+      current: pathname?.startsWith('/dashboard/reports'),
       permission: canViewReports,
     },
     {
-      name: 'Low Stock',
-      href: '/reports/low-stock',
+      name: 'Low Stock Alert',
+      href: '/dashboard/reports/low-stock',
       icon: AlertTriangle,
-      current: pathname === '/reports/low-stock',
+      current: pathname === '/dashboard/reports/low-stock',
       badge: 'Alert',
       permission: canViewReports,
     },
     {
-      name: 'Logs',
-      href: '/logs',
-      icon: FileText,
-      current: pathname?.startsWith('/logs'),
-      permission: canViewReports,
-    },
-    {
       name: 'Users',
-      href: '/users',
+      href: '/dashboard/users',
       icon: Users,
-      current: pathname?.startsWith('/users'),
+      current: pathname?.startsWith('/dashboard/users'),
       permission: canManageUsers,
     },
     {
       name: 'Settings',
-      href: '/settings',
+      href: '/dashboard/settings',
       icon: Settings,
-      current: pathname?.startsWith('/settings'),
+      current: pathname?.startsWith('/dashboard/settings'),
     },
   ];
 
@@ -188,14 +174,14 @@ export default function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border p-4">
         <div className="flex items-center">
           <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-            <span className="text-primary font-medium text-sm">{user?.first_name?.[0]?.toUpperCase() || 'U'}</span>
+            <span className="text-primary font-medium text-sm">{user?.name?.[0]?.toUpperCase() || 'U'}</span>
           </div>
           <div className="ml-3 flex-1 min-w-0">
             <p className="text-sm font-medium text-sidebar-foreground truncate">
-              {user?.first_name} {user?.last_name}
+              {user?.name || 'User'}
             </p>
             <p className="text-xs text-muted-foreground truncate capitalize">
-              {user?.role}
+              {user?.role || 'user'}
             </p>
           </div>
         </div>
