@@ -17,6 +17,20 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// AuthServiceInterface defines the contract for authentication service
+type AuthServiceInterface interface {
+	Register(ctx context.Context, req RegisterRequest) (*AuthResponse, error)
+	Login(ctx context.Context, req LoginRequest) (*AuthResponse, error)
+	GetUserByID(ctx context.Context, userID uuid.UUID) (*db.User, error)
+	GetUserWithTenant(ctx context.Context, userID uuid.UUID) (*UserWithTenant, error)
+	RefreshToken(ctx context.Context, refreshToken string) (*AuthResponse, error)
+	ValidateToken(token string) (*Claims, error)
+	UpdatePassword(ctx context.Context, userID, tenantID uuid.UUID, newPassword string) error
+	GenerateResetToken(email string, ttl time.Duration) (string, error)
+	ValidateResetToken(token string) (*ResetClaims, error)
+	GetUserByEmail(ctx context.Context, email string) (*db.User, error)
+}
+
 type AuthService struct {
 	db      *pgxpool.Pool
 	queries *db.Queries
@@ -79,6 +93,16 @@ type RegisterRequest struct {
 	Phone       string `json:"phone,omitempty"`
 	CompanyName string `json:"company_name" validate:"required"`
 	Role        string `json:"role,omitempty"`
+}
+
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" validate:"required"`
+}
+
+type UpdatePasswordRequest struct {
+	UserID          uuid.UUID `json:"user_id" validate:"required"`
+	CurrentPassword string    `json:"current_password" validate:"required"`
+	NewPassword     string    `json:"new_password" validate:"required,min=8"`
 }
 
 type AuthResponse struct {

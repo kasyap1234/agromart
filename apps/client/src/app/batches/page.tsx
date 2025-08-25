@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Edit, Calendar, Package } from 'lucide-react';
+import { Loader2, Plus, Edit, Calendar, Package, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { format, parseISO, isBefore, addDays } from 'date-fns';
 
@@ -175,7 +175,7 @@ export default function BatchesPage() {
             <p className="text-gray-600">Track product batches and expiry dates</p>
           </div>
           <Button 
-            onClick={() => setShowCreateForm(true)}
+            onClick={() => window.location.href = '/batches/new'}
             className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
@@ -286,7 +286,16 @@ export default function BatchesPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleEdit(batch)}
+                          onClick={() => window.location.href = `/batches/${batch.id}`}
+                          title="View batch details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => window.location.href = `/batches/${batch.id}/edit`}
+                          title="Edit batch"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>

@@ -1,0 +1,35 @@
+# Bun configuration file
+# https://bun.sh/docs/runtime/configuration
+
+[test]
+# Enable preloading for test files
+preload = ["./jest.setup.js"]
+
+# Test file patterns (similar to Jest)
+include = [
+  "src/**/__tests__/**/*.{ts,tsx,js,jsx}",
+  "src/**/*.{test,spec}.{ts,tsx,js,jsx}",
+  "__tests__/**/*.{ts,tsx,js,jsx}"
+]
+
+# Exclude patterns - exclude E2E tests and other directories
+exclude = [
+  "e2e/**/*",
+  ".next/**/*",
+  "node_modules/**/*",
+  "coverage/**/*",
+  "playwright-report/**/*",
+  "test-results/**/*",
+  "**/*.spec.ts",
+  "**/*.e2e.ts"
+]
+
+# Set timeout for tests (in milliseconds)
+timeout = 30000
+
+# Coverage settings
+coverage = true
+
+# Test environment setup
+[test.env]
+NODE_ENV = "test"

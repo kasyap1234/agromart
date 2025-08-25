@@ -14,12 +14,28 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type ProductService struct {
-	db *pgxpool.Pool
-	q  *db.Queries
+// QueriesInterface defines the interface for database queries
+type QueriesInterface interface {
+	CheckProductExists(ctx context.Context, params db.CheckProductExistsParams) (bool, error)
+	CountProducts(ctx context.Context, tenantID uuid.UUID) (int64, error)
+	CreateProduct(ctx context.Context, params db.CreateProductParams) (db.Product, error)
+	CreateUnit(ctx context.Context, params db.CreateUnitParams) (db.Unit, error)
+	GetProductByID(ctx context.Context, params db.GetProductByIDParams) (db.Product, error)
+	GetProductBySKU(ctx context.Context, params db.GetProductBySKUParams) (db.Product, error)
+	GetUnitByID(ctx context.Context, params db.GetUnitByIDParams) (db.Unit, error)
+	ListProducts(ctx context.Context, params db.ListProductsParams) ([]db.Product, error)
+	ListUnits(ctx context.Context, params db.ListUnitsParams) ([]db.Unit, error)
+	SearchProducts(ctx context.Context, params db.SearchProductsParams) ([]db.Product, error)
+	UpdateProductPatch(ctx context.Context, params db.UpdateProductPatchParams) error
+	DeleteProduct(ctx context.Context, params db.DeleteProductParams) error
 }
 
-func NewProductService(db *pgxpool.Pool, query *db.Queries) *ProductService {
+type ProductService struct {
+	db *pgxpool.Pool
+	q  QueriesInterface
+}
+
+func NewProductService(db *pgxpool.Pool, query QueriesInterface) *ProductService {
 	return &ProductService{
 		db: db,
 		q:  query,

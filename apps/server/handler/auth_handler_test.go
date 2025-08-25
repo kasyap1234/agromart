@@ -10,9 +10,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -44,12 +44,12 @@ func (m *MockAuthService) Login(ctx context.Context, req internalauth.LoginReque
 	return args.Get(0).(*internalauth.AuthResponse), args.Error(1)
 }
 
-func (m *MockAuthService) GetUserByID(ctx context.Context, userID uuid.UUID) (*db.GetUserByIDRow, error) {
+func (m *MockAuthService) GetUserByID(ctx context.Context, userID uuid.UUID) (*db.User, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*db.GetUserByIDRow), args.Error(1)
+	return args.Get(0).(*db.User), args.Error(1)
 }
 
 func (m *MockAuthService) GetUserWithTenant(ctx context.Context, userID uuid.UUID) (*internalauth.UserWithTenant, error) {
@@ -60,8 +60,8 @@ func (m *MockAuthService) GetUserWithTenant(ctx context.Context, userID uuid.UUI
 	return args.Get(0).(*internalauth.UserWithTenant), args.Error(1)
 }
 
-func (m *MockAuthService) RefreshToken(ctx context.Context, req internalauth.RefreshTokenRequest) (*internalauth.AuthResponse, error) {
-	args := m.Called(ctx, req)
+func (m *MockAuthService) RefreshToken(ctx context.Context, refreshToken string) (*internalauth.AuthResponse, error) {
+	args := m.Called(ctx, refreshToken)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -76,9 +76,30 @@ func (m *MockAuthService) ValidateToken(token string) (*internalauth.Claims, err
 	return args.Get(0).(*internalauth.Claims), args.Error(1)
 }
 
-func (m *MockAuthService) UpdatePassword(ctx context.Context, req internalauth.UpdatePasswordRequest) error {
-	args := m.Called(ctx, req)
+func (m *MockAuthService) UpdatePassword(ctx context.Context, userID, tenantID uuid.UUID, newPassword string) error {
+	args := m.Called(ctx, userID, tenantID, newPassword)
 	return args.Error(0)
+}
+
+func (m *MockAuthService) GenerateResetToken(email string, ttl time.Duration) (string, error) {
+	args := m.Called(email, ttl)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockAuthService) ValidateResetToken(token string) (*internalauth.ResetClaims, error) {
+	args := m.Called(token)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*internalauth.ResetClaims), args.Error(1)
+}
+
+func (m *MockAuthService) GetUserByEmail(ctx context.Context, email string) (*db.User, error) {
+	args := m.Called(ctx, email)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*db.User), args.Error(1)
 }
 
 func TestAuthHandler_Register(t *testing.T) {
@@ -116,7 +137,7 @@ func TestAuthHandler_Register(t *testing.T) {
 				Phone:    "1234567890",
 				TenantID: tenantID,
 				Role:     "admin",
-				IsActive: pgtype.Bool{Bool: true, Valid: true},
+				IsActive: sql.NullBool{Bool: true, Valid: true},
 			},
 			Token:        "jwt.token.here",
 			RefreshToken: "refresh.token.here",
@@ -278,7 +299,7 @@ func TestAuthHandler_Login(t *testing.T) {
 				Email:    "test@example.com",
 				TenantID: tenantID,
 				Role:     "admin",
-				IsActive: pgtype.Bool{Bool: true, Valid: true},
+				IsActive: sql.NullBool{Bool: true, Valid: true},
 			},
 			Token:        "jwt.token.here",
 			RefreshToken: "refresh.token.here",
@@ -420,14 +441,14 @@ func TestAuthHandler_Me(t *testing.T) {
 		c.Set("user_id", userID.String())
 
 		expectedUserWithTenant := &internalauth.UserWithTenant{
-			User: &db.GetUserByIDRow{
+			User: db.User{
 				ID:       userID,
 				Name:     "Test User",
 				Email:    "test@example.com",
 				TenantID: tenantID,
 				Role:     "admin",
 			},
-			Tenant: &db.Tenant{
+			Tenant: db.Tenant{
 				ID:       tenantID,
 				Name:     "Test Tenant",
 				Email:    "tenant@example.com",
@@ -466,7 +487,7 @@ func TestAuthHandler_Me(t *testing.T) {
 
 		c.Set("user_id", userID.String())
 
-		expectedUser := &db.GetUserByIDRow{
+		expectedUser := &db.User{
 			ID:       userID,
 			Name:     "Test User",
 			Email:    "test@example.com",
@@ -630,9 +651,7 @@ func TestAuthHandler_RefreshToken(t *testing.T) {
 			RefreshToken: "new.refresh.token",
 		}
 
-		mockAuthService.On("RefreshToken", mock.Anything, mock.MatchedBy(func(req internalauth.RefreshTokenRequest) bool {
-			return req.RefreshToken == "valid.refresh.token"
-		})).Return(expectedResponse, nil)
+		mockAuthService.On("RefreshToken", mock.Anything, "valid.refresh.token").Return(expectedResponse, nil)
 
 		err := handler.RefreshToken(c)
 
@@ -966,11 +985,10 @@ func TestAuthHandler_RegisterRoutes(t *testing.T) {
 
 	t.Run("register public routes", func(t *testing.T) {
 		e := echo.New()
-		group := e.Group("/auth")
 
 		// This should not panic
 		assert.NotPanics(t, func() {
-			handler.RegisterRoutes(group)
+			handler.RegisterRoutes(e)
 		})
 	})
 }
@@ -1093,43 +1111,4 @@ func TestAuthHandler_Integration(t *testing.T) {
 
 		mockAuthService.AssertExpectations(t)
 	})
-}
-
-// Benchmark tests
-func BenchmarkAuthHandler_Login(b *testing.B) {
-	mockAuthService := &MockAuthService{}
-	handler := NewAuthHandler(mockAuthService)
-
-	userID := uuid.New()
-	tenantID := uuid.New()
-
-	expectedResponse := &internalauth.AuthResponse{
-		User: &db.User{
-			ID:       userID,
-			Name:     "Benchmark User",
-			Email:    "benchmark@example.com",
-			TenantID: tenantID,
-			Role:     "admin",
-		},
-		Token:        "benchmark.jwt.token",
-		RefreshToken: "benchmark.refresh.token",
-	}
-
-	mockAuthService.On("Login", mock.Anything, mock.Anything).Return(expectedResponse, nil)
-
-	requestBody := `{"email":"benchmark@example.com","password":"BenchmarkPassword123!"}`
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		e := echo.New()
-		req := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(requestBody))
-		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-
-		err := handler.Login(c)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
 }

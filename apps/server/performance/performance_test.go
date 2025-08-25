@@ -2,24 +2,25 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
+	cryptorand "crypto/rand"
 	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/brianvoe/gofakeit/v6"
+	"github.com/google/uuid"
 	"agromart2/apps/server/config"
-	"agromart2/apps/server/internal/database"
+	"agromart2/internal/database"
+	appsdatabase "agromart2/apps/server/internal/database"
 	"agromart2/internal/auth"
+	"agromart2/db"
 )
 
 // PerformanceTestResults holds the results of performance tests
@@ -45,7 +46,8 @@ type PerformanceTester struct {
 	httpClient *http.Client
 	jwtToken   string
 	config     *config.Config
-	optimizer  *database.DatabaseOptimizer
+	optimizer  *appsdatabase.DatabaseOptimizer
+	queries    *db.Queries
 }
 
 // NewPerformanceTester creates a new performance tester instance
@@ -85,36 +87,35 @@ func NewPerformanceTester(baseURL string) (*PerformanceTester, error) {
 		return nil, fmt.Errorf("failed to create database pool: %w", err)
 	}
 
-	optimizer := database.NewDatabaseOptimizer(pool)
+	optimizer := appsdatabase.NewDatabaseOptimizer(pool)
+	wrapper := database.NewPgxWrapper(pool)
+	queries := db.New(wrapper)
 
 	return &PerformanceTester{
 		baseURL:    baseURL,
 		httpClient: client,
 		config:     cfg,
 		optimizer:  optimizer,
+		queries:    queries,
 	}, nil
 }
 
 // Authenticate generates a JWT token for testing
 func (pt *PerformanceTester) Authenticate() error {
 	// Generate test user credentials
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	privateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 	if err != nil {
 		return fmt.Errorf("failed to generate private key: %w", err)
 	}
 
 	publicKey := &privateKey.PublicKey
-	publicKeyBytes := x509.MarshalPKCS1PublicKey(publicKey)
-	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PUBLIC KEY",
-		Bytes: publicKeyBytes,
-	})
+	_ = publicKey // Mark as used to avoid compiler warning
 
 	// Create JWT service
 	jwtService := auth.NewJWTService(pt.config.JWTSecret)
 
-	// Generate test token
-	token, err := jwtService.GenerateToken("test-user", "admin")
+	// Generate test token with all required parameters
+	token, err := jwtService.GenerateToken("test-user-id", "test-tenant-id", "test@example.com", "admin", "127.0.0.1", "performance-test")
 	if err != nil {
 		return fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -290,10 +291,13 @@ func (pt *PerformanceTester) RunDatabaseStressTest(concurrentQueries int, durati
 			for time.Now().Before(endTime) {
 				// Run random database queries
 				ctx := context.Background()
-				query := fmt.Sprintf("SELECT COUNT(*) FROM products WHERE tenant_id = '%s'", gofakeit.UUID())
 
 				start := time.Now()
-				_, err := pt.optimizer.db.Query(ctx, query)
+				_, err := pt.queries.ListProducts(ctx, db.ListProductsParams{
+					TenantID: uuid.New(),
+					Limit:    10,
+					Offset:   0,
+				})
 				duration := time.Since(start)
 
 				if err != nil {
@@ -313,9 +317,9 @@ func (pt *PerformanceTester) RunDatabaseStressTest(concurrentQueries int, durati
 
 // GeneratePerformanceReport creates a comprehensive performance report
 func (pt *PerformanceTester) GeneratePerformanceReport(results *PerformanceTestResults) {
-	fmt.Println("\n" + "="*80)
+	fmt.Println("\n" + strings.Repeat("=", 80))
 	fmt.Println("PERFORMANCE TEST RESULTS")
-	fmt.Println("="*80)
+	fmt.Println(strings.Repeat("=", 80))
 
 	fmt.Printf("Test Duration: %v\n", results.Duration)
 	fmt.Printf("Total Requests: %d\n", results.TotalRequests)
@@ -332,7 +336,7 @@ func (pt *PerformanceTester) GeneratePerformanceReport(results *PerformanceTestR
 	fmt.Printf("\nThroughput:\n")
 	fmt.Printf("  Requests/Second: %.2f\n", results.RequestsPerSecond)
 
-	fmt.Println("\n" + "="*80)
+	fmt.Println("\n" + strings.Repeat("=", 80))
 
 	// Performance thresholds
 	if results.ErrorRate > 0.05 {

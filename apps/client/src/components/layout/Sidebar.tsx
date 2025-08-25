@@ -12,7 +12,18 @@ import {
   Users,
   Store,
   AlertTriangle,
-  FileText
+  FileText,
+  Building2,
+  ShoppingCart,
+  Receipt,
+  TruckIcon,
+  Boxes,
+  UserCheck,
+  PieChart,
+  Calculator,
+  FolderOpen,
+  Bell,
+  Archive
 } from 'lucide-react';
 import { usePermissions } from '@/context/AuthContext';
 import {
@@ -37,95 +48,174 @@ interface NavigationItem {
   current?: boolean;
   badge?: string;
   permission?: boolean;
+  subItems?: NavigationItem[];
+}
+
+interface NavigationGroup {
+  name: string;
+  items: NavigationItem[];
 }
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const { canManageProducts, canManageInventory, canViewReports, canManageUsers } = usePermissions();
+  const {
+    canViewProducts,
+    canViewInventory,
+    canViewCustomers,
+    canViewSuppliers,
+    canViewLocations,
+    canViewPurchaseOrders,
+    canViewSalesOrders,
+    canViewReports,
+    canViewAnalytics,
+    canViewLowStockAlerts,
+    canViewUsers,
+    canViewSettings,
+    isAdmin,
+    isManager
+  } = usePermissions();
   const { user } = useAuth();
 
-  const navigation: NavigationItem[] = [
+  // Define navigation groups with role-based permissions
+  const navigationGroups: NavigationGroup[] = [
     {
-      name: 'Dashboard',
-      href: '/dashboard',
-      icon: Home,
-      current: pathname === '/dashboard',
+      name: 'Overview',
+      items: [
+        {
+          name: 'Dashboard',
+          href: '/dashboard',
+          icon: Home,
+          current: pathname === '/dashboard',
+          permission: true, // All users can access dashboard
+        },
+      ],
     },
     {
-      name: 'Products',
-      href: '/dashboard/products',
-      icon: Package,
-      current: pathname?.startsWith('/dashboard/products'),
-      permission: canManageProducts,
+      name: 'Inventory Management',
+      items: [
+        {
+          name: 'Products',
+          href: '/products',
+          icon: Package,
+          current: pathname?.startsWith('/products'),
+          permission: canViewProducts,
+        },
+        {
+          name: 'Inventory',
+          href: '/inventory',
+          icon: Boxes,
+          current: pathname?.startsWith('/inventory'),
+          permission: canViewInventory,
+        },
+        {
+          name: 'Batches',
+          href: '/batches',
+          icon: Archive,
+          current: pathname?.startsWith('/batches'),
+          permission: canViewInventory,
+        },
+        {
+          name: 'Locations',
+          href: '/locations',
+          icon: Building2,
+          current: pathname?.startsWith('/locations'),
+          permission: canViewLocations,
+        },
+      ],
     },
     {
-      name: 'Customers',
-      href: '/dashboard/customers',
-      icon: Users,
-      current: pathname?.startsWith('/dashboard/customers'),
-      permission: canManageInventory,
+      name: 'Business Partners',
+      items: [
+        {
+          name: 'Customers',
+          href: '/customers',
+          icon: Users,
+          current: pathname?.startsWith('/customers'),
+          permission: canViewCustomers,
+        },
+        {
+          name: 'Suppliers',
+          href: '/suppliers',
+          icon: TruckIcon,
+          current: pathname?.startsWith('/suppliers'),
+          permission: canViewSuppliers,
+        },
+      ],
     },
     {
-      name: 'Suppliers',
-      href: '/dashboard/suppliers',
-      icon: Store,
-      current: pathname?.startsWith('/dashboard/suppliers'),
-      permission: canManageInventory,
+      name: 'Order Management',
+      items: [
+        {
+          name: 'Purchase Orders',
+          href: '/purchase-orders',
+          icon: ShoppingCart,
+          current: pathname?.startsWith('/purchase-orders'),
+          permission: canViewPurchaseOrders,
+        },
+        {
+          name: 'Sales Orders',
+          href: '/sales-orders',
+          icon: Receipt,
+          current: pathname?.startsWith('/sales-orders'),
+          permission: canViewSalesOrders,
+        },
+      ],
     },
     {
-      name: 'Purchase Orders',
-      href: '/dashboard/purchase-orders',
-      icon: ClipboardList,
-      current: pathname?.startsWith('/dashboard/purchase-orders'),
-      permission: canManageInventory,
+      name: 'Analytics & Reports',
+      items: [
+        {
+          name: 'Reports',
+          href: '/reports',
+          icon: BarChart,
+          current: pathname?.startsWith('/reports'),
+          permission: canViewReports,
+        },
+        {
+          name: 'Analytics',
+          href: '/analytics',
+          icon: PieChart,
+          current: pathname?.startsWith('/analytics'),
+          permission: canViewAnalytics,
+        },
+        {
+          name: 'Low Stock Alerts',
+          href: '/reports/low-stock',
+          icon: AlertTriangle,
+          current: pathname === '/reports/low-stock',
+          badge: 'Alert',
+          permission: canViewLowStockAlerts,
+        },
+      ],
     },
     {
-      name: 'Sales Orders',
-      href: '/dashboard/sales-orders',
-      icon: FileText,
-      current: pathname?.startsWith('/dashboard/sales-orders'),
-      permission: canViewReports,
-    },
-    {
-      name: 'Inventory',
-      href: '/dashboard/inventory',
-      icon: ClipboardList,
-      current: pathname?.startsWith('/dashboard/inventory'),
-      permission: canManageInventory,
-    },
-    {
-      name: 'Reports',
-      href: '/dashboard/reports',
-      icon: BarChart,
-      current: pathname?.startsWith('/dashboard/reports'),
-      permission: canViewReports,
-    },
-    {
-      name: 'Low Stock Alert',
-      href: '/dashboard/reports/low-stock',
-      icon: AlertTriangle,
-      current: pathname === '/dashboard/reports/low-stock',
-      badge: 'Alert',
-      permission: canViewReports,
-    },
-    {
-      name: 'Users',
-      href: '/dashboard/users',
-      icon: Users,
-      current: pathname?.startsWith('/dashboard/users'),
-      permission: canManageUsers,
-    },
-    {
-      name: 'Settings',
-      href: '/dashboard/settings',
-      icon: Settings,
-      current: pathname?.startsWith('/dashboard/settings'),
+      name: 'Administration',
+      items: [
+        {
+          name: 'Users',
+          href: '/users',
+          icon: UserCheck,
+          current: pathname?.startsWith('/users'),
+          permission: canViewUsers,
+        },
+        {
+          name: 'Settings',
+          href: '/settings',
+          icon: Settings,
+          current: pathname?.startsWith('/settings'),
+          permission: canViewSettings,
+        },
+      ],
     },
   ];
 
-  const filteredNavigation = navigation.filter(item =>
-    item.permission === undefined || item.permission
-  );
+  // Filter navigation groups and items based on permissions
+  const filteredNavigationGroups = navigationGroups
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => item.permission === undefined || item.permission)
+    }))
+    .filter(group => group.items.length > 0);
 
   return (
     <Sidebar className="w-64 border-r bg-sidebar text-sidebar-foreground">
@@ -142,47 +232,64 @@ export default function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-4 py-4">
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Navigation
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {filteredNavigation.map((item) => (
-                <SidebarMenuItem key={item.name}>
-                  <Link href={item.href as any} className="block">
-                    <SidebarMenuButton
-                      variant={item.current ? 'active' : 'default'}
-                      className="px-3 py-2 text-sm font-medium w-full text-left"
-                    >
-                      <item.icon className="mr-3 h-5 w-5" />
-                      <span>{item.name}</span>
-                      {item.badge && (
-                        <Badge variant={item.current ? 'default' : 'secondary'} className="ml-auto">
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {filteredNavigationGroups.map((group) => (
+          <SidebarGroup key={group.name} className="mb-6">
+            <SidebarGroupLabel className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {group.name}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => (
+                  <SidebarMenuItem key={item.name}>
+                    <Link href={item.href} className="block">
+                      <SidebarMenuButton
+                        variant={item.current ? 'active' : 'default'}
+                        className="px-3 py-2 text-sm font-medium w-full text-left"
+                      >
+                        <item.icon className="mr-3 h-5 w-5" />
+                        <span>{item.name}</span>
+                        {item.badge && (
+                          <Badge 
+                            variant={item.current ? 'default' : 'secondary'} 
+                            className="ml-auto"
+                          >
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </SidebarMenuButton>
+                    </Link>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
         <div className="flex items-center">
           <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-            <span className="text-primary font-medium text-sm">{user?.name?.[0]?.toUpperCase() || 'U'}</span>
+            <span className="text-primary font-medium text-sm">
+              {user?.first_name?.[0]?.toUpperCase() || user?.name?.[0]?.toUpperCase() || 'U'}
+            </span>
           </div>
           <div className="ml-3 flex-1 min-w-0">
             <p className="text-sm font-medium text-sidebar-foreground truncate">
-              {user?.name || 'User'}
+              {user?.first_name && user?.last_name 
+                ? `${user.first_name} ${user.last_name}`
+                : user?.name || 'User'
+              }
             </p>
-            <p className="text-xs text-muted-foreground truncate capitalize">
-              {user?.role || 'user'}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-muted-foreground truncate capitalize">
+                {user?.role?.toLowerCase() || 'user'}
+              </p>
+              {(isAdmin || isManager) && (
+                <Badge variant="outline" className="text-xs px-1 py-0">
+                  {isAdmin ? 'Admin' : 'Manager'}
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </SidebarFooter>

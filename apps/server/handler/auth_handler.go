@@ -23,10 +23,10 @@ type CustomClaims struct {
 }
 
 type AuthHandler struct {
-	authService *internalauth.AuthService
+	authService internalauth.AuthServiceInterface
 }
 
-func NewAuthHandler(authService *internalauth.AuthService) *AuthHandler {
+func NewAuthHandler(authService internalauth.AuthServiceInterface) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
 	}
@@ -403,7 +403,7 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 // @Param payload body handler.ForgotPasswordRequestDTO true "Forgot password payload"
 // @Success 200 {object} map[string]interface{} "success message; in dev includes reset_token"
 // @Router /auth/password/forgot [post]
-func PasswordForgot(s *internalauth.AuthService, c echo.Context) error {
+func PasswordForgot(s internalauth.AuthServiceInterface, c echo.Context) error {
 	var req struct {
 		Email string `json:"email"`
 	}
@@ -442,7 +442,7 @@ func PasswordForgot(s *internalauth.AuthService, c echo.Context) error {
 // @Failure 400 {object} map[string]interface{} "invalid or expired token / invalid payload"
 // @Failure 500 {object} map[string]interface{} "internal error"
 // @Router /auth/password/reset [post]
-func PasswordReset(s *internalauth.AuthService, c echo.Context) error {
+func PasswordReset(s internalauth.AuthServiceInterface, c echo.Context) error {
 	var req struct {
 		Token       string `json:"token"`
 		NewPassword string `json:"new_password"`

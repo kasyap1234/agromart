@@ -9,10 +9,23 @@ import (
 	"agromart2/internal/utils"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"context"
 )
 
+// ProductServiceInterface defines the interface for product service
+type ProductServiceInterface interface {
+	CreateProduct(ctx context.Context, params CreateProductParams) (db.Product, error)
+	GetProductByID(ctx context.Context, id, tenantID uuid.UUID) (db.Product, error)
+	ListProducts(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]db.Product, error)
+	CountProducts(ctx context.Context, tenantID uuid.UUID) (int64, error)
+	SearchProducts(ctx context.Context, tenantID uuid.UUID, query string, limit, offset int) ([]db.Product, error)
+	PatchProduct(ctx context.Context, tenantID, productID uuid.UUID, req ProductInputRequest) error
+	DeleteProduct(ctx context.Context, id, tenantID uuid.UUID) error
+	ListUnits(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]db.Unit, error)
+}
+
 type ProductHandler struct {
-	service *ProductService
+	service ProductServiceInterface
 }
 
 // CreateProductRequest is used in Swagger annotations and request binding
@@ -28,7 +41,7 @@ type CreateProductRequest struct {
 	GSTPercent   int       `json:"gst_percent"`
 }
 
-func NewProductHandler(service *ProductService) *ProductHandler {
+func NewProductHandler(service ProductServiceInterface) *ProductHandler {
 	return &ProductHandler{service: service}
 }
 

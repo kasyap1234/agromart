@@ -11,9 +11,22 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// CustomerQuerier defines the interface for customer database operations
+type CustomerQuerier interface {
+	CreateCustomer(ctx context.Context, arg db.CreateCustomerParams) (db.Customer, error)
+	GetCustomerByID(ctx context.Context, arg db.GetCustomerByIDParams) (db.Customer, error)
+	ListCustomers(ctx context.Context, arg db.ListCustomersParams) ([]db.Customer, error)
+	ListActiveCustomers(ctx context.Context, arg db.ListActiveCustomersParams) ([]db.Customer, error)
+	UpdateCustomer(ctx context.Context, arg db.UpdateCustomerParams) (db.Customer, error)
+	DeactivateCustomer(ctx context.Context, arg db.DeactivateCustomerParams) error
+	SearchCustomers(ctx context.Context, arg db.SearchCustomersParams) ([]db.Customer, error)
+	CountCustomers(ctx context.Context, tenantID uuid.UUID) (int64, error)
+	CheckCustomerExists(ctx context.Context, arg db.CheckCustomerExistsParams) (bool, error)
+}
+
 type CustomerService struct {
 	db *pgxpool.Pool
-	q  *db.Queries
+	q  CustomerQuerier
 }
 
 func NewCustomerService(db *pgxpool.Pool, queries *db.Queries) *CustomerService {

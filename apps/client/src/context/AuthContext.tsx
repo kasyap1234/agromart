@@ -238,14 +238,171 @@ export const useAuth = () => {
   return context;
 };
 
+// Enhanced permissions hook with comprehensive role-based access control
 export const usePermissions = () => {
   const { user } = useAuth();
-  const role = user?.role;
+  const role = user?.role?.toLowerCase();
 
-  const canManageUsers = role === 'ADMIN';
-  const canManageProducts = ['ADMIN', 'MANAGER'].includes(role || '');
-  const canManageInventory = ['ADMIN', 'MANAGER', 'STAFF'].includes(role || '');
-  const canViewReports = ['ADMIN', 'MANAGER'].includes(role || '');
+  // Admin permissions - full system access
+  const isAdmin = role === 'admin';
+  const isManager = role === 'manager';
+  const isUser = role === 'user';
 
-  return { canManageUsers, canManageProducts, canManageInventory, canViewReports };
+  // Core module permissions
+  const canManageUsers = isAdmin;
+  const canViewUsers = isAdmin || isManager;
+  const canEditOwnProfile = true; // All users can edit their own profile
+  
+  const canManageProducts = isAdmin || isManager;
+  const canViewProducts = true; // All authenticated users can view products
+  const canCreateProducts = isAdmin || isManager;
+  const canEditProducts = isAdmin || isManager;
+  const canDeleteProducts = isAdmin;
+  
+  const canManageInventory = isAdmin || isManager;
+  const canViewInventory = true; // All users can view inventory
+  const canUpdateInventory = isAdmin || isManager;
+  const canCreateBatches = isAdmin || isManager;
+  const canManageBatches = isAdmin || isManager;
+  
+  const canManageCustomers = isAdmin || isManager;
+  const canViewCustomers = true;
+  const canCreateCustomers = isAdmin || isManager;
+  const canEditCustomers = isAdmin || isManager;
+  const canDeleteCustomers = isAdmin;
+  
+  const canManageSuppliers = isAdmin || isManager;
+  const canViewSuppliers = true;
+  const canCreateSuppliers = isAdmin || isManager;
+  const canEditSuppliers = isAdmin || isManager;
+  const canDeleteSuppliers = isAdmin;
+  
+  const canManageLocations = isAdmin || isManager;
+  const canViewLocations = true;
+  const canCreateLocations = isAdmin || isManager;
+  const canEditLocations = isAdmin || isManager;
+  const canDeleteLocations = isAdmin;
+  
+  // Orders permissions
+  const canManagePurchaseOrders = isAdmin || isManager;
+  const canViewPurchaseOrders = true;
+  const canCreatePurchaseOrders = isAdmin || isManager;
+  const canEditPurchaseOrders = isAdmin || isManager;
+  const canApprovePurchaseOrders = isAdmin || isManager;
+  const canDeletePurchaseOrders = isAdmin;
+  
+  const canManageSalesOrders = isAdmin || isManager;
+  const canViewSalesOrders = true;
+  const canCreateSalesOrders = isAdmin || isManager;
+  const canEditSalesOrders = isAdmin || isManager;
+  const canProcessSalesOrders = isAdmin || isManager;
+  const canDeleteSalesOrders = isAdmin;
+  
+  // Reports and analytics permissions
+  const canViewReports = isAdmin || isManager;
+  const canViewAdvancedReports = isAdmin;
+  const canExportReports = isAdmin || isManager;
+  const canViewAnalytics = isAdmin || isManager;
+  const canViewFinancialReports = isAdmin;
+  
+  // Settings permissions
+  const canManageSettings = isAdmin;
+  const canViewSettings = isAdmin || isManager;
+  const canManageTenantSettings = isAdmin;
+  const canManageSystemSettings = isAdmin;
+  
+  // File upload permissions
+  const canUploadFiles = isAdmin || isManager;
+  const canDeleteFiles = isAdmin;
+  
+  // Low stock alerts
+  const canViewLowStockAlerts = true;
+  const canManageLowStockAlerts = isAdmin || isManager;
+  
+  return {
+    // User role checks
+    isAdmin,
+    isManager,
+    isUser,
+    role,
+    
+    // Legacy permissions (for backward compatibility)
+    canManageUsers,
+    canManageProducts,
+    canManageInventory,
+    canViewReports,
+    
+    // User management
+    canViewUsers,
+    canEditOwnProfile,
+    
+    // Product management
+    canViewProducts,
+    canCreateProducts,
+    canEditProducts,
+    canDeleteProducts,
+    
+    // Inventory management
+    canViewInventory,
+    canUpdateInventory,
+    canCreateBatches,
+    canManageBatches,
+    
+    // Customer management
+    canManageCustomers,
+    canViewCustomers,
+    canCreateCustomers,
+    canEditCustomers,
+    canDeleteCustomers,
+    
+    // Supplier management
+    canManageSuppliers,
+    canViewSuppliers,
+    canCreateSuppliers,
+    canEditSuppliers,
+    canDeleteSuppliers,
+    
+    // Location management
+    canManageLocations,
+    canViewLocations,
+    canCreateLocations,
+    canEditLocations,
+    canDeleteLocations,
+    
+    // Purchase order management
+    canManagePurchaseOrders,
+    canViewPurchaseOrders,
+    canCreatePurchaseOrders,
+    canEditPurchaseOrders,
+    canApprovePurchaseOrders,
+    canDeletePurchaseOrders,
+    
+    // Sales order management
+    canManageSalesOrders,
+    canViewSalesOrders,
+    canCreateSalesOrders,
+    canEditSalesOrders,
+    canProcessSalesOrders,
+    canDeleteSalesOrders,
+    
+    // Reports and analytics
+    canViewAdvancedReports,
+    canExportReports,
+    canViewAnalytics,
+    canViewFinancialReports,
+    
+    // Settings
+    canManageSettings,
+    canViewSettings,
+    canManageTenantSettings,
+    canManageSystemSettings,
+    
+    // File management
+    canUploadFiles,
+    canDeleteFiles,
+    
+    // Alerts
+    canViewLowStockAlerts,
+    canManageLowStockAlerts,
+  };
 };

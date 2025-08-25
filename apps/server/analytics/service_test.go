@@ -124,7 +124,7 @@ func TestService_GetKPIs(t *testing.T) {
 
 		stockoutParams := db.GetStockoutRiskCountParams{
 			TenantID: tenantID,
-			Quantity: numericFromInt64(10),
+			Quantity: "10", // Use string instead of pgtype.Numeric
 		}
 		mockQueries.On("GetStockoutRiskCount", mock.Anything, stockoutParams).Return(stockoutRisk, nil)
 
@@ -212,7 +212,7 @@ func TestService_GetKPIs(t *testing.T) {
 		expectedError := fmt.Errorf("stockout query error")
 		stockoutParams := db.GetStockoutRiskCountParams{
 			TenantID: tenantID,
-			Quantity: numericFromInt64(10),
+			Quantity: "10", // Use string instead of pgtype.Numeric
 		}
 		mockQueries.On("GetStockoutRiskCount", mock.Anything, stockoutParams).Return(nil, expectedError)
 
@@ -264,11 +264,11 @@ func TestService_GetSalesSeries(t *testing.T) {
 
 		mockRows := []db.GetSalesTimeSeriesRow{
 			{
-				Period:  pgtype.Interval{Days: 1, Valid: true},
+				Period:  86400, // 1 day in seconds
 				Revenue: int64(5000),
 			},
 			{
-				Period:  pgtype.Interval{Days: 2, Valid: true},
+				Period:  172800, // 2 days in seconds
 				Revenue: int64(7500),
 			},
 		}
@@ -328,7 +328,7 @@ func TestService_GetSalesSeries(t *testing.T) {
 
 		mockRows := []db.GetSalesTimeSeriesRow{
 			{
-				Period:  pgtype.Interval{Months: 1, Valid: true},
+				Period:  2592000, // ~30 days in seconds
 				Revenue: int64(50000),
 			},
 		}
@@ -362,11 +362,11 @@ func TestService_GetPurchasesSeries(t *testing.T) {
 
 		mockRows := []db.GetPurchasesTimeSeriesRow{
 			{
-				Period:    pgtype.Interval{Days: 1, Valid: true},
+				Period:    86400, // 1 day in seconds
 				TotalCost: int64(3000),
 			},
 			{
-				Period:    pgtype.Interval{Days: 2, Valid: true},
+				Period:    172800, // 2 days in seconds
 				TotalCost: int64(4500),
 			},
 		}

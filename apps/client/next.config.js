@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Fix workspace root detection
+  outputFileTracingRoot: __dirname,
+  
   // Performance optimizations
   experimental: {
     optimizePackageImports: [

@@ -13,12 +13,25 @@ import (
 	"agromart2/db"
 )
 
-type Service struct {
-	db      *pgxpool.Pool
-	queries *db.Queries
+// AnalyticsQuerier defines the interface for analytics database operations
+type AnalyticsQuerier interface {
+	GetInventoryValue(ctx context.Context, tenantID uuid.UUID) (interface{}, error)
+	GetStockoutRiskCount(ctx context.Context, params db.GetStockoutRiskCountParams) (interface{}, error)
+	CountOpenSalesOrders(ctx context.Context, params db.CountOpenSalesOrdersParams) (int64, error)
+	CountOpenPurchaseOrders(ctx context.Context, params db.CountOpenPurchaseOrdersParams) (int64, error)
+	GetRevenueInPeriod(ctx context.Context, params db.GetRevenueInPeriodParams) (interface{}, error)
+	GetTopProductsByRevenue(ctx context.Context, params db.GetTopProductsByRevenueParams) ([]db.GetTopProductsByRevenueRow, error)
+	CountExpiringBatchesWithinDays(ctx context.Context, params db.CountExpiringBatchesWithinDaysParams) (interface{}, error)
+	GetSalesTimeSeries(ctx context.Context, params db.GetSalesTimeSeriesParams) ([]db.GetSalesTimeSeriesRow, error)
+	GetPurchasesTimeSeries(ctx context.Context, params db.GetPurchasesTimeSeriesParams) ([]db.GetPurchasesTimeSeriesRow, error)
 }
 
-func NewService(dbpool *pgxpool.Pool, q *db.Queries) *Service {
+type Service struct {
+	db      *pgxpool.Pool
+	queries AnalyticsQuerier
+}
+
+func NewService(dbpool *pgxpool.Pool, q AnalyticsQuerier) *Service {
 	return &Service{db: dbpool, queries: q}
 }
 
