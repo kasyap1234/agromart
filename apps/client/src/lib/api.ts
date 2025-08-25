@@ -419,11 +419,20 @@ export const apiClient = {
 
     dashboardStats: () => apiClient.get("/reports/dashboard-stats"),
 
-    // Additional report endpoints for purchase orders
-    productMovement: (params?: { from?: string; to?: string }) =>
+    // Additional report endpoints
+    productMovement: (params?: { period?: string; type?: string }) =>
       apiClient.get("/reports/product-movement", params),
 
-    supplierPurchaseSummary: (params?: { from?: string; to?: string }) =>
+    supplierPurchaseSummary: (params?: { period?: string; sortBy?: string }) =>
+      apiClient.get("/reports/supplier-purchase-summary", params),
+
+    getInventoryValue: (params?: { range?: string }) =>
+      apiClient.get("/reports/inventory-value", params),
+
+    getProductMovement: (params?: { period?: string; type?: string }) =>
+      apiClient.get("/reports/product-movement", params),
+
+    getSupplierPurchaseSummary: (params?: { period?: string; sortBy?: string }) =>
       apiClient.get("/reports/supplier-purchase-summary", params),
 
     // Export functionality
@@ -575,6 +584,80 @@ export const apiClient = {
       page?: number;
       limit?: number;
     }) => apiClient.get("/files", params),
+  },
+
+  // Sales Orders
+  salesOrders: {
+    list: (params?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      status?: string;
+      customer_id?: string;
+      sort_by?: string;
+      sort_order?: 'asc' | 'desc';
+    }) => apiClient.get("/sales/orders", params),
+
+    get: (id: string) => apiClient.get(`/sales/orders/${id}`),
+
+    create: (data: {
+      customer_id: string;
+      expected_delivery_date?: string;
+      notes?: string;
+      items: Array<{
+        product_id: string;
+        quantity: number;
+        unit_price: number;
+      }>;
+    }) => apiClient.post("/sales/orders", data),
+
+    update: (id: string, data: {
+      customer_id?: string;
+      expected_delivery_date?: string;
+      notes?: string;
+      items?: Array<{
+        product_id: string;
+        quantity: number;
+        unit_price: number;
+      }>;
+    }) => apiClient.put(`/sales/orders/${id}`, data),
+
+    updateStatus: (id: string, status: string) =>
+      apiClient.put(`/sales/orders/${id}/status`, { status }),
+
+    delete: (id: string) => apiClient.delete(`/sales/orders/${id}`),
+
+    getItems: (id: string) => apiClient.get(`/sales/orders/${id}/items`),
+
+    addItem: (id: string, item: {
+      product_id: string;
+      quantity: number;
+      unit_price: number;
+    }) => apiClient.post(`/sales/orders/${id}/items`, item),
+
+    updateItem: (orderId: string, itemId: string, data: {
+      quantity?: number;
+      unit_price?: number;
+    }) => apiClient.put(`/sales/orders/${orderId}/items/${itemId}`, data),
+
+    removeItem: (orderId: string, itemId: string) =>
+      apiClient.delete(`/sales/orders/${orderId}/items/${itemId}`),
+
+    confirm: (id: string) => apiClient.post(`/sales/orders/${id}/confirm`),
+
+    ship: (id: string, data?: {
+      tracking_number?: string;
+      carrier?: string;
+      shipped_date?: string;
+    }) => apiClient.post(`/sales/orders/${id}/ship`, data),
+
+    deliver: (id: string, data?: {
+      delivered_date?: string;
+      received_by?: string;
+    }) => apiClient.post(`/sales/orders/${id}/deliver`, data),
+
+    cancel: (id: string, reason?: string) =>
+      apiClient.post(`/sales/orders/${id}/cancel`, { reason }),
   },
 
   // Audit Logs

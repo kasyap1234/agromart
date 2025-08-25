@@ -1,0 +1,29 @@
+{
+  "name": "agromart-endpoint-tests",
+  "version": "1.0.0",
+  "description": "Automated endpoint testing suite for AgroMart API",
+  "scripts": {
+    "test:endpoints": "node test-endpoint-availability.js",
+    "test:integration": "node test-endpoint-integration.js",
+    "test:coverage": "node validate-coverage.js",
+    "test:all": "npm run test:endpoints && npm run test:integration",
+    "test:endpoints:dev": "node test-endpoint-availability.js --baseUrl=http://localhost:8080 --verbose",
+    "test:integration:dev": "node test-endpoint-integration.js --baseUrl=http://localhost:8080 --verbose",
+    "test:endpoints:prod": "node test-endpoint-availability.js --baseUrl=https://api.agromart.com --timeout=10000",
+    "test:integration:prod": "node test-endpoint-integration.js --baseUrl=https://api.agromart.com --timeout=10000",
+    "test:performance": "k6 run performance-benchmark.js",
+    "test:performance:load": "k6 run --vus 25 --duration 3m performance-benchmark.js",
+    "test:performance:stress": "k6 run --stage 30s:20 --stage 1m:50 --stage 30s:0 performance-benchmark.js",
+    "test:performance:spike": "k6 run --stage 10s:100 --stage 30s:100 --stage 10s:0 performance-benchmark.js",
+    "scan:routes": "node route-scanner.js",
+    "scan:endpoints": "go run endpoint-scanner.go"
+  },
+  "keywords": ["agromart", "api", "testing", "endpoints", "integration"],
+  "author": "AgroMart Development Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "devDependencies": {},
+  "dependencies": {}
+}

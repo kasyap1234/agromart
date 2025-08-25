@@ -56,7 +56,8 @@ func buildServer(t *testing.T) (*echo.Echo, *auth.JWTService, *db.Queries) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	queries := db.New(pool)
+	wrapper := database.NewPgxWrapper(pool)
+	queries := db.New(wrapper)
 	jwtService := auth.NewJWTService(cfg.JWTSecret)
 
 	// Services
@@ -110,7 +111,7 @@ func seedSalesBasic(t *testing.T, q *db.Queries, tenantID uuid.UUID) {
 
 func makeJWT(t *testing.T, jwtService *auth.JWTService, userID, tenantID, email, role string) string {
 	t.Helper()
-	token, err := jwtService.GenerateToken(userID, tenantID, email, role)
+	token, err := jwtService.GenerateToken(userID, tenantID, email, role, "", "")
 	if err != nil {
 		t.Fatalf("failed to generate token: %v", err)
 	}

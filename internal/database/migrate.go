@@ -45,15 +45,23 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool, migrationDir string)
 			continue
 		}
 		if strings.HasSuffix(file.Name(), ".up.sql") {
-			version := strings.TrimSuffix(file.Name(), ".up.sql")
-			// Validate version format? We expect numeric prefix, but we'll just use the file name.
+			// Extract only the numeric prefix (e.g., "000001" from "000001_create_tenant_tables.up.sql")
+			filenameWithoutExt := strings.TrimSuffix(file.Name(), ".up.sql")
+			parts := strings.SplitN(filenameWithoutExt, "_", 2)
+			var version string
+			if len(parts) > 0 {
+				version = parts[0]
+			} else {
+				version = filenameWithoutExt
+			}
+			
 			path := filepath.Join(migrationDir, file.Name())
 			script, err := os.ReadFile(path)
 			if err != nil {
 				return fmt.Errorf("failed to read migration file %s: %w", path, err)
 			}
 			migrations = append(migrations, Migration{
-				Version: version,
+				Version: version,  // Use only the numeric prefix
 				Script:  string(script),
 			})
 		}

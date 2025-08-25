@@ -91,7 +91,7 @@ func TestEnhancedCustomerService_CreateCustomer(t *testing.T) {
 			Phone:         sql.NullString{String: params.Phone, Valid: true},
 			Address:       sql.NullString{String: params.Address, Valid: true},
 			PaymentMode:   sql.NullString{String: params.PaymentMode, Valid: true},
-			IsActive:      true,
+			IsActive:      sql.NullBool{Bool: true, Valid: true},
 		}
 
 		mockQuerier.On("CreateCustomer", ctx, mock.MatchedBy(func(arg db.CreateCustomerParams) bool {
@@ -128,7 +128,7 @@ func TestEnhancedCustomerService_CreateCustomer(t *testing.T) {
 			ID:       uuid.New(),
 			TenantID: tenantID,
 			Name:     params.Name,
-			IsActive: true,
+			IsActive: sql.NullBool{Bool: true, Valid: true},
 		}
 
 		mockQuerier.On("CreateCustomer", ctx, mock.MatchedBy(func(arg db.CreateCustomerParams) bool {
@@ -179,7 +179,7 @@ func TestEnhancedCustomerService_GetCustomerByID(t *testing.T) {
 			ID:       customerID,
 			TenantID: tenantID,
 			Name:     "Test Customer",
-			IsActive: true,
+			IsActive: sql.NullBool{Bool: true, Valid: true},
 		}
 
 		mockQuerier.On("GetCustomerByID", ctx, db.GetCustomerByIDParams{

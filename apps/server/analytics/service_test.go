@@ -296,7 +296,7 @@ func TestService_GetSalesSeries(t *testing.T) {
 		service := NewService(nil, mockQueries)
 
 		expectedError := fmt.Errorf("time series query error")
-		mockQueries.On("GetSalesTimeSeries", mock.Anything, mock.Anything).Return(nil, expectedError)
+		mockQueries.On("GetSalesTimeSeries", mock.Anything, mock.Anything).Return([]db.GetSalesTimeSeriesRow{}, expectedError)
 
 		ctx := context.Background()
 		result, err := service.GetSalesSeries(ctx, seriesParams)
@@ -394,7 +394,7 @@ func TestService_GetPurchasesSeries(t *testing.T) {
 		service := NewService(nil, mockQueries)
 
 		expectedError := fmt.Errorf("purchases time series query error")
-		mockQueries.On("GetPurchasesTimeSeries", mock.Anything, mock.Anything).Return(nil, expectedError)
+		mockQueries.On("GetPurchasesTimeSeries", mock.Anything, mock.Anything).Return([]db.GetPurchasesTimeSeriesRow{}, expectedError)
 
 		ctx := context.Background()
 		result, err := service.GetPurchasesSeries(ctx, seriesParams)

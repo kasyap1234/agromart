@@ -1,0 +1,12 @@
+{
+  "endpoints": [],
+  "summary": {
+    "total_endpoints": 0,
+    "endpoints_by_module": {},
+    "endpoints_by_method": {},
+    "protected_count": 0,
+    "files_scanned": 19,
+    "scan_time_ms": 25
+  },
+  "timestamp": "2025-08-25T19:54:27+05:30"
+}

@@ -3,34 +3,137 @@ version: "3"
 vars:
   TEST_DATABASE_URL: "postgres://postgres:secret@localhost:5436/inventory_test?sslmode=disable"
   TEST_MIGRATIONS_PATH: "./apps/server/sql/schema"
+  DEV_DATABASE_URL: "postgres://postgres:secret@localhost:5432/agromart?sslmode=disable"
+  DEV_MIGRATIONS_PATH: "./apps/server/sql/schema"
+  DOCKER_COMPOSE_DEV: "docker-compose.dev.yml"
+  DOCKER_COMPOSE_TEST: "docker-compose.test.yml"
+  SERVER_BINARY: "./apps/server/main.go"
+  CLIENT_DIR: "./apps/client"
+  SERVER_DIR: "./apps/server"
 
 tasks:
-  # Bring up disposable Postgres for tests
-  test:db:up:
-    desc: "Start disposable Postgres for tests on port 5436"
+  # Database Management Tasks
+
+  # Development Database Tasks
+  dev:db:up:
+    desc: "Start development database"
     cmds:
-      - docker compose -f docker-compose.test.yml up -d
-      - echo "Waiting for Postgres healthcheck..."
+      - docker compose -f {{.DOCKER_COMPOSE_DEV}} up postgres -d
+      - echo "Waiting for development database to be healthy..."
+      - bash -c 'for i in {1..60}; do
+            docker inspect --format "{{json .State.Health.Status }}" agromart-postgres 2>/dev/null | grep -q healthy && exit 0;
+            sleep 1;
+          done; echo "Development database did not become healthy in time" >&2; exit 1'
+
+  dev:db:down:
+    desc: "Stop development database"
+    cmds:
+      - docker compose -f {{.DOCKER_COMPOSE_DEV}} down postgres
+
+  dev:db:migrate:
+    desc: "Run migrations on development database"
+    cmds:
+      - bash -c 'command -v migrate >/dev/null 2>&1 || { echo "golang-migrate CLI not installed"; exit 1; }'
+      - bash -c '[ -d "{{.DEV_MIGRATIONS_PATH}}" ] || { echo "Migrations path {{.DEV_MIGRATIONS_PATH}} not found"; exit 1; }'
+      - migrate -path {{.DEV_MIGRATIONS_PATH}} -database {{.DEV_DATABASE_URL}} up
+
+  dev:db:migrate:down:
+    desc: "Rollback migrations on development database"
+    cmds:
+      - bash -c 'command -v migrate >/dev/null 2>&1 || { echo "golang-migrate CLI not installed"; exit 1; }'
+      - migrate -path {{.DEV_MIGRATIONS_PATH}} -database {{.DEV_DATABASE_URL}} down 1
+
+  dev:db:reset:
+    desc: "Reset development database (drop all tables and re-run migrations)"
+    cmds:
+      - migrate -path {{.DEV_MIGRATIONS_PATH}} -database {{.DEV_DATABASE_URL}} drop -f
+      - migrate -path {{.DEV_MIGRATIONS_PATH}} -database {{.DEV_DATABASE_URL}} up
+
+  # Test Database Tasks
+  test:db:up:
+    desc: "Start test database"
+    cmds:
+      - docker compose -f {{.DOCKER_COMPOSE_TEST}} up -d
+      - echo "Waiting for test database to be healthy..."
       - bash -c 'for i in {1..60}; do
             docker inspect --format "{{json .State.Health.Status }}" agromart2-postgres-test 2>/dev/null | grep -q healthy && exit 0;
             sleep 1;
-          done; echo "Postgres did not become healthy in time" >&2; exit 1'
+          done; echo "Test database did not become healthy in time" >&2; exit 1'
 
-  # Tear down the disposable DB
   test:db:down:
-    desc: "Stop and remove disposable Postgres for tests"
+    desc: "Stop test database"
     cmds:
-      - docker compose -f docker-compose.test.yml down -v
+      - docker compose -f {{.DOCKER_COMPOSE_TEST}} down -v
 
-  # Run migrations against the disposable DB using golang-migrate CLI
   test:db:migrate:
-    desc: "Apply DB migrations (golang-migrate) to disposable Postgres"
+    desc: "Run migrations on test database"
     cmds:
       - bash -c 'command -v migrate >/dev/null 2>&1 || { echo "golang-migrate CLI not installed"; exit 1; }'
       - bash -c '[ -d "{{.TEST_MIGRATIONS_PATH}}" ] || { echo "Migrations path {{.TEST_MIGRATIONS_PATH}} not found"; exit 1; }'
-      - bash -c 'migrate -path "{{.TEST_MIGRATIONS_PATH}}" -database "{{.TEST_DATABASE_URL}}" up || true'
+      - migrate -path {{.TEST_MIGRATIONS_PATH}} -database {{.TEST_DATABASE_URL}} up
 
-  # sqlc generate (supports either root or apps/server config)
+  test:db:migrate:down:
+    desc: "Rollback migrations on test database"
+    cmds:
+      - bash -c 'command -v migrate >/dev/null 2>&1 || { echo "golang-migrate CLI not installed"; exit 1; }'
+      - migrate -path {{.TEST_MIGRATIONS_PATH}} -database {{.TEST_DATABASE_URL}} down 1
+
+  test:db:reset:
+    desc: "Reset test database (drop all tables and re-run migrations)"
+    cmds:
+      - migrate -path {{.TEST_MIGRATIONS_PATH}} -database {{.TEST_DATABASE_URL}} drop -f
+      - migrate -path {{.TEST_MIGRATIONS_PATH}} -database {{.TEST_DATABASE_URL}} up
+
+  # Development Server Lifecycle Tasks
+
+  dev:server:build:
+    desc: "Build the development server"
+    dir: "{{.SERVER_DIR}}"
+    cmds:
+      - go mod tidy
+      - go build -o ../../bin/server {{.SERVER_BINARY}}
+
+  dev:server:run:
+    desc: "Run the development server"
+    dir: "{{.SERVER_DIR}}"
+    env:
+      DATABASE_URL: "{{.DEV_DATABASE_URL}}"
+    cmds:
+      - go run {{.SERVER_BINARY}}
+
+  dev:server:start:
+    desc: "Start the development server in background"
+    dir: "{{.SERVER_DIR}}"
+    env:
+      DATABASE_URL: "{{.DEV_DATABASE_URL}}"
+    cmds:
+      - go run {{.SERVER_BINARY}}
+
+  dev:server:stop:
+    desc: "Stop the development server"
+    cmds:
+      - pkill -f "go run {{.SERVER_BINARY}}" || true
+
+  dev:client:install:
+    desc: "Install client dependencies"
+    dir: "{{.CLIENT_DIR}}"
+    cmds:
+      - bun install
+
+  dev:client:build:
+    desc: "Build the client application"
+    dir: "{{.CLIENT_DIR}}"
+    cmds:
+      - bun run build
+
+  dev:client:dev:
+    desc: "Start the client development server"
+    dir: "{{.CLIENT_DIR}}"
+    cmds:
+      - bun run dev
+
+  # Code Generation Tasks
+
   sqlc:generate:
     desc: "Generate sqlc code"
     cmds:
@@ -46,28 +149,174 @@ tasks:
             echo "No sqlc.yaml found at root or apps/server; skipping";
           fi'
 
-  # Backend unit tests (no special tags)
+  # Testing Tasks
+
   test:server:unit:
     desc: "Run backend unit tests"
+    dir: "{{.SERVER_DIR}}"
     cmds:
-      - go test ./apps/server/... -count=1
+      - go test ./... -count=1 -v
 
-  # Backend integration tests (require DB up and migrated). Uses build tag: integration
   test:server:integration:
-    desc: "Run backend integration tests (expects disposable DB up and migrated)"
+    desc: "Run backend integration tests"
+    dir: "{{.SERVER_DIR}}"
     env:
       DATABASE_URL: "{{.TEST_DATABASE_URL}}"
     cmds:
-      - go test ./apps/server/integration -tags=integration -count=1
+      - go test ./integration -tags=integration -count=1 -v
 
-  # Composite: spin up DB, migrate, run unit+integration, tear down
-  test:server:all:
-    desc: "End-to-end: start test DB, migrate, run unit and integration tests, tear down"
+  test:client:unit:
+    desc: "Run client unit tests"
+    dir: "{{.CLIENT_DIR}}"
     cmds:
+      - bun test
+
+  test:client:e2e:
+    desc: "Run client end-to-end tests"
+    dir: "{{.CLIENT_DIR}}"
+    cmds:
+      - bun run test:e2e
+
+  # Composite Tasks
+
+  dev:setup:
+    desc: "Set up development environment"
+    cmds:
+      - task: dev:db:up
+      - task: dev:db:migrate
       - task: sqlc:generate
+      - task: dev:client:install
+
+  dev:start:
+    desc: "Start development environment"
+    cmds:
+      - task: dev:server:start
+      - task: dev:client:dev
+
+  dev:stop:
+    desc: "Stop development environment"
+    cmds:
+      - task: dev:server:stop
+      - task: dev:db:down
+
+  test:setup:
+    desc: "Set up test environment"
+    cmds:
       - task: test:db:up
       - task: test:db:migrate
+      - task: sqlc:generate
+
+  test:all:
+    desc: "Run all tests"
+    cmds:
+      - task: test:setup
       - task: test:server:unit
       - task: test:server:integration
+      - task: test:client:unit
       - task: test:db:down
-    silent: false
+
+  # Build and Deployment Tasks
+
+  build:server:
+    desc: "Build server for production"
+    dir: "{{.SERVER_DIR}}"
+    cmds:
+      - go mod tidy
+      - CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ../../bin/server {{.SERVER_BINARY}}
+
+  build:client:
+    desc: "Build client for production"
+    dir: "{{.CLIENT_DIR}}"
+    cmds:
+      - bun run build
+
+  build:all:
+    desc: "Build all components"
+    cmds:
+      - task: build:server
+      - task: build:client
+
+  # Docker Tasks
+
+  docker:build:server:
+    desc: "Build server Docker image"
+    cmds:
+      - docker build -f docker/backend.Dockerfile -t agromart-server .
+
+  docker:build:client:
+    desc: "Build client Docker image"
+    cmds:
+      - docker build -f docker/frontend.Dockerfile -t agromart-client .
+
+  docker:build:all:
+    desc: "Build all Docker images"
+    cmds:
+      - task: docker:build:server
+      - task: docker:build:client
+
+  # Cleanup Tasks
+
+  clean:
+    desc: "Clean up build artifacts and temporary files"
+    cmds:
+      - rm -rf bin/
+      - rm -rf {{.CLIENT_DIR}}/dist/
+      - rm -rf {{.CLIENT_DIR}}/.next/
+      - rm -rf {{.SERVER_DIR}}/tmp/
+
+  clean:db:
+    desc: "Clean up databases"
+    cmds:
+      - task: dev:db:down
+      - task: test:db:down
+      - docker system prune -f
+
+  # Health Check Tasks
+
+  health:db:dev:
+    desc: "Check development database health"
+    cmds:
+      - docker inspect --format "{{json .State.Health.Status }}" agromart-postgres 2>/dev/null || echo "Database not running"
+
+  health:db:test:
+    desc: "Check test database health"
+    cmds:
+      - docker inspect --format "{{json .State.Health.Status }}" agromart2-postgres-test 2>/dev/null || echo "Database not running"
+
+  # Utility Tasks
+
+  fmt:
+    desc: "Format code"
+    cmds:
+      - task: fmt:server
+      - task: fmt:client
+
+  fmt:server:
+    desc: "Format Go code"
+    dir: "{{.SERVER_DIR}}"
+    cmds:
+      - go fmt ./...
+
+  fmt:client:
+    desc: "Format client code"
+    dir: "{{.CLIENT_DIR}}"
+    cmds:
+      - bun run format
+
+  lint:
+    desc: "Lint code"
+    cmds:
+      - task: lint:server
+      - task: lint:client
+
+  lint:server:
+    desc: "Lint Go code"
+    dir: "{{.SERVER_DIR}}"
+    cmds:
+      - golangci-lint run
+
+  lint:client:
+    desc: "Lint client code"
+    dir: "{{.CLIENT_DIR}}"
+    cmds:
+      - bun run lint

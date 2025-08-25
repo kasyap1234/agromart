@@ -38,10 +38,10 @@ import (
 	"agromart2/apps/server/locations"
 	"agromart2/apps/server/products"
 	"agromart2/apps/server/sales"
+	"agromart2/apps/server/services"
 	"agromart2/apps/server/settings"
 	"agromart2/apps/server/users"
 	"agromart2/db"
-	"agromart2/apps/server/services"
 )
 
 /*
@@ -76,46 +76,10 @@ All responses follow a consistent format with success boolean, data payload, and
 @in header
 @name Authorization
 @description Type "Bearer" followed by a space and JWT token.
- */
+*/
 
-// Check for migrate-only flag
-func runMigrationsOnly() {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		log.Fatal("Failed to load config:", err)
-	}
-
-	dbConfig := &database.Config{
-		Host:              cfg.DB_Host,
-		Port:              cfg.DB_Port,
-		User:              cfg.DB_User,
-		Password:          cfg.DB_Password,
-		Database:          cfg.DB_Name,
-		SSLMode:           "disable",
-		MaxConns:          int32(cfg.MaxConns),
-		MinConns:          int32(cfg.MinConns),
-		MaxConnLifetime:   cfg.MaxConnLifeTime,
-		MaxConnIdleTime:   cfg.MaxConnIdleTime,
-		HealthCheckPeriod: cfg.HealthCheckPeriod,
-	}
-
-	if err := dbConfig.Validate(); err != nil {
-		log.Fatal("Invalid database config:", err)
-	}
-
-	ctx := context.Background()
-	pool, err := dbConfig.NewPool(ctx)
-	if err != nil {
-		log.Fatal("Failed to create database connection pool:", err)
-	}
-	defer pool.Close()
-
-	if err := database.RunMigrations(ctx, pool, "sql/schema"); err != nil {
-		log.Fatal("Failed to run database migrations:", err)
-	}
-
-	log.Println("Migrations completed successfully")
-}
+// Note: Database migrations are now handled externally via golang-migrate CLI
+// This ensures consistency across development, staging, and production environments
 
 // Dev seeding function
 func seedDevData(ctx context.Context, dbPool *pgxpool.Pool, queries *db.Queries, jwtService *auth.JWTService) error {
@@ -166,11 +130,7 @@ func seedDevData(ctx context.Context, dbPool *pgxpool.Pool, queries *db.Queries,
 }
 
 func main() {
-	// Check for migrate-only flag
-	if len(os.Args) > 1 && os.Args[1] == "--migrate-only" {
-		runMigrationsOnly()
-		return
-	}
+	// Note: --migrate-only flag removed - migrations handled externally by golang-migrate CLI
 	// Load configuration with diagnostics
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -215,10 +175,8 @@ func main() {
 	}
 	log.Printf("[BOOT] DB ping OK")
 
-	// Run database migrations
-	if err := database.RunMigrations(ctx, pool, "sql/schema"); err != nil {
-		log.Fatal("Failed to run database migrations: ", err)
-	}
+	// Database migrations are handled externally by golang-migrate CLI
+	// This ensures proper migration management across all environments
 
 	// Initialize SQLC queries using a connection wrapper
 	wrapper := database.NewPgxWrapper(pool)

@@ -161,26 +161,26 @@ func TestCustomerHandler_CreateCustomer(t *testing.T) {
 			// Setup
 			tt.setupMock()
 			e := setupTestEcho(tt.tenantID)
+			e.POST("/customers", handler.CreateCustomer)
 
 			// Create request
 			body, _ := json.Marshal(tt.requestBody)
 			req := httptest.NewRequest(http.MethodPost, "/customers", bytes.NewReader(body))
 			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
 
-			// Execute
-			err := handler.CreateCustomer(c)
+			// Execute through Echo router
+			e.ServeHTTP(rec, req)
 
 			// Assert
 			if tt.expectError {
-				assert.Error(t, err)
+				assert.NotEqual(t, http.StatusOK, rec.Code)
+				assert.NotEqual(t, http.StatusCreated, rec.Code)
 			} else {
-				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedStatus, rec.Code)
 
 				var response map[string]interface{}
-				err = json.Unmarshal(rec.Body.Bytes(), &response)
+				err := json.Unmarshal(rec.Body.Bytes(), &response)
 				require.NoError(t, err)
 				assert.True(t, response["success"].(bool))
 			}
@@ -248,22 +248,19 @@ func TestCustomerHandler_GetCustomer(t *testing.T) {
 			// Setup
 			tt.setupMock()
 			e := setupTestEcho(tt.tenantID)
+			e.GET("/customers/:id", handler.GetCustomer)
 
 			// Create request
 			req := httptest.NewRequest(http.MethodGet, "/customers/"+tt.customerID, nil)
 			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
-			c.SetParamNames("id")
-			c.SetParamValues(tt.customerID)
 
 			// Execute
-			err := handler.GetCustomer(c)
+			e.ServeHTTP(rec, req)
 
 			// Assert
 			if tt.expectError {
-				assert.Error(t, err)
+				assert.NotEqual(t, http.StatusOK, rec.Code)
 			} else {
-				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedStatus, rec.Code)
 			}
 

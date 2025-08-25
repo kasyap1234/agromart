@@ -1,42 +1,46 @@
 import '@testing-library/jest-dom';
+import { beforeAll } from 'bun:test';
 
-// Mock Next.js router
-jest.mock('next/navigation', () => ({
-  useRouter() {
-    return {
-      push: jest.fn(),
-      replace: jest.fn(),
-      back: jest.fn(),
-      forward: jest.fn(),
-      refresh: jest.fn(),
-      prefetch: jest.fn(),
-    };
-  },
-  useSearchParams() {
-    return new URLSearchParams();
-  },
-  usePathname() {
-    return '';
-  },
-  useParams() {
-    return {};
-  },
-}));
+// Create mock functions that work in both Jest and Bun
+const createMockFn = () => {
+  const fn = () => {};
+  fn.mockReturnValue = (value) => { fn._returnValue = value; return fn; };
+  fn.mockImplementation = (impl) => { fn._impl = impl; return fn; };
+  return fn;
+};
+
+// Global mock function factory
+global.createMockFn = createMockFn;
+
+// Setup navigation mocks
+beforeAll(() => {
+  // Mock Next.js router for both Jest and Bun
+  const routerMock = {
+    push: createMockFn(),
+    replace: createMockFn(),
+    back: createMockFn(),
+    forward: createMockFn(),
+    refresh: createMockFn(),
+    prefetch: createMockFn(),
+  };
+
+  global.mockRouter = routerMock;
+  global.mockSearchParams = new URLSearchParams();
+  global.mockPathname = '';
+  global.mockParams = {};
+});
 
 // Mock next/image
-jest.mock('next/image', () => ({
-  __esModule: true,
-  default: (props) => {
-    // eslint-disable-next-line jsx-a11y/alt-text
-    return <img {...props} />;
-  },
-}));
+global.NextImage = (props) => {
+  // eslint-disable-next-line jsx-a11y/alt-text
+  return <img {...props} />;
+};
 
 // Mock environment variables
 process.env.NEXT_PUBLIC_API_URL = 'http://localhost:8000';
 
 // Global test utilities - Mock fetch to return a proper Response object
-global.fetch = jest.fn().mockImplementation(() =>
+global.fetch = createMockFn().mockImplementation(() =>
   Promise.resolve({
     ok: true,
     status: 200,
@@ -50,20 +54,18 @@ global.fetch = jest.fn().mockImplementation(() =>
 );
 
 // Mock axios for API client tests
-jest.mock('axios', () => ({
-  create: jest.fn(() => ({
-    interceptors: {
-      request: { use: jest.fn() },
-      response: { use: jest.fn() }
-    },
-    post: jest.fn(),
-    get: jest.fn(),
-    put: jest.fn(),
-    patch: jest.fn(),
-    delete: jest.fn(),
-    defaults: { headers: {} }
-  }))
-}));
+global.mockAxiosInstance = {
+  interceptors: {
+    request: { use: createMockFn() },
+    response: { use: createMockFn() }
+  },
+  post: createMockFn(),
+  get: createMockFn(),
+  put: createMockFn(),
+  patch: createMockFn(),
+  delete: createMockFn(),
+  defaults: { headers: {} }
+};
 
 // Mock IntersectionObserver
 global.IntersectionObserver = class IntersectionObserver {
@@ -84,33 +86,33 @@ global.ResizeObserver = class ResizeObserver {
 // Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: jest.fn().mockImplementation(query => ({
+  value: (query) => ({
     matches: false,
     media: query,
     onchange: null,
-    addListener: jest.fn(), // deprecated
-    removeListener: jest.fn(), // deprecated
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
+    addListener: createMockFn(), // deprecated
+    removeListener: createMockFn(), // deprecated
+    addEventListener: createMockFn(),
+    removeEventListener: createMockFn(),
+    dispatchEvent: createMockFn(),
+  }),
 });
 
 // Mock localStorage
 const localStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
+  getItem: createMockFn(),
+  setItem: createMockFn(),
+  removeItem: createMockFn(),
+  clear: createMockFn(),
 };
 global.localStorage = localStorageMock;
 
 // Mock sessionStorage
 const sessionStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
+  getItem: createMockFn(),
+  setItem: createMockFn(),
+  removeItem: createMockFn(),
+  clear: createMockFn(),
 };
 global.sessionStorage = sessionStorageMock;
 
@@ -163,14 +165,13 @@ expect.extend({
 });
 
 // Mock SWR
-jest.mock('swr', () => ({
-  default: () => ({
-    data: null,
-    error: null,
-    isLoading: false,
-    mutate: jest.fn(),
-  }),
-  useSWRConfig: () => ({
-    mutate: jest.fn(),
-  }),
-}));
+global.mockSWR = {
+  data: null,
+  error: null,
+  isLoading: false,
+  mutate: createMockFn(),
+};
+
+global.mockSWRConfig = {
+  mutate: createMockFn(),
+};

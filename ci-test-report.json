@@ -1,0 +1,14 @@
+{
+  "timestamp": "2025-08-25T18:01:17Z",
+  "environment": "local",
+  "git_commit": "700b051f065774b7b6f909e404a7e678d4b13b0f",
+  "git_branch": "main",
+  "test_results": {
+    "backend_tests": false,
+    "frontend_tests": false,
+    "e2e_tests": false,
+    "migration_tests": false,
+    "performance_tests": false
+  },
+  "overall_status": "FAILED"
+}

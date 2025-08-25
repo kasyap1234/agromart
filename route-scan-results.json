@@ -1,0 +1,802 @@
+{
+  "routes": [
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/analytics/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/analytics"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/api/[...slug]/route.ts",
+      "parameters": [
+        "...slug"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "api",
+      "path": "/api/api/[...slug]",
+      "methods": []
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/api/auth/login/route.ts",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "api",
+      "path": "/api/api/auth/login",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/api/auth/me/route.ts",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "api",
+      "path": "/api/api/auth/me",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/api/auth/register/route.ts",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "api",
+      "path": "/api/api/auth/register",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/api/files/[id]/route.ts",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "api",
+      "path": "/api/api/files/[id]",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/api/files/upload/route.ts",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "api",
+      "path": "/api/api/files/upload",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/api/health/route.ts",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "api",
+      "path": "/api/api/health",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/auth/forgot-password/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/auth/forgot-password"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/auth/login/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/auth/login"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/auth/register/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/auth/register"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/auth/reset-password/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/auth/reset-password"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/batches/[id]/edit/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/batches/[id]/edit"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/batches/[id]/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/batches/[id]"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/batches/new/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/batches/new"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/batches/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/batches"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/customers/new/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/customers/new"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/customers/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/customers"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/customers/purchase-orders/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/customers/purchase-orders"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/dashboard/customers/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/dashboard/customers"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/dashboard/layout.tsx",
+      "parameters": [],
+      "hasLayout": true,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "layout",
+      "path": "/dashboard"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/dashboard/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/dashboard"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/dashboard/products/[id]/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/dashboard/products/[id]"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/dashboard/products/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/dashboard/products"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/dashboard/reports/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/dashboard/reports"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/dashboard/suppliers/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/dashboard/suppliers"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/dashboard/users/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/dashboard/users"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/diagnostic/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/diagnostic"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/error.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": true,
+      "isProtected": false,
+      "middleware": [],
+      "type": "error",
+      "path": "/"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/favicon.ico/route.ts",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "api",
+      "path": "/api/favicon.ico",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/file-upload-demo/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/file-upload-demo"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/inventory/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/inventory"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/layout.tsx",
+      "parameters": [],
+      "hasLayout": true,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "layout",
+      "path": "/"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/locations/[id]/edit/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/locations/[id]/edit"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/locations/[id]/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/locations/[id]"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/locations/new/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/locations/new"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/locations/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/locations"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/logs/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/logs"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/not-found.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "not-found",
+      "path": "/"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/offline/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/offline"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/products/[id]/edit/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/products/[id]/edit"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/products/[id]/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/products/[id]"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/products/new/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/products/new"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/products/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/products"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/purchase-orders/[id]/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/purchase-orders/[id]"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/purchase-orders/new/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/purchase-orders/new"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/purchase-orders/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/purchase-orders"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/register-diagnostic/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/register-diagnostic"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/reports/expiring-batches/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/reports/expiring-batches"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/reports/low-stock/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/reports/low-stock"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/reports/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/reports"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/sales/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/sales"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/sales-orders/[id]/edit/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/sales-orders/[id]/edit"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/sales-orders/[id]/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/sales-orders/[id]"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/sales-orders/new/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/sales-orders/new"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/sales-orders/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/sales-orders"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/settings/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": true,
+      "middleware": [],
+      "type": "page",
+      "path": "/settings"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/suppliers/[id]/edit/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/suppliers/[id]/edit"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/suppliers/[id]/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/suppliers/[id]"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/suppliers/new/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/suppliers/new"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/suppliers/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/suppliers"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/suppliers/purchase-orders/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/suppliers/purchase-orders"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/test-css/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/test-css"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/users/[id]/edit/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/users/[id]/edit"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/users/[id]/page.tsx",
+      "parameters": [
+        "id"
+      ],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/users/[id]"
+    },
+    {
+      "fullPath": "/Users/kasyapdharanikota/GolandProjects/agromart/apps/client/src/app/users/page.tsx",
+      "parameters": [],
+      "hasLayout": false,
+      "hasLoading": false,
+      "hasError": false,
+      "isProtected": false,
+      "middleware": [],
+      "type": "page",
+      "path": "/users"
+    }
+  ],
+  "summary": {
+    "totalRoutes": 67,
+    "pageRoutes": 55,
+    "apiRoutes": 8,
+    "protectedRoutes": 15,
+    "dynamicRoutes": 16
+  }
+}

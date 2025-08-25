@@ -60,7 +60,7 @@ func main() {
 	defer db.Close()
 
 	// Read migration files
-	migrationFiles, err := readMigrationFiles("../../sql/schema")
+	migrationFiles, err := readMigrationFiles("./apps/server/sql/schema")
 	if err != nil {
 		fmt.Printf("ERROR: Failed to read migration files: %v\n", err)
 		return

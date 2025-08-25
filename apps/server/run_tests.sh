@@ -240,7 +240,7 @@ run_linting() {
 
     print_info "Running golangci-lint..."
 
-    golangci-lint run --out-format=json --issues-exit-code=0 > "$TEST_RESULTS_DIR/lint_results.json"
+    golangci-lint run --out-fmt=json --issues-exit-code=0 > "$TEST_RESULTS_DIR/lint_results.json"
 
     # Count issues
     if command -v jq &> /dev/null; then

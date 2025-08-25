@@ -50,14 +50,22 @@ services:
       APP_DB_PASSWORD: secret
       APP_DB_NAME: agromart
       APP_JWT_SECRET: supersecretjwt-change-me-for-local-dev-if-you-want
-      MIGRATIONS_PATH: /app/sql/schema
       SEED_DEV: "false"
     ports:
       - "8080:8080"
     depends_on:
       db:
         condition: service_healthy
-    command: ["/bin/sh", "-lc", "set -e; echo \"[ENTRY] Waiting db healthy and running migrations\"; migrate -path ${MIGRATIONS_PATH} -database postgres://${APP_DB_USER}:${APP_DB_PASSWORD}@${APP_DB_HOST}:${APP_DB_PORT}/${APP_DB_NAME}?sslmode=disable up || echo \"[ENTRY] migrate up returned non-zero (possibly already applied). Continuing\"; echo \"[ENTRY] Starting API (cmd/api with SEED_DEV=${SEED_DEV})\"; ./main"]
+      minio:
+        condition: service_healthy
+    # Note: Migrations are now handled externally by golang-migrate CLI via dev-start.sh
+    command: ["./main"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   client:
     build:
