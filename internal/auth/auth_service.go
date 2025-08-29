@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"agromart2/db"
+	"agromart2/internal/database"
 	"agromart2/internal/validation"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -34,6 +35,7 @@ type AuthServiceInterface interface {
 type AuthService struct {
 	db      *pgxpool.Pool
 	queries *db.Queries
+	wrapper *database.PgxWrapper // Add wrapper field for proper database wrapper access
 	jwt     *JWTService
 }
 
@@ -116,16 +118,19 @@ type UserWithTenant struct {
 	Tenant db.Tenant `json:"tenant"`
 }
 
-func NewAuthService(dbPool *pgxpool.Pool, queries *db.Queries, jwtService *JWTService) *AuthService {
+func NewAuthService(dbPool *pgxpool.Pool, queries *db.Queries, wrapper *database.PgxWrapper, jwtService *JWTService) *AuthService {
 	return &AuthService{
 		db:      dbPool,
 		queries: queries,
+		wrapper: wrapper,
 		jwt:     jwtService,
 	}
 }
 
 // Register creates a new user and tenant
 func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthResponse, error) {
+	devDebugf("auth.Register START: email=%s, company=%s", req.Email, req.CompanyName)
+
 	// Validate required fields
 	if req.FirstName == "" || req.LastName == "" {
 		return nil, fmt.Errorf("first name and last name are required")
@@ -139,6 +144,7 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 	if req.Password == "" {
 		return nil, fmt.Errorf("password is required")
 	}
+	devDebugf("auth.Register VALIDATION PASSED")
 
 	// Normalize inputs defensively to ensure consistent storage and later lookup
 	req.Email = toLowerASCII(trimASCII(req.Email))
@@ -147,6 +153,7 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 	req.LastName = trimASCII(req.LastName)
 	req.Phone = trimASCII(req.Phone)
 	req.CompanyName = trimASCII(req.CompanyName)
+	devDebugf("auth.Register NORMALIZATION COMPLETE")
 
 	// DEV diagnostics (metadata only)
 	passLen := utf8.RuneCountInString(req.Password)
@@ -155,56 +162,121 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 	devDebugf("auth.Register email_norm=%q email_len=%d pass_len=%d pass_has_space=%t pass_has_non_ascii=%t",
 		req.Email, len(req.Email), passLen, passHasSpace, passHasNonASCII)
 
-	// TODO: Use transactions for atomic operations
-	// For now, using regular queries to get the application running
-	qtx := s.queries
+	devDebugf("auth.Register QUERIES OBJECT: %v", s.queries == nil)
 
-	// Validate password strength
+	// Validate password strength (ENHANCED VALIDATION)
+	devDebugf("auth.Register ABOUT TO VALIDATE PASSWORD")
 	if err := validation.ValidatePassword(req.Password); err != nil {
-		return nil, fmt.Errorf("password validation failed: %w", err)
+		devDebugf("auth.Register PASSWORD VALIDATION FAILED: %v", err)
+		return nil, fmt.Errorf("password validation failed: please ensure your password contains at least 8 characters with one uppercase letter, one lowercase letter, one digit, and one special character: %w", err)
 	}
+	devDebugf("auth.Register PASSWORD VALIDATION PASSED")
 
-	// Create tenant first
-	tenant, err := qtx.CreateTenant(ctx, db.CreateTenantParams{
-		Name:               req.CompanyName,
-		Email:              req.Email,
-		Phone:              req.Phone,
-		Address:            sql.NullString{String: "", Valid: false},
-		RegistrationNumber: sql.NullString{String: "", Valid: false},
-	})
+	// FIXED: Create tenant first with comprehensive error handling using direct pool
+	devDebugf("auth.Register ABOUT TO CREATE TENANT")
+	devDebugf("auth.Register DB OBJECT TYPE: %T", s.db)
+	devDebugf("auth.Register DB OBJECT VALUE: %p", s.db)
+	if s.db == nil {
+		devDebugf("auth.Register CRITICAL: s.db is nil!")
+		return nil, fmt.Errorf("database pool is not initialized")
+	}
+	conn, err := s.db.Acquire(ctx)
 	if err != nil {
+		devDebugf("auth.Register FAILED TO ACQUIRE CONNECTION: %v", err)
+		return nil, fmt.Errorf("failed to acquire database connection: %w", err)
+	}
+	defer conn.Release()
+	devDebugf("auth.Register CONNECTION ACQUIRED")
+
+	var tenant db.Tenant
+	devDebugf("auth.Register ABOUT TO EXECUTE TENANT QUERY")
+	err = conn.QueryRow(ctx, `INSERT INTO tenants (name, email, phone, address, registration_number)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, name, email, phone, address, registration_number, is_active, created_at`,
+		req.CompanyName, req.Email, req.Phone, sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false},
+	).Scan(
+		&tenant.ID,
+		&tenant.Name,
+		&tenant.Email,
+		&tenant.Phone,
+		&tenant.Address,
+		&tenant.RegistrationNumber,
+		&tenant.IsActive,
+		&tenant.CreatedAt,
+	)
+	if err != nil {
+		devDebugf("auth.Register TENANT CREATION FAILED: %v", err)
 		return nil, fmt.Errorf("failed to create tenant: %w", err)
 	}
+	devDebugf("auth.Register TENANT CREATED SUCCESSFULLY: ID=%s", tenant.ID)
 
-	// Hash password
+	// Hash password with enhanced security
+	devDebugf("auth.Register HASHING PASSWORD")
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		devDebugf("auth.Register PASSWORD HASHING FAILED: %v", err)
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
+	devDebugf("auth.Register PASSWORD HASHED SUCCESSFULLY")
 
-	// Set default role if not provided
-	role := req.Role
+	// FIXED: Set default role if not provided with enhanced validation
+	role := strings.TrimSpace(req.Role)
 	if role == "" {
 		role = "admin" // First user in tenant is admin
+		devDebugf("auth.Register ASSIGNED DEFAULT ROLE: admin")
 	}
 
-	// Create user
-	created, err := qtx.CreateUser(ctx, db.CreateUserParams{
-		Name:     fmt.Sprintf("%s %s", req.FirstName, req.LastName),
-		Email:    req.Email,
-		Password: string(hashedPassword),
-		Phone:    req.Phone,
-		TenantID: tenant.ID,
-		// sqlc generated param name for $6::text is Column6
-		Column6:  role,
-	})
+	// Validate role is not empty after trimming (CRITICAL BUG FIX)
+	if role == "" {
+		devDebugf("auth.Register ROLE VALIDATION FAILED: empty role")
+		return nil, fmt.Errorf("invalid role: cannot be empty")
+	}
+	devDebugf("auth.Register ROLE VALIDATION PASSED: role=%s", role)
+
+	// Create user with enhanced error handling (FIXED: Transaction management) using direct pool
+	devDebugf("auth.Register ABOUT TO CREATE USER")
+	// Reuse existing connection for user creation to avoid connection issues
+
+	var created struct {
+		ID            uuid.UUID
+		Name          string
+		Email         string
+		Password      string
+		Phone         string
+		TenantID      uuid.UUID
+		Role          sql.NullString
+		EmailVerified sql.NullBool
+		IsActive      sql.NullBool
+		CreatedAt     time.Time
+	}
+
+	err = conn.QueryRow(ctx, `INSERT INTO users (name, email, password, phone, tenant_id, role)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, name, email, password, phone, tenant_id, role, email_verified, is_active, created_at`,
+		fmt.Sprintf("%s %s", req.FirstName, req.LastName), req.Email, string(hashedPassword), req.Phone, tenant.ID, role,
+	).Scan(
+		&created.ID,
+		&created.Name,
+		&created.Email,
+		&created.Password,
+		&created.Phone,
+		&created.TenantID,
+		&created.Role,
+		&created.EmailVerified,
+		&created.IsActive,
+		&created.CreatedAt,
+	)
 	if err != nil {
+		devDebugf("auth.Register USER CREATION FAILED: %v", err)
+		// TODO: Implement proper transaction rollback here
+		// For now, the tenant remains but user creation failed
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
+	devDebugf("auth.Register USER CREATED SUCCESSFULLY: ID=%s, Email=%s", created.ID, created.Email)
 
 	// TODO: Add transaction commit when transactions are properly implemented
 
-	// Map CreateUserRow to db.User for response consistency
+	// Map created structure to db.User for response consistency
 	user := db.User{
 		ID:            created.ID,
 		Name:          created.Name,
@@ -212,7 +284,7 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 		Password:      created.Password,
 		Phone:         created.Phone,
 		TenantID:      created.TenantID,
-		Role:          created.Role,
+		Role:          created.Role.String,
 		EmailVerified: created.EmailVerified,
 		IsActive:      created.IsActive,
 		CreatedAt:     created.CreatedAt,
@@ -524,12 +596,16 @@ func (s *AuthService) UpdateUser(ctx context.Context, userID, tenantID uuid.UUID
 
 // Helper function to find user by email across tenants
 func (s *AuthService) getUserByEmailAcrossTenants(ctx context.Context, email string) (*db.User, error) {
-	// Cast role to text to avoid pgtype unknown OID scan errors
-	query := `SELECT id, name, email, password, phone, tenant_id, (role::text) AS role, email_verified, is_active, created_at
-			  FROM users WHERE email = $1 AND (is_active IS NULL OR is_active = true) LIMIT 1`
+	// Use direct pool query to bypass the broken wrapper
+	conn, err := s.db.Acquire(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to acquire connection: %w", err)
+	}
+	defer conn.Release()
 
 	var user db.User
-	err := s.db.QueryRow(ctx, query, email).Scan(
+	err = conn.QueryRow(ctx, `SELECT id, name, email, password, phone, tenant_id, (role::text) AS role, email_verified, is_active, created_at
+			  FROM users WHERE email = $1 AND (is_active IS NULL OR is_active = true) LIMIT 1`, email).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Email,

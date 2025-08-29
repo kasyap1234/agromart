@@ -26,7 +26,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || 'http://localhost:9000',
+    baseURL: process.env.BASE_URL || 'http://localhost:3000',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'retain-on-failure',
@@ -95,7 +95,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'bun run dev',
-      port: 9000,
+      port: 3000,
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
     },

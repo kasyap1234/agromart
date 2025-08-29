@@ -156,7 +156,7 @@ export const testData = {
     phone: '+1234567890',
   },
   testUser: {
-    email: 'testuser@example.com',
+    email: 'second@example.com',
     password: 'TestPassword123!',
     first_name: 'Test',
     last_name: 'User',
@@ -277,7 +277,7 @@ export async function resetTestEnvironment(page: any) {
   await clearBrowserState(page);
 
   // Navigate to base URL to ensure clean state
-  await page.goto('http://localhost:9001');
+  await page.goto('http://localhost:3000');
 
   // Wait for page to load
   await waitForNetworkIdle(page, 5000);

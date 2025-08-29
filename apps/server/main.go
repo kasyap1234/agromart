@@ -179,8 +179,12 @@ func main() {
 	// This ensures proper migration management across all environments
 
 	// Initialize SQLC queries using a connection wrapper
+	log.Printf("[BOOT] Creating DB wrapper with pool: %p", pool)
 	wrapper := database.NewPgxWrapper(pool)
+	log.Printf("[BOOT] Wrapper created: wrapper_nil=%t, raw_pool=%p", wrapper == nil, pool)
+
 	queries := db.New(wrapper)
+	log.Printf("[BOOT] DB wrapper created, queries object initialized: queries_nil=%t, wrapper_nil=%t", queries == nil, wrapper == nil)
 
 	// Initialize JWT service
 	jwtService := auth.NewJWTService(cfg.JWTSecret)
@@ -200,7 +204,10 @@ func main() {
 	}
 
 	// Initialize services
-	authService := auth.NewAuthService(pool, queries, jwtService)
+	log.Printf("[BOOT] Creating AuthService with: pool=%p, queries=%p, wrapper=%p, jwt=%p", pool, queries, wrapper, jwtService)
+	authService := auth.NewAuthService(pool, queries, wrapper, jwtService)
+	log.Printf("[BOOT] AuthService created: service_nil=%t, queries_nil=%t, wrapper_nil=%t", authService == nil, queries == nil, wrapper == nil)
+	log.Printf("[BOOT] Database pool: pool_nil=%t, raw_pool_ptr=%p", pool == nil, pool)
 	productService := products.NewProductService(pool, queries)
 	inventoryService := inventory.NewService(pool, queries)
 	analyticsService := analytics.NewService(pool, queries)
